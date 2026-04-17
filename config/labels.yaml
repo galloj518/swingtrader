@@ -1,0 +1,34 @@
+# PRE-REGISTERED label definitions. Changing any threshold here triggers a fresh
+# validation cycle (walk-forward OOS must be re-run; stale models are flagged).
+#
+# Anti-fishing discipline: do not report results for ad-hoc horizons unless they are
+# added here first. See AGENTS.md rule 4.
+
+setup_candidate:
+  min_base_days: 15
+  max_pct_from_high: 0.15        # close within 15% of 52-week high
+  weekly_trend_nonneg: true
+
+triggered_breakout:
+  pivot_breach_atr: 0.10         # close must exceed pivot by 0.10 x ATR
+  relative_volume_min: 1.30      # on trigger bar
+
+accepted_breakout:
+  consecutive_closes_above_pivot: 3
+  max_pivot_violation_atr: 0.5
+
+followthrough_confirmed:
+  atr_gain_target: 2.0           # +2 ATR from pivot
+  atr_stop: 1.0                  # before -1 ATR is hit
+  horizon_bars: 20
+
+failed_breakout:
+  horizon_bars: 10
+  close_back_below_pivot: true
+
+forward_return:
+  horizons_bars: [5, 10, 20]
+  normalize_by_atr: true
+
+# Embargo applied in walk-forward splits to avoid label-horizon leakage into test sets
+embargo_bars: 25

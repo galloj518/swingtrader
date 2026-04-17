@@ -1,0 +1,29 @@
+# Market-context regime definitions. Every validation metric is reported conditional
+# on these buckets — models that only work in one regime must be surfaced, not hidden.
+
+benchmark: SPY
+
+trend_regime:
+  method: ma_cross
+  short_ma: 50
+  long_ma: 200
+  # Up: close>long_ma AND short_ma>long_ma
+  # Down: close<long_ma AND short_ma<long_ma
+  # Neutral: otherwise
+
+volatility_regime:
+  method: vix_bucket
+  source_symbol: "^VIX"
+  buckets:
+    low:  { max: 15 }
+    mid:  { min: 15, max: 25 }
+    high: { min: 25 }
+
+breadth_regime:
+  method: pct_above_ma
+  ma_window: 50
+  # Computed across the curated universe daily
+  buckets:
+    weak:    { max: 0.35 }
+    neutral: { min: 0.35, max: 0.60 }
+    strong:  { min: 0.60 }

@@ -1,0 +1,89 @@
+# Feature schema toggles and parameters.
+# Every feature must also appear in src/swingtrader/features/registry.py with
+# declared (timeframe, lookback_bars, allows_realtime). Registry mismatches fail loudly.
+
+weekly:
+  trend_slope:
+    enabled: true
+    lookback_weeks: 26
+  distance_to_wma:
+    enabled: true
+    windows: [10, 30, 40]
+  weekly_relstrength:
+    enabled: true
+    benchmark: SPY
+    lookback_weeks: 26
+  base_length_weeks:
+    enabled: true
+    max_weeks: 65
+  pct_from_52w_high:
+    enabled: true
+  weekly_compression:
+    enabled: true
+    lookback_weeks: 8
+
+daily:
+  base_length_days:
+    enabled: true
+    max_days: 120
+  pivot_flatness:
+    enabled: true
+    lookback_days: 30
+  resistance_touches:
+    enabled: true
+    lookback_days: 60
+    tolerance_atr: 0.25
+  atr_compression_pct:
+    enabled: true
+    lookback_days: 50
+  volatility_contraction:
+    enabled: true
+    windows: [5, 10, 20]
+  volume_dryup:
+    enabled: true
+    lookback_days: 50
+  breakout_bar_thrust:
+    enabled: true
+  breakout_close_location:
+    enabled: true
+  daily_relstrength:
+    enabled: true
+    benchmark: SPY
+    lookback_days: 63
+
+intraday:   # forward-only overlay; not used in v1 training
+  opening_range_breakout:
+    enabled: true
+    or_minutes: 30
+  intraday_rvol:
+    enabled: true
+  hold_above_vwap:
+    enabled: true
+
+participation:
+  relative_volume:
+    enabled: true
+    lookback_days: 20
+  volume_expansion_on_breakout:
+    enabled: true
+
+regime:
+  benchmark_trend:
+    enabled: true
+    benchmark: SPY
+    ma_window: 200
+  vix_regime:
+    enabled: true
+    buckets: [15, 25]   # low / mid / high edges
+
+penalties:
+  overextension_atr:
+    enabled: true
+    max_atr_from_20ema: 4.0
+  illiquidity:
+    enabled: true
+  earnings_proximity_days:
+    enabled: true
+    blackout_days: 5
+  poor_data_quality:
+    enabled: true

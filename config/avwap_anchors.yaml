@@ -1,0 +1,42 @@
+# Anchored VWAP configuration. AVWAP is a first-class feature family, not a magic line:
+# anchors produce features that are tested for incremental value in the model fit.
+
+anchors:
+  swing_low:
+    enabled: true
+    lookback_days: 252
+    min_swing_prominence_atr: 1.5
+  swing_high:
+    enabled: true
+    lookback_days: 252
+    min_swing_prominence_atr: 1.5
+  year_to_date:
+    enabled: true
+  breakout_day:
+    enabled: true
+    # Anchored on the first TRIGGERED state in current lifecycle (see states/machine.py)
+  earnings_gap:
+    enabled: true
+    min_gap_atr: 1.0
+  custom_event:
+    enabled: false
+    # Optional manual overrides: {symbol: [ISO dates]}
+
+features:
+  distance_atr:
+    enabled: true
+  slope:
+    enabled: true
+    window: 20
+  closes_above_ratio:
+    enabled: true
+    lookback_days: 30
+  reclaim_event:
+    enabled: true
+    lookback_days: 30
+  stretch_atr:
+    enabled: true
+  confluence:
+    enabled: true
+    tolerance_atr: 0.5
+    min_anchors: 2

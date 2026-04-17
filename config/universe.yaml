@@ -1,0 +1,234 @@
+# Universe configuration for swingtrader v1.
+#
+# Source priority for deduplication:
+#   benchmarks → sector_etfs → sp500 → nasdaq100 → portfolio_holdings → custom_watchlist
+#
+# The pipeline always runs on portfolio_holdings + custom_watchlist regardless of whether
+# sp500.csv / nasdaq100.csv are present. Broader membership files enrich the universe
+# but are never required for a daily run.
+#
+# Symbol normalization: user-facing symbols are stored here as-is (e.g. BRK.B).
+# The ingest layer translates them to provider-specific symbols via symbol_aliases
+# before calling yfinance. All parquet files and output artifacts use the
+# provider_symbol (yfinance key). Reports map back to the user_symbol.
+
+active_sources:
+  # Controls which sections are loaded. Set false to disable a source without deleting it.
+  benchmarks: true
+  sector_etfs: true
+  sp500: false        # requires data/reference/sp500.csv — run scripts/refresh_universe.py
+  nasdaq100: false    # requires data/reference/nasdaq100.csv
+  portfolio_holdings: true
+  custom_watchlist: true
+
+sources:
+  benchmarks:
+    symbols:
+      - SPY
+      - QQQ
+      - IWM
+      - DIA
+      - MDY
+      - RSP     # equal-weight S&P 500 — useful breadth proxy
+
+  sector_etfs:
+    symbols:
+      - XLK     # Technology
+      - XLF     # Financials
+      - XLE     # Energy
+      - XLV     # Health Care
+      - XLI     # Industrials
+      - XLY     # Consumer Discretionary
+      - XLP     # Consumer Staples
+      - XLB     # Materials
+      - XLU     # Utilities
+      - XLRE    # Real Estate
+      - XLC     # Communication Services
+      - XBI     # Biotech
+      - SMH     # Semiconductors
+      - IGV     # Software
+      - ITB     # Home Construction
+      - KRE     # Regional Banks
+      - XOP     # Oil & Gas E&P
+      - XRT     # Retail
+      - XHB     # Homebuilders
+
+  sp500:
+    cache_path: data/reference/sp500.csv   # column: symbol
+
+  nasdaq100:
+    cache_path: data/reference/nasdaq100.csv
+
+  # Current portfolio holdings — always included in every daily run.
+  # SPAXX is a money-market / cash-equivalent; it is tagged separately and excluded
+  # from breakout scoring (see non_equity_symbols below).
+  portfolio_holdings:
+    symbols:
+      - SPAXX   # cash / Fidelity money market — tagged, not scored
+      - VOO
+      - QQQ
+      - VXUS
+      - GEV
+      - ETN
+      - PWR
+      - VRT
+      - ASML
+      - SOXX
+      - CEG
+      - VST
+      - CCJ
+      - LEU
+      - RTX
+      - CRS
+      - MP
+      - NVDA
+      - GOOGL
+
+  # Daily watchlist — the practical driver for v1 scoring.
+  # Add / remove names here to adjust what the pipeline evaluates.
+  custom_watchlist:
+    symbols:
+      - AAOI
+      - AAPL
+      - ABBV
+      - ABT
+      - ACN
+      - ADP
+      - ALAB
+      - ALMU
+      - AMCR
+      - AMZN
+      - APD
+      - ARES
+      - AVGO
+      - AXP
+      - AXTI
+      - BBEU
+      - BDX
+      - BE
+      - BLK
+      - BP
+      - BRK.B    # aliased to BRK-B for yfinance (see symbol_aliases below)
+      - BW
+      - CAR
+      - CAT
+      - CB
+      - CBZ
+      - CIEN
+      - CLS
+      - CMCSA
+      - CNXC
+      - COHR
+      - CRDO
+      - CTSH
+      - DOCN
+      - EME
+      - EOSE
+      - ERIE
+      - ETN
+      - EXAS
+      - EYPT
+      - EZPW
+      - FCNCA
+      - FDS
+      - FTGC
+      - GEV
+      - GLW
+      - GNRC
+      - GOOG
+      - GOOGL
+      - HD
+      - HROW
+      - IBM
+      - IBP
+      - ICLR
+      - IFNNY
+      - IONQ
+      - IQV
+      - IVZ
+      - JNJ
+      - KOD
+      - KR
+      - KVUE
+      - LHX
+      - LIN
+      - LITE
+      - LWLG
+      - LZB
+      - MA
+      - MDT
+      - META
+      - MLM
+      - MMM
+      - MRVL
+      - MSFT
+      - MU
+      - MUA
+      - NDAQ
+      - NFLX
+      - NVDA
+      - NVT
+      - OCUL
+      - ORLY
+      - PEP
+      - PHR
+      - PKG
+      - PLD
+      - PNC
+      - POET
+      - PPG
+      - PRGS
+      - PWR
+      - PYPL
+      - REGN
+      - ROL
+      - SE
+      - SGI
+      - SMA
+      - STIM
+      - T
+      - TROW
+      - TSCO
+      - TTD
+      - TXN
+      - VEA
+      - VIAV
+      - VICI
+      - VRSN
+      - VRT
+      - WAT
+      - WDAY
+      - WFC
+      - WMB
+      - XNGSY
+      - ZT
+
+# Symbols that are not equities / not suitable for breakout scoring.
+# They are retained in portfolio_holdings for position tracking but skipped
+# during feature / state / label computation.
+# Document: add any ETF-of-ETFs, money-market, or illiquid instruments here.
+non_equity_symbols:
+  - SPAXX    # Fidelity money market / cash equivalent — no OHLCV via yfinance
+
+# Provider-specific symbol aliases.
+# Format: user_symbol: provider_symbol
+# Used by ingest/symbols.py to translate before calling yfinance.
+# Keep both: user_symbol (for display / config / report) and provider_symbol (for data fetch).
+symbol_aliases:
+  BRK.B: BRK-B     # yfinance requires hyphen, not dot
+  # Add others as discovered, e.g.:
+  # BF.B: BF-B
+
+# Runtime liquidity filter — applied AFTER daily bars are available.
+# Symbols lacking data are kept and flagged; they cannot be silently dropped.
+liquidity_filter:
+  enabled: false    # disabled by default in v1 so watchlist is always fully evaluated
+  min_dollar_volume_median_20d: 10000000
+  min_price: 5.0
+  max_symbols: 750
+
+# Monthly membership snapshotting for approximate point-in-time reconstruction.
+# v1 limitation: not true point-in-time; survivorship bias is noted in every report footer.
+history:
+  snapshots_dir: config/universe_history
+  snapshot_frequency: monthly

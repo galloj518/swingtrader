@@ -1,0 +1,89 @@
+# Scoring framework contract.
+# Phase 4 fits the models; this file sets the contract and parameterizes the state machine.
+
+# ─── State machine thresholds ────────────────────────────────────────────────
+# All thresholds are parameterized here so they can be changed and re-validated
+# without editing Python. A threshold change invalidates cached state histories.
+state_machine:
+  base:
+    min_days: 15              # minimum bars to qualify as a base
+    max_days: 120             # maximum lookback for base detection
+    max_depth_pct: 0.25       # (pivot_high - base_low) / pivot_high must be ≤ this
+
+  armed:
+    max_dist_to_pivot_atr: 2.0        # close must be within 2 ATR of pivot
+    atr_contraction_lookback: 50      # ATR percentile reference window
+    atr_contraction_pct: 70           # current ATR ≤ 70th pct of its own 50-bar history
+    volume_contraction_lookback: 50
+    volume_contraction_pct: 80        # mean 10-bar volume ≤ 80th pct of 50-bar history
+
+  triggered:
+    pivot_breach_atr: 0.10    # close must exceed pivot by ≥ 0.10 × ATR(14)
+
+  accepted:
+    consecutive_closes: 3     # N consecutive closes above trigger_pivot
+    max_violation_atr: 0.5    # intrabar violation allowed up to 0.5 ATR below pivot
+
+  confirmed:
+    atr_gain_target: 2.0      # close must reach trigger_pivot + 2.0 × ATR(trigger)
+    atr_stop: 1.0             # state fails if close ≤ trigger_pivot − 1.0 × ATR(trigger)
+    horizon_bars: 20          # tracking window (informational; not a hard state gate)
+
+  failed:
+    max_bars_after_trigger: 10  # used for failure label; state stays FAILED until new base
+
+  late:
+    max_extension_from_ema20_atr: 4.0  # close > EMA(20) + 4 × ATR → LATE
+
+# ─── Scoring models (Phase 4) ────────────────────────────────────────────────
+models:
+  setup_score:
+    target: triggered_breakout_within_w_bars
+    w_bars: 10
+    estimator: logistic_regression
+    regularization: l2
+    C: 1.0
+    calibration: isotonic
+
+  trade_score:
+    target: forward_return_h20_atr
+    estimator: ridge
+    alpha: 1.0
+
+  failure_risk:
+    target: failed_breakout_within_k_bars
+    k_bars: 10
+    estimator: logistic_regression
+    regularization: l2
+    C: 1.0
+    calibration: isotonic
+
+final_rank:
+  # Composite weights are NOT hand-picked; they are learned OOS in Phase 4.
+  components_by_state:
+    BASE:       [setup_score, failure_risk_inv]
+    ARMED:      [setup_score, failure_risk_inv]
+    TRIGGERED:  [trade_score, failure_risk_inv]
+    ACCEPTED:   [trade_score, failure_risk_inv]
+    CONFIRMED:  [trade_score]
+    FAILED:     []
+    LATE:       []
+    EXHAUSTED:  []
+  rank_method: percentile_within_state
+
+validation:
+  method: walk_forward
+  train_window_days: 1460
+  test_window_days: 90
+  embargo_days: 25
+  min_train_samples: 2000
+  regime_segments: [trend_regime, volatility_regime]
+
+calibration:
+  reliability_bins: 10
+  brier_report: true
+
+output:
+  scores_dir: data/scores
+  models_dir: models
+  latest_filename: latest.parquet

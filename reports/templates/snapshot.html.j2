@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Swingtrader — {{ as_of }}</title>
+<style>
+  body { font-family: system-ui, sans-serif; margin: 0; padding: 1rem 2rem; background: #0d1117; color: #c9d1d9; }
+  h1 { color: #58a6ff; border-bottom: 1px solid #30363d; padding-bottom: .4rem; }
+  h2 { color: #8b949e; margin-top: 1.8rem; }
+  .bias-note { background: #161b22; border-left: 3px solid #d29922; padding: .5rem 1rem; border-radius: 4px; font-size: .88rem; color: #8b949e; }
+  table { border-collapse: collapse; width: 100%; font-size: .85rem; margin-bottom: 1rem; }
+  th { background: #161b22; color: #58a6ff; text-align: left; padding: .4rem .6rem; border-bottom: 1px solid #30363d; }
+  td { padding: .35rem .6rem; border-bottom: 1px solid #21262d; }
+  tr:hover td { background: #161b22; }
+  .state-ARMED { color: #3fb950; font-weight: bold; }
+  .state-BASE { color: #8b949e; }
+  .state-TRIGGERED { color: #f78166; font-weight: bold; }
+  .state-ACCEPTED { color: #58a6ff; font-weight: bold; }
+  .state-CONFIRMED { color: #bc8cff; font-weight: bold; }
+  .state-FAILED { color: #6e7681; text-decoration: line-through; }
+  .state-LATE { color: #d29922; }
+  .score-high { color: #3fb950; }
+  .score-mid { color: #d29922; }
+  .score-low { color: #f78166; }
+  .rank-bar { display: inline-block; height: 8px; background: #58a6ff; border-radius: 2px; }
+  footer { margin-top: 2rem; font-size: .78rem; color: #6e7681; border-top: 1px solid #21262d; padding-top: .5rem; }
+</style>
+</head>
+<body>
+<h1>Daily Snapshot — {{ as_of }}</h1>
+
+<div class="bias-note">
+  <strong>Bias note:</strong> Universe membership uses monthly snapshots, not true point-in-time history.
+  Survivorship bias is present. Treat all backtest metrics accordingly.
+  {% if model_fitted %}
+  <br><strong>Models:</strong> fitted {{ fit_date }} | Setup OOS Brier: {{ setup_brier }} | Failure OOS Brier: {{ failure_brier }}
+  {% else %}
+  <br><strong>Models:</strong> not yet fitted — composite scores are NaN.
+  {% endif %}
+</div>
+
+{% if portfolio_rows %}
+<h2>Portfolio Holdings</h2>
+{{ portfolio_html | safe }}
+{% endif %}
+
+{% for state_name in scored_states %}
+{% if state_html[state_name] %}
+<h2><span class="state-{{ state_name }}">{{ state_name }}</span> &mdash; {{ state_counts[state_name] }} symbol{{ 's' if state_counts[state_name] != 1 else '' }}</h2>
+{{ state_html[state_name] | safe }}
+{% endif %}
+{% endfor %}
+
+{% for state_name in unscored_states %}
+{% if state_html[state_name] %}
+<h2>{{ state_name }} &mdash; {{ state_counts[state_name] }} symbol{{ 's' if state_counts[state_name] != 1 else '' }}</h2>
+{{ state_html[state_name] | safe }}
+{% endif %}
+{% endfor %}
+
+{% if skipped_rows %}
+<h2>Skipped</h2>
+<table><tr><th>Symbol</th><th>Reason</th><th>Non-equity</th></tr>
+{% for r in skipped_rows %}
+<tr><td>{{ r.user_symbol }}</td><td>{{ r.skip_reason or '—' }}</td><td>{{ r.is_non_equity }}</td></tr>
+{% endfor %}
+</table>
+{% endif %}
+
+<footer>Generated {{ generated_at }} UTC | swingtrader v0.1</footer>
+</body>
+</html>

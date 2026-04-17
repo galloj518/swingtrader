@@ -1,0 +1,36 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git init:*)",
+      "Bash(uv --version)",
+      "Bash(python -c \"import sys; print\\(sys.version\\); import pandas; print\\('pandas', pandas.__version__\\); import yaml; print\\('yaml', yaml.__version__\\); import pyarrow; print\\('pyarrow', pyarrow.__version__\\); import numpy; print\\('numpy', numpy.__version__\\); import pytest; print\\('pytest', pytest.__version__\\)\")",
+      "Bash(python -m venv .venv)",
+      "Bash(.venv/Scripts/python.exe -m pip install --quiet pandas pyyaml pyarrow numpy pytest)",
+      "Bash(.venv/Scripts/python.exe -m pip install --quiet -e .)",
+      "Bash(.venv/Scripts/python.exe -c \"import swingtrader; print\\(swingtrader.__version__\\)\")",
+      "Bash(.venv/Scripts/python.exe -m pytest -q)",
+      "Bash(.venv/Scripts/python.exe -c ':*)",
+      "Bash(.venv/Scripts/python.exe -m pip install --quiet ruff)",
+      "Bash(.venv/Scripts/python.exe -m ruff check src tests)",
+      "Bash(.venv/Scripts/python.exe -m ruff check --fix src tests)",
+      "Bash(.venv/Scripts/python.exe -m pytest -q --tb=short)",
+      "Bash(.venv/Scripts/python.exe -m pytest -q --tb=line)",
+      "Bash(ruff check:*)",
+      "Bash(uv run:*)",
+      "Read(//mnt/c/Users/gallo/**)",
+      "Read(//usr/local/**)",
+      "Bash(python3 -m ruff check src tests)",
+      "Bash(python3 -m pytest -q)",
+      "Bash(python3 -m pip install -e .)",
+      "Bash(python3 -m pip install -e . --no-deps)",
+      "Bash(python3 -m ruff check src tests --fix)",
+      "Bash(python3 -m pytest tests/test_backtest.py::test_replay_trade_pnl_pct_winner tests/test_backtest.py::test_replay_symbol_stop_exit tests/test_intraday.py::test_intraday_vwap_bounded_by_high_low tests/test_intraday.py::test_intraday_features_empty_input_returns_series -v)",
+      "Bash(python3 -m pytest tests/test_intraday.py::test_intraday_features_empty_input_returns_series -v)",
+      "Bash(grep -h \"^def test_\" /c/Users/gallo/swingtrader/tests/*.py)",
+      "Bash(find /c/Users/gallo/swingtrader/src -name \"*.py\" -exec grep -l \"daily_snapshot\" {} \\\\;)",
+      "Bash(python -m pytest tests/test_intraday.py -q)",
+      "Bash(python -m pytest -q)",
+      "Bash(python -m ruff check src tests)"
+    ]
+  }
+}

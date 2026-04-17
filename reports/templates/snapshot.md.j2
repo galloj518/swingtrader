@@ -1,0 +1,45 @@
+# Daily Snapshot — {{ as_of }}
+
+> **Bias note:** Universe membership uses monthly snapshots, not true point-in-time history.
+> Survivorship bias is present. Treat all backtest metrics accordingly.
+{% if model_fitted %}
+> **Models fitted:** {{ fit_date }} | Setup OOS Brier: {{ setup_brier }} | Failure OOS Brier: {{ failure_brier }}
+{% else %}
+> **Models:** not yet fitted — composite scores are NaN. Run `python -m swingtrader.pipelines.score_run --train` first.
+{% endif %}
+
+---
+
+{% if portfolio_rows %}
+## Portfolio Holdings
+
+{{ portfolio_table }}
+
+{% endif %}
+{% for state_name in scored_states %}
+{% if state_sections[state_name] %}
+## {{ state_name }} — {{ state_counts[state_name] }} symbol{{ 's' if state_counts[state_name] != 1 else '' }}
+
+{{ state_sections[state_name] }}
+
+{% endif %}
+{% endfor %}
+{% for state_name in unscored_states %}
+{% if state_sections[state_name] %}
+## {{ state_name }} — {{ state_counts[state_name] }} symbol{{ 's' if state_counts[state_name] != 1 else '' }}
+
+{{ state_sections[state_name] }}
+
+{% endif %}
+{% endfor %}
+{% if skipped_rows %}
+## Skipped ({{ skipped_rows|length }})
+
+| symbol | reason | non_equity |
+|---|---|---|
+{% for r in skipped_rows %}| {{ r.user_symbol }} | {{ r.skip_reason or '—' }} | {{ r.is_non_equity }} |
+{% endfor %}
+{% endif %}
+
+---
+*Generated {{ generated_at }} UTC*

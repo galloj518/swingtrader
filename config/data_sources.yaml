@@ -1,0 +1,37 @@
+# Data source configuration. Only src/swingtrader/ingest/yfinance_source.py imports yfinance.
+
+primary: yfinance
+
+yfinance:
+  daily:
+    period: 20y             # yfinance returns as much as is available
+    auto_adjust: true       # splits/dividends adjusted in the 'close' column
+    prepost: false
+  weekly:
+    resample_from: daily    # avoid vendor weekly quirks; resample locally
+  intraday:
+    # Forward-only accumulator in v1. yfinance's 5m window caps around 60 days.
+    interval: 5m
+    period: 60d
+    prepost: false
+    enabled: true
+  rate_limit:
+    batch_size: 50
+    sleep_between_batches_seconds: 2
+    max_retries: 3
+    retry_backoff_seconds: 5
+
+storage:
+  daily_dir: data/raw/daily
+  weekly_dir: data/raw/weekly
+  intraday_dir: data/raw/intraday
+  adjusted_daily_dir: data/adjusted/daily
+  file_format: parquet
+  compression: snappy
+  partition: per_symbol       # one file per symbol: {SYMBOL}.parquet
+
+quality:
+  max_missing_days_pct: 0.02
+  max_unexplained_gap_bars: 5
+  stale_data_max_age_days: 7  # tolerates weekend + holiday
+  required_columns: [open, high, low, close, volume]

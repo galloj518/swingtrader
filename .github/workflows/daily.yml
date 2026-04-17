@@ -1,0 +1,72 @@
+name: Daily pipeline
+
+on:
+  schedule:
+    # 22:00 UTC weekdays — ~30 min after US close in DST (17:30 ET)
+    - cron: "0 22 * * 1-5"
+  workflow_dispatch:
+    inputs:
+      as_of_date:
+        description: "Override as-of date (YYYY-MM-DD). Leave blank for today."
+        required: false
+        default: ""
+
+permissions:
+  contents: write
+
+jobs:
+  daily:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          version: "latest"
+
+      - name: Set up Python
+        run: uv python install 3.11
+
+      - name: Install dependencies
+        run: uv sync
+
+      - name: Run daily pipeline (ingest + features + states + labels)
+        run: |
+          DATE="${{ github.event.inputs.as_of_date }}"
+          if [ -z "$DATE" ]; then
+            uv run python -m swingtrader.pipelines.daily_run
+          else
+            uv run python -m swingtrader.pipelines.daily_run "$DATE"
+          fi
+
+      - name: Run scoring pipeline (Phase 4 — scores + reports)
+        run: |
+          DATE="${{ github.event.inputs.as_of_date }}"
+          # Retrain weekly (Monday) or on manual dispatch with empty date
+          DOW=$(date -u +%u)   # 1=Mon … 7=Sun
+          TRAIN_FLAG=""
+          if [ "$DOW" = "1" ] || [ -n "${GITHUB_EVENT_NAME}" -a "$GITHUB_EVENT_NAME" = "workflow_dispatch" ]; then
+            TRAIN_FLAG="--train --skip-oos"
+          fi
+          if [ -z "$DATE" ]; then
+            uv run python -m swingtrader.pipelines.score_run $TRAIN_FLAG
+          else
+            uv run python -m swingtrader.pipelines.score_run "$DATE" $TRAIN_FLAG
+          fi
+
+      - name: Commit updated data artifacts
+        run: |
+          git config user.name "swingtrader-bot"
+          git config user.email "actions@github.com"
+          # Stage all updated parquets and reports
+          git add data/features/ data/states/ data/labels/ data/snapshots/ \
+                  data/scores/ data/score_history/ data/universe/ data/journal/ \
+                  models/ reports/daily/ docs/ || true
+          # Skip if nothing changed
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "chore: daily pipeline run $(date -u +%Y-%m-%d)"
+            git push
+          fi
