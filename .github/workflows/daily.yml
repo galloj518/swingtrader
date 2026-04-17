@@ -60,9 +60,11 @@ jobs:
           git config user.name "swingtrader-bot"
           git config user.email "actions@github.com"
           # Stage all updated parquets and reports
-          git add data/features/ data/states/ data/labels/ data/snapshots/ \
+          # data/raw/daily + weekly needed so chart generation works on next score_run
+          git add data/raw/daily/ data/raw/weekly/ \
+                  data/features/ data/states/ data/labels/ data/snapshots/ \
                   data/scores/ data/score_history/ data/universe/ data/journal/ \
-                  models/ reports/daily/ docs/ || true
+                  models/ docs/ || true
           # Skip if nothing changed
           if git diff --cached --quiet; then
             echo "No changes to commit"

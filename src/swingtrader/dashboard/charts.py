@@ -338,9 +338,10 @@ def generate_charts_for_packet(packet: dict, output_dir: Path) -> dict:
         if p is None:
             return None
         try:
-            return str(p.relative_to(output_dir))
+            # Always use forward slashes so paths work on Linux (GitHub Pages)
+            return p.relative_to(output_dir).as_posix()
         except ValueError:
-            return str(p)
+            return p.as_posix()
 
     def _lvl(k: str) -> float:
         v = packet.get(k, "—")
