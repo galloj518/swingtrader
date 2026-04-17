@@ -1,4 +1,4 @@
-"""Scoring pipeline — Phase 4 daily entry point.
+"""Scoring pipeline — Phase 4/5 daily entry point.
 
 This runs after daily_run.py has written features / states / labels.
 Steps:
@@ -6,9 +6,12 @@ Steps:
   2. Score every symbol on its latest bar
   3. Compute percentile ranks within each state group
   4. Merge scores into the daily snapshot
-  5. Update open trade journal records
-  6. Render markdown + HTML reports (replacing the plain Phase 3 version)
-  7. Write data/scores/YYYY-MM-DD.parquet
+  5. Add freshness + action-label columns
+  6. Select top 5-7 actionable setups; build analysis packets; generate charts
+  7. Update open trade journal records
+  8. Render trader-facing dashboard (dashboard.html) + research report (snapshot.html/md)
+  9. Write data/scores/YYYY-MM-DD.parquet
+ 10. Append score history; rebuild Pages index
 
 CLI:
   python -m swingtrader.pipelines.score_run                  # score only
@@ -24,10 +27,16 @@ from pathlib import Path
 
 import pandas as pd
 
+from swingtrader.dashboard.action import add_action_column
+from swingtrader.dashboard.charts import generate_charts_for_packet
+from swingtrader.dashboard.freshness import add_freshness_columns
+from swingtrader.dashboard.packet import build_packets
+from swingtrader.dashboard.selector import select_top_setups
 from swingtrader.journal.schema import auto_update_open_trades
 from swingtrader.models.estimators import ModelBundle
 from swingtrader.models.train import train_pipeline
 from swingtrader.pipelines.pages_build import build_index
+from swingtrader.reports.dashboard import write_dashboard
 from swingtrader.reports.render import write_daily_reports
 from swingtrader.scoring.generator import score_all_symbols
 from swingtrader.scoring.history import append_daily_scores
@@ -107,14 +116,18 @@ class ScoreRunner:
                 log.warning("No snapshot found — reports will be scores-only.")
                 ranked_snapshot = scored_with_ranks.reset_index()
 
-            # Step 6 — Persist scores
+            # Step 6 — Add freshness + action labels
+            ranked_snapshot = add_freshness_columns(ranked_snapshot)
+            ranked_snapshot = add_action_column(ranked_snapshot)
+
+            # Step 7 — Persist scores
             scores_path = self._scores_dir / f"{self.as_of.date()}.parquet"
             scores_path.parent.mkdir(parents=True, exist_ok=True)
             write_parquet(scored_with_ranks.reset_index(), scores_path)
             write_parquet(scored_with_ranks.reset_index(), self._scores_dir / "latest.parquet")
             summary["scores_path"] = str(scores_path)
 
-            # Step 7 — Update journal open trades
+            # Step 8 — Update journal open trades
             try:
                 n_updated = auto_update_open_trades(_STATES_DIR, _JOURNAL_PATH)
                 summary["journal_updated"] = n_updated
@@ -122,9 +135,38 @@ class ScoreRunner:
                 log.warning("Journal update error: %s", exc)
                 summary["journal_updated"] = 0
 
-            # Step 8 — Render reports (HTML goes into docs/ so GitHub Pages can serve it)
-            if snapshot_df is not None and not snapshot_df.empty:
-                report_dir = REPO_ROOT / "docs" / "reports" / "daily" / str(self.as_of.date())
+            # Step 9 — Build top setup packets + generate charts + render dashboard
+            report_dir = REPO_ROOT / "docs" / "reports" / "daily" / str(self.as_of.date())
+            report_dir.mkdir(parents=True, exist_ok=True)
+
+            top_df = select_top_setups(ranked_snapshot)
+            packets = build_packets(top_df)
+            summary["n_top_setups"] = len(packets)
+
+            # Generate charts (best-effort; fails silently per symbol)
+            packets_with_charts: list[dict] = []
+            for pkt in packets:
+                try:
+                    pkt = generate_charts_for_packet(pkt, report_dir)
+                except Exception as exc:
+                    log.warning("Chart error for %s: %s", pkt.get("symbol"), exc)
+                packets_with_charts.append(pkt)
+
+            # Trader dashboard (primary output)
+            try:
+                dash_path = write_dashboard(
+                    ranked_snapshot,
+                    packets_with_charts,
+                    self.as_of,
+                    report_dir,
+                    oos_metrics=oos_metrics or None,
+                )
+                summary["dashboard"] = str(dash_path)
+            except Exception as exc:
+                log.warning("Dashboard render error: %s", exc)
+
+            # Research snapshot (legacy raw tables; kept for completeness)
+            try:
                 report_paths = write_daily_reports(
                     ranked_snapshot,
                     scored_with_ranks,
@@ -134,21 +176,26 @@ class ScoreRunner:
                 )
                 summary["report_md"] = str(report_paths.get("markdown", ""))
                 summary["report_html"] = str(report_paths.get("html", ""))
+            except Exception as exc:
+                log.warning("Snapshot report render error: %s", exc)
 
-            # Step 9 — Append to score history
+            # Step 10 — Append to score history
             try:
                 append_daily_scores(scored_with_ranks, self.as_of)
             except Exception as exc:
                 log.warning("score_history append error: %s", exc)
 
-            # Step 10 — Rebuild GitHub Pages index
+            # Step 11 — Rebuild GitHub Pages index
             try:
                 build_index(as_of=self.as_of)
             except Exception as exc:
                 log.warning("pages_build error: %s", exc)
 
             summary["ok"] = True
-            log.info("score_run complete: %d symbols scored", summary["n_scored"])
+            log.info(
+                "score_run complete: %d symbols scored, %d top setups",
+                summary["n_scored"], summary["n_top_setups"],
+            )
 
         except Exception:
             summary["error"] = traceback.format_exc()

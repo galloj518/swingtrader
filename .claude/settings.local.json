@@ -30,7 +30,10 @@
       "Bash(find /c/Users/gallo/swingtrader/src -name \"*.py\" -exec grep -l \"daily_snapshot\" {} \\\\;)",
       "Bash(python -m pytest tests/test_intraday.py -q)",
       "Bash(python -m pytest -q)",
-      "Bash(python -m ruff check src tests)"
+      "Bash(python -m ruff check src tests)",
+      "Bash(python -m pytest tests/test_dashboard.py -q)",
+      "Bash(python -m ruff check src tests --fix)",
+      "Bash(python -m pytest tests/ -q --tb=short)"
     ]
   }
 }

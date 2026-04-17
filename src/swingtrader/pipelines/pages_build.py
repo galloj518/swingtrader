@@ -49,12 +49,14 @@ def _read_latest_scores() -> pd.DataFrame:
 
 
 def _list_report_days() -> list[str]:
-    """Return sorted list of YYYY-MM-DD strings that have a snapshot.html."""
+    """Return sorted list of YYYY-MM-DD strings that have a dashboard.html or snapshot.html."""
     if not _REPORTS_DIR.exists():
         return []
     days = sorted(
         d.name for d in _REPORTS_DIR.iterdir()
-        if d.is_dir() and (d / "snapshot.html").exists()
+        if d.is_dir() and (
+            (d / "dashboard.html").exists() or (d / "snapshot.html").exists()
+        )
     )
     return days[-_MAX_HISTORY_DAYS:]
 
@@ -124,8 +126,15 @@ def _history_links_html(days: list[str]) -> str:
         return "<p><em>No daily reports yet.</em></p>"
     items = []
     for d in reversed(days):
-        href = f"reports/daily/{d}/snapshot.html"
-        items.append(f'<li><a href="{href}">{d}</a></li>')
+        day_dir = _REPORTS_DIR / d
+        # Prefer dashboard.html (trader view); fall back to snapshot.html (research view)
+        if (day_dir / "dashboard.html").exists():
+            href = f"reports/daily/{d}/dashboard.html"
+            label = f"{d} <small style='color:#8b949e'>[dashboard]</small>"
+        else:
+            href = f"reports/daily/{d}/snapshot.html"
+            label = f"{d} <small style='color:#8b949e'>[snapshot]</small>"
+        items.append(f'<li><a href="{href}">{label}</a></li>')
     return "<ul>" + "".join(items) + "</ul>"
 
 
@@ -177,6 +186,63 @@ def build_index(
     history_links = _history_links_html(days)
     generated_at = datetime.now(UTC).strftime("%Y-%m-%d %H:%M UTC")
 
+    # Build action-label summary from latest scores if columns present
+    action_strip = ""
+    if not scores_df.empty and "action_label" in scores_df.columns:
+        now_names = scores_df[scores_df["action_label"] == "Actionable now"].get(
+            "symbol", scores_df.get("user_symbol", pd.Series(dtype=str))
+        ).tolist()
+        bo_names = scores_df[scores_df["action_label"] == "Actionable on breakout"].get(
+            "symbol", scores_df.get("user_symbol", pd.Series(dtype=str))
+        ).tolist()
+        if now_names or bo_names:
+            def _chips(names, cls):
+                return "".join(
+                    f'<span style="display:inline-block;background:#1a2a3a;'
+                    f'border:1px solid #58a6ff;border-radius:4px;padding:.15rem .5rem;'
+                    f'margin:.15rem;font-size:.8rem;{cls}">{n}</span>'
+                    for n in names[:7]
+                )
+            strip_inner = ""
+            if now_names:
+                strip_inner += (
+                    '<div style="margin:.3rem 0">'
+                    '<span style="font-size:.78rem;color:#8b949e;margin-right:.4rem">'
+                    'Actionable now:</span>'
+                    + _chips(now_names, "color:#3fb950;font-weight:600") + "</div>"
+                )
+            if bo_names:
+                strip_inner += (
+                    '<div style="margin:.3rem 0">'
+                    '<span style="font-size:.78rem;color:#8b949e;margin-right:.4rem">'
+                    'Actionable on breakout:</span>'
+                    + _chips(bo_names, "color:#58a6ff") + "</div>"
+                )
+            action_strip = (
+                f'<div style="background:#161b22;border:1px solid #30363d;'
+                f'border-radius:6px;padding:.6rem 1rem;margin-bottom:1rem">'
+                f'<strong style="font-size:.85rem">Today\'s Actionable Names</strong>'
+                f'{strip_inner}</div>'
+            )
+
+    # Latest dashboard link
+    latest_link = ""
+    if days:
+        ld = days[-1]
+        day_dir = _REPORTS_DIR / ld
+        if (day_dir / "dashboard.html").exists():
+            latest_link = (
+                f'<p style="margin-bottom:.8rem">'
+                f'<a href="reports/daily/{ld}/dashboard.html" '
+                f'style="font-size:1rem;font-weight:600">'
+                f'→ Open today\'s dashboard ({ld})</a></p>'
+            )
+        elif (day_dir / "snapshot.html").exists():
+            latest_link = (
+                f'<p style="margin-bottom:.8rem">'
+                f'<a href="reports/daily/{ld}/snapshot.html">→ Open today\'s report ({ld})</a></p>'
+            )
+
     html = f"""<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -194,9 +260,14 @@ def build_index(
   No positions are taken automatically. All scores are exploratory.
 </div>
 
-<h2>Latest Scores &mdash; {latest_day}</h2>
-<p>Top setups by composite score (BASE/ARMED/TRIGGERED/ACCEPTED states only).
-   Score = calibrated model output &mdash; not a buy recommendation.</p>
+{latest_link}
+{action_strip}
+
+<h2>Score Summary &mdash; {latest_day}</h2>
+<p style="font-size:.83rem;color:#8b949e;margin-bottom:.4rem">
+  Top setups by composite score (BASE/ARMED/TRIGGERED/ACCEPTED only).
+  Open the day's dashboard above for setup cards, charts, and trade levels.
+</p>
 {scores_table}
 
 <h2>Daily Report Archive</h2>
