@@ -149,3 +149,215 @@ def add_action_column(df: pd.DataFrame) -> pd.DataFrame:
     result = df.copy()
     result["action_label"] = df.apply(assign_action, axis=1)
     return result
+
+
+# ── Setup classification ──────────────────────────────────────────────────────
+
+def classify_setup(row: pd.Series) -> str:
+    """Return a human-readable setup classification label.
+
+    Priority order: Extended first, then Failed, then state-based logic.
+
+    Parameters
+    ----------
+    row : Series from the scored snapshot DataFrame.
+
+    Returns
+    -------
+    One of the human-readable classification strings.
+    """
+    state = str(row.get("state", "NONE"))
+    days = int(row.get("days_in_state", 0) or 0)
+    dist = row.get("dist_to_pivot_atr", math.nan)
+    try:
+        dist = float(dist)
+        if not math.isfinite(dist):
+            dist = 0.0
+    except (TypeError, ValueError):
+        dist = 0.0
+
+    is_extended = bool(row.get("is_extended", False))
+    is_stale_confirmed = bool(row.get("is_stale_confirmed", False))
+    action_label = str(row.get("action_label", ""))
+    skip_reason = row.get("skip_reason", None)
+
+    # ── Priority 1: Extended ──────────────────────────────────────────────────
+    if is_extended or state in {"LATE", "EXHAUSTED"}:
+        return "Extended / chase risk"
+
+    # ── Priority 2: Failed ────────────────────────────────────────────────────
+    if state == "FAILED" or action_label == ACTION_AVOID:
+        return "Failed / avoid"
+
+    # ── Priority 3: State-based logic ─────────────────────────────────────────
+    if state in {"TRIGGERED", "ACCEPTED"}:
+        # Pulled back below pivot
+        if dist < 0:
+            return "Pullback entry"
+        # Active breakout: fresh and near pivot
+        if days <= 5 and 0 <= dist <= 2.5:
+            return "Active breakout"
+        # Early breakout: days 6–15, not extended (already excluded above)
+        if 6 <= days <= 15:
+            return "Early breakout"
+        # Default for triggered states beyond the above
+        return "Early breakout"
+
+    if state == "CONFIRMED":
+        if is_stale_confirmed:
+            return "Mature trend"
+        return "Confirmed uptrend"
+
+    if state in {"ARMED", "BASE"}:
+        if abs(dist) <= 0.75:
+            return "Near breakout / poised"
+        if -1.5 <= dist <= -0.75:
+            return "Approaching pivot"
+        if dist < -1.5:
+            return "Building base"
+        # dist > 0.75 but not extended (already excluded): near-poised region
+        return "Near breakout / poised"
+
+    # ── Watching ──────────────────────────────────────────────────────────────
+    if state in {"NONE"} or skip_reason:
+        return "Watching"
+
+    return "Watching"
+
+
+def add_setup_classification_column(df: pd.DataFrame) -> pd.DataFrame:
+    """Add 'setup_classification' column to a snapshot DataFrame.
+
+    Parameters
+    ----------
+    df : snapshot DataFrame.
+
+    Returns
+    -------
+    Copy of df with 'setup_classification' column added.
+    """
+    if df.empty:
+        return df.copy()
+    result = df.copy()
+    result["setup_classification"] = df.apply(classify_setup, axis=1)
+    return result
+
+
+# ── Portfolio guidance ────────────────────────────────────────────────────────
+
+def portfolio_guidance(row: pd.Series) -> str:
+    """Return actionable guidance for a portfolio holding.
+
+    Parameters
+    ----------
+    row : Series from the scored snapshot DataFrame.
+
+    Returns
+    -------
+    Actionable guidance string (first-match rule set).
+    """
+    is_non_equity = bool(row.get("is_non_equity", False))
+    state = str(row.get("state", "NONE"))
+    days = int(row.get("days_in_state", 0) or 0)
+    dist = _f(row, "dist_to_pivot_atr")
+    close = _f(row, "close")
+    pivot = _f(row, "pivot")
+    atr = _f(row, "atr14")
+    failure_risk = _f(row, "failure_risk")
+    is_extended = bool(row.get("is_extended", False))
+    skip_reason = row.get("skip_reason", None)
+
+    stop = (pivot - 1.0 * atr) if (math.isfinite(pivot) and math.isfinite(atr)) else math.nan
+
+    # ── Non-equity / cash ─────────────────────────────────────────────────────
+    if is_non_equity:
+        return "Non-equity / cash — informational only"
+
+    # ── Failed ────────────────────────────────────────────────────────────────
+    if state == "FAILED":
+        return "Exit / review — state machine flagged failure"
+
+    # ── Not evaluated ─────────────────────────────────────────────────────────
+    if state in {"NONE", "SKIPPED"} or skip_reason:
+        return "Not currently evaluated"
+
+    # ── TRIGGERED / ACCEPTED ─────────────────────────────────────────────────
+    if state in {"TRIGGERED", "ACCEPTED"}:
+        if is_extended:
+            return "Hold — but extended from entry. Consider trimming into resistance."
+        if days <= 10:
+            return "Hold — active breakout. Add only on pullback to pivot zone."
+        return "Hold — in trade. No adds at current extension."
+
+    # ── CONFIRMED ─────────────────────────────────────────────────────────────
+    if state == "CONFIRMED":
+        if days <= 20:
+            return "Hold — recently confirmed. No adds; protect gains."
+        return "Hold — mature position. Extended from base; monitor for rotation."
+
+    # ── ARMED ─────────────────────────────────────────────────────────────────
+    if state == "ARMED":
+        if math.isfinite(dist) and abs(dist) <= 1.0:
+            return "Watch for breakout. Not yet actionable; hold existing position."
+        if math.isfinite(stop):
+            return f"Hold — building base. Defend on close below {stop:.2f}."
+        return "Hold — building base. Monitor structure."
+
+    # ── BASE ──────────────────────────────────────────────────────────────────
+    if state == "BASE":
+        if math.isfinite(dist) and dist < -1.0:
+            if math.isfinite(stop):
+                return f"Hold — building base. Defend on close below {stop:.2f}."
+            return "Hold — building base. Monitor structure."
+        if math.isfinite(stop):
+            return f"Hold — building base. Defend on close below {stop:.2f}."
+        return "Hold — building base. Monitor structure."
+
+    # ── LATE / EXHAUSTED ─────────────────────────────────────────────────────
+    if state in {"LATE", "EXHAUSTED"}:
+        return "Trim / de-risk — setup is late or exhausted. Protect profits."
+
+    # ── Elevated failure risk ─────────────────────────────────────────────────
+    if math.isfinite(failure_risk) and failure_risk > 0.65:
+        return "Defend — elevated failure risk. Tighten stop."
+
+    return "Hold — monitor."
+
+
+def add_portfolio_guidance_column(df: pd.DataFrame) -> pd.DataFrame:
+    """Add 'portfolio_guidance' column to a snapshot DataFrame.
+
+    Parameters
+    ----------
+    df : snapshot DataFrame.
+
+    Returns
+    -------
+    Copy of df with 'portfolio_guidance' column added.
+    """
+    if df.empty:
+        return df.copy()
+    result = df.copy()
+    result["portfolio_guidance"] = df.apply(portfolio_guidance, axis=1)
+    return result
+
+
+__all__ = [
+    "ACTION_NOW",
+    "ACTION_BREAKOUT",
+    "ACTION_PULLBACK",
+    "ACTION_EXTENDED",
+    "ACTION_AVOID",
+    "ALL_LABELS",
+    "MIN_SCORE",
+    "MAX_FAILURE_RISK",
+    "ARM_DIST_ATR",
+    "NOW_MIN_SCORE",
+    "FRESH_TRIGGER_DAYS",
+    "assign_action",
+    "add_action_column",
+    "classify_setup",
+    "add_setup_classification_column",
+    "portfolio_guidance",
+    "add_portfolio_guidance_column",
+]

@@ -27,7 +27,11 @@ from pathlib import Path
 
 import pandas as pd
 
-from swingtrader.dashboard.action import add_action_column
+from swingtrader.dashboard.action import (
+    add_action_column,
+    add_portfolio_guidance_column,
+    add_setup_classification_column,
+)
 from swingtrader.dashboard.charts import generate_charts_for_packet
 from swingtrader.dashboard.freshness import add_freshness_columns
 from swingtrader.dashboard.packet import build_packets
@@ -36,6 +40,8 @@ from swingtrader.journal.schema import auto_update_open_trades
 from swingtrader.models.estimators import ModelBundle
 from swingtrader.models.train import train_pipeline
 from swingtrader.pipelines.pages_build import build_index
+from swingtrader.reports.ai_notes import enrich_packets_with_ai
+from swingtrader.reports.artifacts import write_artifacts
 from swingtrader.reports.dashboard import write_dashboard
 from swingtrader.reports.render import write_daily_reports
 from swingtrader.scoring.generator import score_all_symbols
@@ -116,9 +122,11 @@ class ScoreRunner:
                 log.warning("No snapshot found — reports will be scores-only.")
                 ranked_snapshot = scored_with_ranks.reset_index()
 
-            # Step 6 — Add freshness + action labels
+            # Step 6 — Add freshness + action labels + setup classification + portfolio guidance
             ranked_snapshot = add_freshness_columns(ranked_snapshot)
             ranked_snapshot = add_action_column(ranked_snapshot)
+            ranked_snapshot = add_setup_classification_column(ranked_snapshot)
+            ranked_snapshot = add_portfolio_guidance_column(ranked_snapshot)
 
             # Step 7 — Persist scores
             scores_path = self._scores_dir / f"{self.as_of.date()}.parquet"
@@ -152,6 +160,12 @@ class ScoreRunner:
                     log.warning("Chart error for %s: %s", pkt.get("symbol"), exc)
                 packets_with_charts.append(pkt)
 
+            # AI analysis notes (best-effort; falls back to rule-based if no key)
+            try:
+                packets_with_charts = enrich_packets_with_ai(packets_with_charts)
+            except Exception as exc:
+                log.warning("AI enrichment error: %s", exc)
+
             # Trader dashboard (primary output)
             try:
                 dash_path = write_dashboard(
@@ -164,6 +178,24 @@ class ScoreRunner:
                 summary["dashboard"] = str(dash_path)
             except Exception as exc:
                 log.warning("Dashboard render error: %s", exc)
+
+            # Machine-readable JSON artifacts
+            try:
+                portfolio_df = (
+                    ranked_snapshot[ranked_snapshot["is_portfolio"].astype(bool)].copy()
+                    if "is_portfolio" in ranked_snapshot.columns
+                    else pd.DataFrame()
+                )
+                artifact_paths = write_artifacts(
+                    packets_with_charts,
+                    portfolio_df,
+                    ranked_snapshot,
+                    self.as_of,
+                    report_dir,
+                )
+                summary["artifacts_summary"] = str(artifact_paths.get("summary", ""))
+            except Exception as exc:
+                log.warning("Artifacts write error: %s", exc)
 
             # Research snapshot (legacy raw tables; kept for completeness)
             try:

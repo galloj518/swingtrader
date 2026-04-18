@@ -16,7 +16,8 @@ from typing import Any
 
 import pandas as pd
 
-from swingtrader.dashboard.action import assign_action
+from swingtrader.dashboard.action import assign_action, classify_setup, portfolio_guidance
+from swingtrader.dashboard.context import build_context
 from swingtrader.dashboard.freshness import classify_row
 from swingtrader.dashboard.levels import TradeLevels, compute_levels
 from swingtrader.dashboard.narrative import build_narrative
@@ -55,6 +56,28 @@ def build_packet(row: pd.Series) -> dict:
     levels: TradeLevels = compute_levels(row)
     narrative = build_narrative(row, levels, action)
 
+    # Provider symbol (used for data path resolution)
+    provider_sym = _s(row.get("provider_symbol", row.get("symbol")))
+
+    # Setup classification and portfolio guidance
+    setup_cls = str(row.get("setup_classification", classify_setup(row)))
+    port_guidance = str(row.get("portfolio_guidance", portfolio_guidance(row)))
+
+    # Deep context block (MA table, AVWAP map, volume block, confluence, checklist)
+    levels_dict: dict = {
+        "pivot":         _f(row.get("pivot", math.nan)),
+        "stop":          levels.stop,
+        "t1":            levels.t1,
+        "t2":            levels.t2,
+        "t3":            levels.t3,
+        "s1":            levels.s1,
+        "s2":            levels.s2,
+        "r1":            levels.r1,
+        "r2":            levels.r2,
+        "risk_reward_t1": levels.risk_reward_t1,
+    }
+    context = build_context(provider_sym, row, levels_dict)
+
     def _pct(col: str) -> str:
         """Format a 0-1 float as percent string."""
         v = _f(row.get(col, math.nan))
@@ -83,7 +106,7 @@ def build_packet(row: pd.Series) -> dict:
     return {
         # ── Identity ──────────────────────────────────────────────────────────
         "symbol": _s(row.get("user_symbol", row.get("symbol"))),
-        "provider_symbol": _s(row.get("provider_symbol", row.get("symbol"))),
+        "provider_symbol": provider_sym,
         "state": _s(row.get("state"), "NONE"),
         "groups": _s(row.get("groups")),
         "is_portfolio": bool(row.get("is_portfolio", False)),
@@ -91,6 +114,8 @@ def build_packet(row: pd.Series) -> dict:
 
         # ── Classification ────────────────────────────────────────────────────
         "action_label": action,
+        "setup_classification": setup_cls,
+        "portfolio_guidance": port_guidance,
         "freshness_label": fresh.get("freshness_label", "—"),
         "is_fresh": fresh.get("is_fresh", False),
         "is_extended": fresh.get("is_extended", False),
@@ -139,6 +164,12 @@ def build_packet(row: pd.Series) -> dict:
 
         # ── Narrative ─────────────────────────────────────────────────────────
         "narrative": narrative,
+
+        # ── Deep context (MA table, AVWAP map, volume, confluence, checklist) ─
+        "context": context,
+
+        # ── AI analysis note (filled in by ai_notes.enrich_packets_with_ai) ───
+        "ai_note": None,
 
         # ── Chart paths (filled in by charts module) ──────────────────────────
         "chart_weekly": None,
