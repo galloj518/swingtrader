@@ -318,8 +318,10 @@ def portfolio_guidance(row: pd.Series) -> str:
 
     # ── TRIGGERED / ACCEPTED ─────────────────────────────────────────────────
     if state in {"TRIGGERED", "ACCEPTED"}:
+        if math.isfinite(failure_risk) and failure_risk > 0.65:
+            return "Tighten stop — elevated failure risk. Hold but do not add."
         if is_extended:
-            return "Hold — but extended from entry. Consider trimming into resistance."
+            return "Hold — extended from entry. Consider trimming into resistance."
         if days <= 10:
             return "Hold — active breakout. Add only on pullback to pivot zone."
         return "Hold — in trade. No adds at current extension."
@@ -332,6 +334,8 @@ def portfolio_guidance(row: pd.Series) -> str:
 
     # ── ARMED ─────────────────────────────────────────────────────────────────
     if state == "ARMED":
+        if math.isfinite(failure_risk) and failure_risk > 0.65:
+            return "Defend — elevated failure risk on base. Watch for breakdown."
         if math.isfinite(dist) and abs(dist) <= 1.0:
             return "Watch for breakout. Not yet actionable; hold existing position."
         if math.isfinite(stop):
@@ -340,10 +344,8 @@ def portfolio_guidance(row: pd.Series) -> str:
 
     # ── BASE ──────────────────────────────────────────────────────────────────
     if state == "BASE":
-        if math.isfinite(dist) and dist < -1.0:
-            if math.isfinite(stop):
-                return f"Hold — building base. Defend on close below {stop:.2f}."
-            return "Hold — building base. Monitor structure."
+        if math.isfinite(failure_risk) and failure_risk > 0.65:
+            return "Defend — elevated failure risk on base. Tighten stop."
         if math.isfinite(stop):
             return f"Hold — building base. Defend on close below {stop:.2f}."
         return "Hold — building base. Monitor structure."
@@ -352,7 +354,7 @@ def portfolio_guidance(row: pd.Series) -> str:
     if state in {"LATE", "EXHAUSTED"}:
         return "Trim / de-risk — setup is late or exhausted. Protect profits."
 
-    # ── Elevated failure risk ─────────────────────────────────────────────────
+    # ── Fallback ──────────────────────────────────────────────────────────────
     if math.isfinite(failure_risk) and failure_risk > 0.65:
         return "Defend — elevated failure risk. Tighten stop."
 

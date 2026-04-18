@@ -19,8 +19,6 @@ Covers:
 from __future__ import annotations
 
 import json
-import math
-from pathlib import Path
 
 import pandas as pd
 import pytest
@@ -208,6 +206,16 @@ class TestPortfolioGuidance:
     def test_none_state_not_evaluated(self):
         g = self._g(state="NONE")
         assert "not" in g.lower() or "evaluated" in g.lower()
+
+    def test_triggered_high_failure_risk_warns(self):
+        """TRIGGERED with failure_risk > 0.65 should surface risk warning, not plain hold."""
+        g = self._g(state="TRIGGERED", days=3, failure=0.75)
+        assert "tighten" in g.lower() or "failure" in g.lower() or "stop" in g.lower()
+
+    def test_armed_high_failure_risk_warns(self):
+        """ARMED with failure_risk > 0.65 should warn before giving base hold guidance."""
+        g = self._g(state="ARMED", failure=0.72)
+        assert "defend" in g.lower() or "failure" in g.lower()
 
     def test_add_column_preserves_shape(self):
         from swingtrader.dashboard.action import add_portfolio_guidance_column
@@ -549,7 +557,7 @@ class TestArtifacts:
         portfolio_df = pd.DataFrame()
         snapshot_df = _snapshot(4)
         as_of = pd.Timestamp("2026-01-15")
-        paths = write_artifacts(packets, portfolio_df, snapshot_df, as_of, tmp_path)
+        write_artifacts(packets, portfolio_df, snapshot_df, as_of, tmp_path)
         arts = tmp_path / "artifacts"
         assert arts.is_dir()
         assert (arts / "dashboard_summary.json").exists()
@@ -878,7 +886,8 @@ class TestDashboardIntegration:
 
     def test_renders_with_new_packet_fields(self):
         from swingtrader.dashboard.action import (
-            add_action_column, add_portfolio_guidance_column,
+            add_action_column,
+            add_portfolio_guidance_column,
             add_setup_classification_column,
         )
         from swingtrader.dashboard.freshness import add_freshness_columns
@@ -910,7 +919,8 @@ class TestDashboardIntegration:
 
     def test_setup_classification_in_card_header(self):
         from swingtrader.dashboard.action import (
-            add_action_column, add_setup_classification_column,
+            add_action_column,
+            add_setup_classification_column,
         )
         from swingtrader.dashboard.freshness import add_freshness_columns
         from swingtrader.dashboard.packet import build_packets
@@ -929,7 +939,8 @@ class TestDashboardIntegration:
 
     def test_portfolio_guidance_in_strip(self):
         from swingtrader.dashboard.action import (
-            add_action_column, add_portfolio_guidance_column,
+            add_action_column,
+            add_portfolio_guidance_column,
         )
         from swingtrader.dashboard.freshness import add_freshness_columns
         from swingtrader.dashboard.packet import build_packets

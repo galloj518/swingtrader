@@ -967,13 +967,34 @@ def _portfolio_strip_html(portfolio_df: pd.DataFrame) -> str:
         state = str(row.get("state", "NONE"))
         action = str(row.get("action_label", "—")) if "action_label" in portfolio_df.columns else "—"
         guidance = str(row.get("portfolio_guidance", "")) if "portfolio_guidance" in portfolio_df.columns else ""
+
+        # Score + percentile pill (model signal at a glance)
+        score_v = row.get("composite_score", math.nan)
+        pct_v = row.get("percentile_rank", math.nan)
+        try:
+            score_f = float(score_v)
+            pct_f = float(pct_v)
+            score_pill = (
+                f'<span class="pc-score" title="composite_score · percentile">'
+                f'{score_f:.2f} <span style="color:var(--fg3)">({pct_f:.0f}p)</span>'
+                f'</span>'
+            ) if math.isfinite(score_f) else ""
+        except (TypeError, ValueError):
+            score_pill = ""
+
+        # Eligibility warnings (non-portfolio symbols can still have warnings)
+        warn_str = str(row.get("eligibility_warnings", "")) if "eligibility_warnings" in portfolio_df.columns else ""
+        warn_html = (
+            f'<span class="pc-warn" title="{warn_str}">\u26a0 {warn_str[:40]}{"…" if len(warn_str) > 40 else ""}</span>'
+        ) if warn_str and warn_str not in ("—", "") else ""
+
         if guidance and guidance not in ("—", ""):
             gl = guidance.lower()
             if "exit" in gl or "fail" in gl:
                 icon, pg_cls = "✗", "pg-exit"
             elif "trim" in gl or "de-risk" in gl:
                 icon, pg_cls = "↓", "pg-trim"
-            elif "defend" in gl:
+            elif "defend" in gl or "tighten" in gl:
                 icon, pg_cls = "⚠", "pg-defend"
             elif "hold" in gl or "watch" in gl:
                 icon, pg_cls = "✓", "pg-hold"
@@ -981,16 +1002,19 @@ def _portfolio_strip_html(portfolio_df: pd.DataFrame) -> str:
                 icon, pg_cls = "\u2139", "pg-info"  # ℹ information source
             guidance_html = (
                 f'<span class="pc-guidance {pg_cls}">'
-                f'{icon} {guidance[:60]}{"…" if len(guidance) > 60 else ""}'
+                f'{icon} {guidance[:70]}{"…" if len(guidance) > 70 else ""}'
                 f'</span>'
             )
         else:
             guidance_html = ""
+
         chips.append(
             f'<div class="port-chip">'
             f'<span class="pc-sym">{sym}</span>'
             f'<span class="pc-state s-{state}">{state}</span>'
+            f'{score_pill}'
             f'<span class="pc-action">{action}</span>'
+            f'{warn_html}'
             f'{guidance_html}'
             f'</div>'
         )
@@ -1030,8 +1054,12 @@ def render_dashboard(
     portfolio_df = pd.DataFrame()
     full_df = snapshot_df.copy() if not snapshot_df.empty else pd.DataFrame()
 
-    if not full_df.empty and "is_portfolio" in full_df.columns:
-        portfolio_df = full_df[full_df["is_portfolio"].astype(bool)].copy()
+    if not full_df.empty:
+        if "bucket" in full_df.columns:
+            # Prefer bucket column (set by add_bucket_column in score_run step 6b)
+            portfolio_df = full_df[full_df["bucket"] == "portfolio_hold"].copy()
+        elif "is_portfolio" in full_df.columns:
+            portfolio_df = full_df[full_df["is_portfolio"].astype(bool)].copy()
 
     # Layer 1 — Regime + portfolio strip
     regime_html = _regime_html(full_df)
