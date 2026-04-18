@@ -419,7 +419,7 @@ class TestDashboardRender:
         path = write_dashboard(df, pkts, as_of, tmp_path)
         assert path.exists()
         assert path.name == "dashboard.html"
-        content = path.read_text()
+        content = path.read_text(encoding="utf-8")
         assert "<!DOCTYPE html>" in content
 
     def test_state_tables_present_in_html(self):

@@ -125,11 +125,11 @@ def _draw_candlesticks(ax, df: pd.DataFrame) -> None:
     for i in range(len(df)):
         o = float(df["open"].iloc[i])
         h = float(df["high"].iloc[i])
-        l = float(df["low"].iloc[i])
+        lo = float(df["low"].iloc[i])
         c = float(df["close"].iloc[i])
 
         if not (math.isfinite(o) and math.isfinite(h) and
-                math.isfinite(l) and math.isfinite(c)):
+                math.isfinite(lo) and math.isfinite(c)):
             continue
 
         color = UP_BODY if c >= o else DOWN_BODY
@@ -158,9 +158,9 @@ def _draw_candlesticks(ax, df: pd.DataFrame) -> None:
                 color=color, linewidth=0.7, zorder=2,
             )
         # Lower wick: low → body_lo
-        if l < body_lo:
+        if lo < body_lo:
             ax.plot(
-                [i, i], [l, body_lo],
+                [i, i], [lo, body_lo],
                 color=color, linewidth=0.7, zorder=2,
             )
 
@@ -238,6 +238,16 @@ def generate_daily_chart(
     t1: float = math.nan,
     t2: float = math.nan,
     t3: float = math.nan,
+    s1: float = math.nan,
+    s2: float = math.nan,
+    r1: float = math.nan,
+    r2: float = math.nan,
+    state: str = "",
+    action_label: str = "",
+    setup_class: str = "",
+    score: float = math.nan,
+    failure: float = math.nan,
+    days_in_state: int = 0,
 ) -> Path | None:
     """Generate a daily OHLC candlestick chart with trade levels.
 
@@ -287,7 +297,10 @@ def generate_daily_chart(
     fig = plt.figure(figsize=(14, 8), facecolor=BG)
     ax, ax_vol = _setup_dark_axes(fig, height_ratios=(4, 1))
 
-    ax.set_title(f"{provider_symbol} — Daily", color=TEXT, fontsize=10, loc="left", pad=4)
+    title_parts = [f"{provider_symbol} - Daily"]
+    if action_label:
+        title_parts.append(action_label)
+    ax.set_title("  |  ".join(title_parts), color=TEXT, fontsize=10, loc="left", pad=4)
     ax.set_xlim(-1, n)
     ax.yaxis.tick_right()
     ax_vol.set_xlim(-1, n)
@@ -320,6 +333,78 @@ def generate_daily_chart(
     if math.isfinite(entry_lo) and math.isfinite(entry_hi):
         ax.axhspan(entry_lo, entry_hi, alpha=0.08, color=GREEN)
 
+    # Base zone fill — light green band between stop and pivot
+    if math.isfinite(stop) and math.isfinite(pivot):
+        lo_band = min(stop, pivot)
+        hi_band = max(stop, pivot)
+        ax.axhspan(lo_band, hi_band, alpha=0.05, color=GREEN)
+
+    # S1/S2 support lines (no text label — visible in card levels grid)
+    if math.isfinite(s1):
+        ax.axhline(s1, color=GREEN, linewidth=0.5, linestyle=":", alpha=0.4)
+    if math.isfinite(s2):
+        ax.axhline(s2, color=GREEN, linewidth=0.5, linestyle=":", alpha=0.4)
+
+    # R1/R2 resistance lines
+    if math.isfinite(r1):
+        ax.axhline(r1, color=RED, linewidth=0.5, linestyle=":", alpha=0.4)
+    if math.isfinite(r2):
+        ax.axhline(r2, color=RED, linewidth=0.5, linestyle=":", alpha=0.4)
+
+    # Current price horizontal marker
+    last_close = float(df["close"].iloc[-1])
+    if math.isfinite(last_close):
+        ax.axhline(last_close, color="white", linewidth=0.5, alpha=0.4)
+
+    # ATR bar size for arrow placement
+    atr_bar = float((df["high"] - df["low"]).tail(10).mean())
+    if not math.isfinite(atr_bar) or atr_bar <= 0:
+        atr_bar = float(df["high"].iloc[-1] - df["low"].iloc[-1])
+
+    # Breakout bar marker — find first bar where close >= pivot
+    if state in {"TRIGGERED", "ACCEPTED"} and math.isfinite(pivot):
+        breakout_idx: int | None = None
+        for i in range(n):
+            if float(df["close"].iloc[i]) >= pivot:
+                breakout_idx = i
+                break
+        if breakout_idx is not None:
+            ax.annotate(
+                "\u25b2",
+                xy=(breakout_idx, float(df["low"].iloc[breakout_idx]) - 0.3 * atr_bar),
+                color=GREEN,
+                fontsize=9,
+                ha="center",
+                va="top",
+                zorder=5,
+            )
+
+    # Info text box — top-right corner
+    info_lines = []
+    if state:
+        info_lines.append(state)
+    if math.isfinite(score):
+        info_lines.append(f"Score {score:.2f}")
+    if math.isfinite(failure):
+        info_lines.append(f"Fail {failure:.2f}")
+    if days_in_state > 0:
+        info_lines.append(f"Day {days_in_state}")
+    if info_lines:
+        ax.text(
+            0.99, 0.98, "\n".join(info_lines),
+            transform=ax.transAxes, color=TEXT, fontsize=7,
+            ha="right", va="top", alpha=0.85,
+            bbox={"boxstyle": "round,pad=0.3", "facecolor": BG, "edgecolor": GRID, "alpha": 0.8},
+        )
+
+    # Setup class label — bottom-right corner
+    if setup_class:
+        ax.text(
+            0.99, 0.01, setup_class,
+            transform=ax.transAxes, color=AMBER, fontsize=7,
+            ha="right", va="bottom", alpha=0.85,
+        )
+
     ax.legend(
         fontsize=7, facecolor=BG, edgecolor=GRID, labelcolor=TEXT, loc="upper left"
     )
@@ -350,6 +435,8 @@ def generate_weekly_chart(
     pivot: float = math.nan,
     t1: float = math.nan,
     t2: float = math.nan,
+    s1: float = math.nan,
+    stop: float = math.nan,
 ) -> Path | None:
     """Generate a weekly OHLC candlestick chart.
 
@@ -440,6 +527,19 @@ def generate_weekly_chart(
     _annotate_hline(ax, pivot, "Pivot", PURPLE, "--")
     _annotate_hline(ax, t1,    "T1",    ORANGE, ":")
     _annotate_hline(ax, t2,    "T2",    ORANGE, ":")
+
+    # Base zone fill between stop and pivot
+    if math.isfinite(stop) and math.isfinite(pivot):
+        lo_band = min(stop, pivot)
+        hi_band = max(stop, pivot)
+        ax.axhspan(lo_band, hi_band, alpha=0.05, color=GREEN)
+
+    # Prior swing high/low from the visible bars (exclude last 3)
+    if len(df) >= 10:
+        swing_hi = float(df["high"].iloc[:-3].max())
+        swing_lo = float(df["low"].iloc[:-3].min())
+        _annotate_hline(ax, swing_hi, "P.Hi", TEXT, ":", alpha=0.30)
+        _annotate_hline(ax, swing_lo, "P.Lo", TEXT, ":", alpha=0.30)
 
     ax.legend(
         fontsize=7, facecolor=BG, edgecolor=GRID, labelcolor=TEXT, loc="upper left"
@@ -624,6 +724,16 @@ def generate_charts_for_packet(packet: dict, output_dir: Path) -> dict:
                 t1=_lvl("t1"),
                 t2=_lvl("t2"),
                 t3=_lvl("t3"),
+                s1=_lvl("s1"),
+                s2=_lvl("s2"),
+                r1=_lvl("r1"),
+                r2=_lvl("r2"),
+                state=str(packet.get("state", "")),
+                action_label=str(packet.get("action_label", "")),
+                setup_class=str(packet.get("setup_classification", "")),
+                score=_lvl("composite_score"),
+                failure=_lvl("failure_risk"),
+                days_in_state=int(packet.get("days_in_state", 0) or 0),
             )
         )
 
@@ -634,6 +744,8 @@ def generate_charts_for_packet(packet: dict, output_dir: Path) -> dict:
                 pivot=_lvl("pivot"),
                 t1=_lvl("t1"),
                 t2=_lvl("t2"),
+                s1=_lvl("s1"),
+                stop=_lvl("stop"),
             )
         )
 

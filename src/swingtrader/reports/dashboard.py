@@ -252,6 +252,27 @@ footer { margin-top: 2rem; font-size: .75rem; color: var(--fg3);
 .env-selective  { color: var(--amber); }
 .env-risk-off   { color: var(--red); }
 .env-mixed      { color: var(--fg2); }
+
+/* ── Score drivers ────────────────────────────────────────────────────────── */
+.score-drivers { background: var(--bg3); border-radius: 4px; padding: .4rem .6rem;
+                 font-size: .77rem; margin: .35rem 0; }
+.driver-row { display: flex; align-items: baseline; gap: .4rem; padding: .1rem 0;
+              border-bottom: 1px solid var(--bg2); }
+.driver-bull { color: var(--green); font-weight: 700; flex-shrink: 0; }
+.driver-bear { color: var(--red);   font-weight: 700; flex-shrink: 0; }
+.driver-text { color: var(--fg2); }
+.driver-why  { color: var(--fg3); font-size: .72rem; margin-bottom: .25rem;
+               border-bottom: 1px solid var(--border); padding-bottom: .2rem; }
+
+/* ── Export links ─────────────────────────────────────────────────────────── */
+.export-links { font-size: .72rem; color: var(--fg3); margin-top: .3rem; }
+
+/* ── Portfolio guidance icons ─────────────────────────────────────────────── */
+.pg-hold   { color: var(--green); }
+.pg-trim   { color: var(--amber); }
+.pg-defend { color: var(--orange); }
+.pg-exit   { color: var(--red); }
+.pg-info   { color: var(--fg3); }
 """
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -537,6 +558,58 @@ def _trade_plan_html(trade_plan: str | None) -> str:
     )
 
 
+def _score_drivers_html(score_drivers: dict) -> str:
+    """Render the score transparency / signal drivers block."""
+    if not score_drivers:
+        return ""
+    bullish = score_drivers.get("bullish_signals", [])
+    bearish = score_drivers.get("bearish_signals", [])
+    why = score_drivers.get("why_selected", "")
+    if not bullish and not bearish and not why:
+        return ""
+
+    rows = ""
+    for s in bullish:
+        rows += (
+            f'<div class="driver-row">'
+            f'<span class="driver-bull">▲</span>'
+            f'<span class="driver-text">{s}</span>'
+            f'</div>'
+        )
+    for s in bearish:
+        rows += (
+            f'<div class="driver-row">'
+            f'<span class="driver-bear">▼</span>'
+            f'<span class="driver-text">{s}</span>'
+            f'</div>'
+        )
+
+    why_html = ""
+    if why:
+        why_html = f'<div class="driver-why">{why}</div>'
+
+    return (
+        f'<div class="score-drivers">'
+        f'{why_html}'
+        f'{rows}'
+        f'</div>'
+    )
+
+
+def _export_links_html(packet: dict, report_dir_rel: str = "artifacts") -> str:
+    """Render compact export/artifact links for a symbol."""
+    sym = packet.get("provider_symbol") or packet.get("symbol", "")
+    if not sym or sym == "—":
+        return ""
+    json_path = f"{report_dir_rel}/{sym}_packet.json"
+    return (
+        f'<div class="export-links">'
+        f'<span style="color:var(--fg3);font-size:.72rem">Export: </span>'
+        f'<a href="{json_path}" style="font-size:.72rem">JSON packet</a>'
+        f'</div>'
+    )
+
+
 # ── Table rendering ───────────────────────────────────────────────────────────
 
 _TABLE_COLS = [
@@ -671,6 +744,9 @@ def _render_card(packet: dict) -> str:
     # Confluence (brief, shown inline before narrative)
     confluence_html = _confluence_html(context.get("confluence", {}))
 
+    # Score drivers transparency
+    drivers_html = _score_drivers_html(context.get("score_drivers", {}))
+
     # Narrative
     n = narrative
     ma_ctx = n.get("ma_context", "")
@@ -755,10 +831,12 @@ def _render_card(packet: dict) -> str:
         f'<div class="card-detail">'
         f'{levels_section}'
         f'{confluence_html}'
+        f'{drivers_html}'
         f'{narrative_section}'
         f'{trade_plan_section}'
         f'{ai_note_section}'
         f'{context_details}'
+        f'{_export_links_html(packet)}'
         f'{ai_panel}'
         f'</div>'
     )
@@ -889,11 +967,25 @@ def _portfolio_strip_html(portfolio_df: pd.DataFrame) -> str:
         state = str(row.get("state", "NONE"))
         action = str(row.get("action_label", "—")) if "action_label" in portfolio_df.columns else "—"
         guidance = str(row.get("portfolio_guidance", "")) if "portfolio_guidance" in portfolio_df.columns else ""
-        guidance_html = (
-            f'<span class="pc-guidance">{guidance}</span>'
-            if guidance and guidance not in ("—", "")
-            else ""
-        )
+        if guidance and guidance not in ("—", ""):
+            gl = guidance.lower()
+            if "exit" in gl or "fail" in gl:
+                icon, pg_cls = "✗", "pg-exit"
+            elif "trim" in gl or "de-risk" in gl:
+                icon, pg_cls = "↓", "pg-trim"
+            elif "defend" in gl:
+                icon, pg_cls = "⚠", "pg-defend"
+            elif "hold" in gl or "watch" in gl:
+                icon, pg_cls = "✓", "pg-hold"
+            else:
+                icon, pg_cls = "\u2139", "pg-info"  # ℹ information source
+            guidance_html = (
+                f'<span class="pc-guidance {pg_cls}">'
+                f'{icon} {guidance[:60]}{"…" if len(guidance) > 60 else ""}'
+                f'</span>'
+            )
+        else:
+            guidance_html = ""
         chips.append(
             f'<div class="port-chip">'
             f'<span class="pc-sym">{sym}</span>'
@@ -948,7 +1040,23 @@ def render_dashboard(
     # Layer 2 — Top setup cards
     if packets:
         cards_html = "\n".join(_render_card(p) for p in packets)
-        cards_section = f'<h2>Top Actionable Setups</h2><div class="setup-cards">{cards_html}</div>'
+        now_n = sum(1 for p in packets if p.get("action_label") == "Actionable now")
+        bo_n  = sum(1 for p in packets if p.get("action_label") == "Actionable on breakout")
+        pb_n  = sum(1 for p in packets if p.get("action_label") == "Actionable on pullback")
+        summary_bar = (
+            f'<div style="font-size:.82rem;color:var(--fg2);margin-bottom:.6rem;'
+            f'display:flex;gap:1rem;flex-wrap:wrap">'
+            f'<span><span style="color:var(--green)">●</span> {now_n} actionable now</span>'
+            f'<span><span style="color:var(--blue)">●</span> {bo_n} on breakout</span>'
+            f'<span><span style="color:var(--amber)">●</span> {pb_n} on pullback</span>'
+            f'<span style="margin-left:auto;color:var(--fg3)">Top {len(packets)} of universe</span>'
+            f'</div>'
+        )
+        cards_section = (
+            f'<h2>Top Actionable Setups</h2>'
+            f'{summary_bar}'
+            f'<div class="setup-cards">{cards_html}</div>'
+        )
     else:
         cards_section = (
             '<h2>Top Actionable Setups</h2>'

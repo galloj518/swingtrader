@@ -322,6 +322,7 @@ def build_volume_block(provider_symbol: str, close: float, atr: float) -> dict:
         "breakout_thrust_atr":     _NAN,
         "weekly_vol_dryup":        _NAN,
         "weekly_atr_compression":  _NAN,
+        "down_close_ratio":        _NAN,
         "relative_vol_label":      "—",
         "compression_label":       "—",
     }
@@ -357,13 +358,24 @@ def build_volume_block(provider_symbol: str, close: float, atr: float) -> dict:
         # Compression label based on atr_compression_pct (0-100 percentile)
         if math.isfinite(atr_pct):
             if atr_pct < 30:
-                comp_label = f"Tight (<30th pct) — {atr_pct:.0f}th percentile"
+                comp_label = f"Tight (<30th pct) - {atr_pct:.0f}th percentile"
             elif atr_pct < 60:
-                comp_label = f"Moderate — {atr_pct:.0f}th percentile"
+                comp_label = f"Moderate - {atr_pct:.0f}th percentile"
             else:
-                comp_label = f"Elevated — {atr_pct:.0f}th percentile"
+                comp_label = f"Elevated - {atr_pct:.0f}th percentile"
         else:
             comp_label = "—"
+
+        # --- Additional metrics from raw daily OHLCV ---
+        down_close_ratio = _NAN
+        try:
+            df_raw = _load_raw_daily(provider_symbol)
+            if df_raw is not None and len(df_raw) >= 20:
+                recent = df_raw.tail(20)
+                n_down = int((recent["close"] < recent["open"]).sum())
+                down_close_ratio = n_down / 20
+        except Exception:
+            pass
 
         return {
             "volume_dryup_pct":        round(vd * 100, 1)   if math.isfinite(vd)      else _NAN,
@@ -375,6 +387,7 @@ def build_volume_block(provider_symbol: str, close: float, atr: float) -> dict:
             "breakout_thrust_atr":     round(thrust, 3)     if math.isfinite(thrust)   else _NAN,
             "weekly_vol_dryup":        round(wk_vd, 3)      if math.isfinite(wk_vd)    else _NAN,
             "weekly_atr_compression":  round(wk_atr, 1)     if math.isfinite(wk_atr)   else _NAN,
+            "down_close_ratio":        round(down_close_ratio, 3) if math.isfinite(down_close_ratio) else _NAN,
             "relative_vol_label":      rel_vol_label,
             "compression_label":       comp_label,
         }
@@ -895,6 +908,148 @@ def build_checklist(
 
 
 # ---------------------------------------------------------------------------
+# Score drivers / transparency
+# ---------------------------------------------------------------------------
+
+
+def build_score_drivers(provider_symbol: str, snapshot_row: pd.Series) -> dict:
+    """Extract top bullish/bearish feature signals and score transparency info.
+
+    Returns a dict:
+      bullish_signals  : list[str] - top bullish signals present
+      bearish_signals  : list[str] - top bearish signals / red flags
+      model_based      : list[str] - columns produced by fitted models
+      rule_based       : list[str] - columns assigned by rules
+      why_selected     : str       - brief text explaining why this name made top list
+    """
+    def _sr(key: str, default: float = _NAN) -> float:
+        return _sf(snapshot_row, key, default)
+
+    feat = _load_features(provider_symbol)
+
+    def _ff(key: str, default: float = _NAN) -> float:
+        if feat is None:
+            return default
+        return _sf(feat, key, default)
+
+    def _fb(feat_key: str, row_key: str | None = None) -> float:
+        """Features-first fallback: use snapshot_row when features value is NaN."""
+        v = _ff(feat_key)
+        if not math.isfinite(v):
+            v = _sr(row_key or feat_key)
+        return v
+
+    bullish: list[str] = []
+    bearish: list[str] = []
+
+    # --- Trend alignment ---
+    cvs50 = _fb("close_vs_sma50")
+    if math.isfinite(cvs50):
+        if cvs50 > 0.02:
+            bullish.append(f"Price {cvs50*100:.1f}% above SMA50")
+        elif cvs50 < -0.03:
+            bearish.append(f"Price {abs(cvs50)*100:.1f}% below SMA50")
+
+    # --- ATR compression ---
+    atr_pct = _fb("atr_compression_pct")
+    if math.isfinite(atr_pct):
+        if atr_pct < 30:
+            bullish.append(f"ATR compressed to {atr_pct:.0f}th pct - coiled")
+        elif atr_pct > 60:
+            bearish.append(f"ATR elevated ({atr_pct:.0f}th pct) - not compressed")
+
+    # --- Volume dry-up ---
+    vd = _fb("volume_dryup")
+    if math.isfinite(vd):
+        if vd > 0.4:
+            bullish.append(f"Volume dry-up score {vd:.2f} - demand absorbed")
+        elif vd < 0.1:
+            bearish.append(f"High volume activity ({vd:.2f}) - volatile")
+
+    # --- Relative strength ---
+    rs63 = _fb("daily_rs_63")
+    if math.isfinite(rs63):
+        if rs63 > 0.05:
+            bullish.append(f"RS-63: +{rs63*100:.0f}% vs SPY - outperforming")
+        elif rs63 < -0.05:
+            bearish.append(f"RS-63: {rs63*100:.0f}% vs SPY - underperforming")
+
+    # --- Pivot touches / base quality ---
+    res_touches = _ff("resistance_touches")
+    if math.isfinite(res_touches) and res_touches >= 2:
+        bullish.append(f"{res_touches:.0f}x resistance touches at pivot - tested level")
+
+    flatness = _ff("pivot_flatness")
+    if math.isfinite(flatness):
+        if flatness >= 0.7:
+            bullish.append(f"Pivot flatness {flatness:.2f} - tight, well-defined base")
+        elif flatness < 0.3:
+            bearish.append(f"Pivot flatness {flatness:.2f} - loose structure")
+
+    # --- YTD AVWAP ---
+    ytd_dist = _fb("ytd_dist_atr")
+    if math.isfinite(ytd_dist):
+        if ytd_dist > 0.5:
+            bullish.append(f"YTD AVWAP +{ytd_dist:.1f} ATR - accepted above cost basis")
+        elif ytd_dist < -1.0:
+            bearish.append(f"YTD AVWAP {ytd_dist:.1f} ATR - below year-open cost basis")
+
+    # --- Failure risk ---
+    fail = _sr("failure_risk")
+    if math.isfinite(fail):
+        if fail < 0.35:
+            bullish.append(f"Failure risk {fail:.0%} - low model estimate")
+        elif fail > 0.60:
+            bearish.append(f"Failure risk {fail:.0%} - elevated model estimate")
+
+    # --- Weekly trend ---
+    wk_dist = _ff("weekly_dist_wma10")
+    if math.isfinite(wk_dist):
+        if wk_dist > 0:
+            bullish.append(f"Weekly: {wk_dist:.1f} ATR above 10-week WMA")
+        elif wk_dist < -1.0:
+            bearish.append(f"Weekly: {abs(wk_dist):.1f} ATR below 10-week WMA")
+
+    # --- Model/rule classification ---
+    model_based = [
+        "composite_score", "setup_score", "trade_score", "failure_risk",
+        "percentile_rank",
+    ]
+    rule_based = [
+        "action_label", "freshness_label", "setup_classification",
+        "portfolio_guidance", "state",
+    ]
+
+    # --- Why selected ---
+    score = _sr("composite_score")
+    rank = _sr("percentile_rank")
+    state = str(snapshot_row.get("state", ""))
+    action = str(snapshot_row.get("action_label", ""))
+
+    why_parts = []
+    if math.isfinite(score):
+        why_parts.append(f"composite_score={score:.2f}")
+    if math.isfinite(rank):
+        why_parts.append(f"rank={rank:.0f}th pct within {state}")
+    if action and action not in ("--", ""):
+        why_parts.append(f"action={action}")
+    why_parts += bullish[:2]  # top 2 bullish signals in summary
+
+    why_selected = (
+        f"Selected because: {'; '.join(why_parts)}."
+        if why_parts else "Selection criteria unavailable."
+    )
+
+    return {
+        "bullish_signals": bullish[:6],   # cap at 6 for display
+        "bearish_signals": bearish[:4],
+        "model_based": model_based,
+        "rule_based": rule_based,
+        "why_selected": why_selected,
+    }
+
+
+# ---------------------------------------------------------------------------
 # Master builder
 # ---------------------------------------------------------------------------
 
@@ -940,13 +1095,15 @@ def build_context(
         volume_block = build_volume_block(provider_symbol, close, atr)
         confluence  = build_confluence(close, pivot, atr, avwap_table, levels)
         checklist   = build_checklist(provider_symbol, snapshot_row, levels)
+        score_drivers = build_score_drivers(provider_symbol, snapshot_row)
 
         return {
-            "ma_table":     ma_table,
-            "avwap_table":  avwap_table,
-            "volume_block": volume_block,
-            "confluence":   confluence,
-            "checklist":    checklist,
+            "ma_table":      ma_table,
+            "avwap_table":   avwap_table,
+            "volume_block":  volume_block,
+            "confluence":    confluence,
+            "checklist":     checklist,
+            "score_drivers": score_drivers,
         }
 
     except Exception as exc:
@@ -957,4 +1114,5 @@ def build_context(
             "volume_block": {},
             "confluence":   {"nearby_count": 0, "nearby_levels": [], "cluster_role": "scattered"},
             "checklist":    [],
+            "score_drivers": {"bullish_signals": [], "bearish_signals": [], "model_based": [], "rule_based": [], "why_selected": "Error"},
         }
