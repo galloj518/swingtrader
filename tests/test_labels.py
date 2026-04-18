@@ -11,7 +11,7 @@ from swingtrader.states.machine import compute_states
 
 def _make_inputs(n: int = 100, seed: int = 5) -> tuple[pd.DataFrame, pd.DataFrame]:
     rng = np.random.default_rng(seed)
-    idx = pd.bdate_range(end=pd.Timestamp.today().normalize(), periods=n)
+    idx = pd.bdate_range(end=pd.offsets.BDay().rollback(pd.Timestamp.today().normalize()), periods=n)
     close = 100 + np.cumsum(rng.normal(0, 1, n))
     close = np.maximum(close, 10.0)
     df = pd.DataFrame(

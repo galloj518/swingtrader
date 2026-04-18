@@ -387,27 +387,37 @@ def build_narrative(
     avwap_ctx = _avwap_context(ytd_dist)
 
     # ── Verdict ───────────────────────────────────────────────────────────────
+    # Extension always wins over entry labels — prevents contradictions between
+    # action label and narrative.
+    is_extended_flag = bool(row.get("is_extended", False))
+    ext_reasons_str = str(row.get("extension_reasons", ""))
     regime_brief = _regime_context(row)
-    if action_label == ACTION_NOW:
+
+    if is_extended_flag or action_label == ACTION_EXTENDED:
+        ext_note = f" ({ext_reasons_str})" if ext_reasons_str else ""
         verdict = (
-            f"Actionable on breakout above ${_f(trigger_level) if math.isfinite(trigger_level) else _f(levels.entry_hi)}. "
-            f"Set alert. Buy break + volume; stop ${_f(levels.stop)}. "
+            f"Extended — do not chase{ext_note}. "
+            f"Wait for a pullback toward ${_f(levels.t1) if math.isfinite(levels.t1) else _f(levels.pivot)} "
+            f"or a new base to form before reassessing."
+        )
+    elif action_label == ACTION_NOW:
+        verdict = (
+            f"Actionable now — break above ${_f(trigger_level) if math.isfinite(trigger_level) else _f(levels.entry_hi)} "
+            f"on volume. Set alert. Stop: ${_f(levels.stop)}. "
             f"{regime_brief}"
         )
     elif action_label == ACTION_BREAKOUT:
         verdict = (
-            f"Ready to trigger. Buy above ${_f(trigger_level) if math.isfinite(trigger_level) else _f(levels.entry_hi)} on volume. "
+            f"Actionable on breakout above ${_f(trigger_level) if math.isfinite(trigger_level) else _f(levels.entry_hi)} on volume. "
             f"Stop: ${_f(levels.stop)}. "
             f"{regime_brief}"
         )
     elif action_label == ACTION_PULLBACK:
         verdict = (
-            f"Setup exists but extended from optimal entry. "
-            f"Wait for pullback to ${_f(levels.entry_lo)}–${_f(levels.entry_hi)}. "
+            f"Actionable on pullback — wait for entry zone ${_f(levels.entry_lo)}–${_f(levels.entry_hi)}. "
+            f"Avoid chasing; setup exists but not at optimal price. "
             f"Stop: ${_f(levels.stop)}."
         )
-    elif action_label == ACTION_EXTENDED:
-        verdict = "Do not chase. Let the move consolidate before reassessing."
     else:
         verdict = "Avoid — score or failure risk does not meet minimum threshold."
 

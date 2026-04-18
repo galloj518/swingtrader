@@ -12,7 +12,8 @@ from swingtrader.avwap.features import compute_avwap_features
 
 def _df(n: int = 252, seed: int = 7) -> pd.DataFrame:
     rng = np.random.default_rng(seed)
-    end = pd.Timestamp.today().normalize()
+    # Roll back to last business day so bdate_range always returns exactly n bars
+    end = pd.offsets.BDay().rollback(pd.Timestamp.today().normalize())
     idx = pd.bdate_range(end=end, periods=n)
     close = 100 + np.cumsum(rng.normal(0, 1, n))
     close = np.maximum(close, 1.0)

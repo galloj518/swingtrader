@@ -49,11 +49,12 @@ from swingtrader.dashboard.buckets import BUCKET_BREAKOUT, BUCKET_PORTFOLIO, BUC
 
 # ── Configuration ─────────────────────────────────────────────────────────────
 
-# Maximum total setups in the combined top list (breakout + pullback fill)
-TOP_N: int = 7
+# Maximum total setups in the combined top list (breakout + pullback fill).
+# The dashboard enforces exactly TOP_N cards when enough qualify.
+TOP_N: int = 5
 
 # Maximum breakout candidates shown in their own section
-TOP_N_BREAKOUT: int = 7
+TOP_N_BREAKOUT: int = 5
 
 # Maximum pullback candidates shown in their own section
 TOP_N_PULLBACK: int = 5

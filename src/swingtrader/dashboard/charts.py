@@ -211,18 +211,154 @@ def _annotate_hline(
     )
 
 
-def _overlay_avwap(ax, feat_row: pd.Series | None) -> None:
-    """Draw AVWAP horizontal reference lines from the features row."""
+def _compute_avwap_series(df: pd.DataFrame, anchor_idx: int) -> list[float]:
+    """Running AVWAP from *anchor_idx* forward; NaN before the anchor.
+
+    Returns a plain list of floats, length == len(df), suitable for direct
+    x-indexed plotting on the display chart.
+    """
+    n = len(df)
+    result = [math.nan] * n
+    if anchor_idx < 0 or anchor_idx >= n:
+        return result
+
+    subset = df.iloc[anchor_idx:].copy()
+    tp = (subset["high"] + subset["low"] + subset["close"]) / 3.0
+    if "volume" in subset.columns:
+        vol = subset["volume"].clip(lower=0)
+    else:
+        vol = pd.Series(1.0, index=subset.index)
+
+    cum_tpv = (tp * vol).cumsum()
+    cum_vol = vol.cumsum()
+    avwap_vals = (cum_tpv / cum_vol.where(cum_vol > 0)).values
+
+    for i, v in enumerate(avwap_vals):
+        try:
+            fv = float(v)
+            result[anchor_idx + i] = fv if math.isfinite(fv) else math.nan
+        except (TypeError, ValueError):
+            pass
+    return result
+
+
+def _find_ytd_anchor(df: pd.DataFrame) -> int:
+    """Return the integer position of the first bar in the current year."""
+    if df.empty or not isinstance(df.index, pd.DatetimeIndex):
+        return 0
+    last_year = df.index[-1].year
+    year_mask = df.index.year == last_year
+    if not year_mask.any():
+        return 0
+    return int(year_mask.argmax())
+
+
+def _find_swing_low_anchor(df: pd.DataFrame, lookback: int = 252) -> int:
+    """Return the position of the lowest low in the last *lookback* bars."""
+    n = len(df)
+    start = max(0, n - lookback)
+    rel_idx = int(df["low"].iloc[start:].values.argmin())
+    return start + rel_idx
+
+
+def _find_swing_high_anchor(df: pd.DataFrame, lookback: int = 252) -> int:
+    """Return the position of the highest high in the last *lookback* bars."""
+    n = len(df)
+    start = max(0, n - lookback)
+    rel_idx = int(df["high"].iloc[start:].values.argmax())
+    return start + rel_idx
+
+
+def _find_breakout_anchor(df: pd.DataFrame, pivot: float, days_in_state: int) -> int:
+    """Approximate breakout-day anchor from *days_in_state*.
+
+    Falls back to the first bar where close >= pivot when days_in_state is 0.
+    """
+    n = len(df)
+    if days_in_state > 0:
+        return max(0, n - 1 - days_in_state)
+    if math.isfinite(pivot):
+        for i in range(n):
+            if float(df["close"].iloc[i]) >= pivot:
+                return i
+    return max(0, n - 20)
+
+
+def _overlay_avwap_curves(
+    ax,
+    df_full: pd.DataFrame,
+    display_start: int,
+    pivot: float = math.nan,
+    days_in_state: int = 0,
+) -> None:
+    """Draw anchored VWAP *curves* (not horizontal lines) on the price axis.
+
+    Each AVWAP is computed as a running VWAP from its anchor date forward.
+    The curve starts at the anchor bar (or the first visible bar if the anchor
+    is before the display window) and ends at the last bar.
+
+    Anchors used:
+      - YTD: first bar of the current calendar year
+      - Swing Low: lowest low in the last 252 bars
+      - Swing High: highest high in the last 252 bars
+      - Breakout Day: approximated from days_in_state (TRIGGERED/ACCEPTED only)
+    """
+    if df_full.empty:
+        return
+
+    n_full = len(df_full)
+    n_disp = n_full - display_start   # number of bars in the display window
+    if n_disp <= 0:
+        return
+
     avwap_specs = [
-        ("ytd_avwap",         "YTD AVWAP",   BLUE,   "--"),
-        ("swing_low_avwap",   "SwgLo AVWAP", GREEN,  "-."),
-        ("swing_high_avwap",  "SwgHi AVWAP", RED,    "-."),
-        ("breakout_day_avwap","Bkout AVWAP", AMBER,  ":"),
+        ("ytd",        "YTD AVWAP",   BLUE,  "--"),
+        ("swing_low",  "SwgLo AVWAP", GREEN, "-."),
+        ("swing_high", "SwgHi AVWAP", RED,   "-."),
     ]
-    for key, label, color, ls in avwap_specs:
-        val = _safe_f(feat_row, key)
-        if math.isfinite(val):
-            _annotate_hline(ax, val, label, color, ls, alpha=0.75)
+    # Add breakout anchor only when the symbol is in trade
+    if days_in_state > 0 and math.isfinite(pivot):
+        avwap_specs.append(("breakout", "Bkout AVWAP", AMBER, ":"))
+
+    for kind, label, color, ls in avwap_specs:
+        try:
+            if kind == "ytd":
+                anchor_pos = _find_ytd_anchor(df_full)
+            elif kind == "swing_low":
+                anchor_pos = _find_swing_low_anchor(df_full)
+            elif kind == "swing_high":
+                anchor_pos = _find_swing_high_anchor(df_full)
+            else:  # breakout
+                anchor_pos = _find_breakout_anchor(df_full, pivot, days_in_state)
+
+            # Compute AVWAP on full history
+            avwap_full = _compute_avwap_series(df_full, anchor_pos)
+
+            # Slice to display window; x positions are 0..n_disp-1
+            avwap_disp = avwap_full[display_start:]
+            xs_plot = [i for i, v in enumerate(avwap_disp) if math.isfinite(v)]
+            ys_plot = [avwap_disp[i] for i in xs_plot]
+
+            if len(xs_plot) < 2:
+                continue
+
+            ax.plot(
+                xs_plot, ys_plot,
+                color=color, linewidth=0.9, linestyle=ls, alpha=0.80,
+                label=label, zorder=4,
+            )
+
+            # Endpoint label
+            last_x, last_y = xs_plot[-1], ys_plot[-1]
+            ax.text(
+                last_x + 0.5, last_y,
+                f" {label} {last_y:.2f}",
+                color=color, fontsize=7, va="center", alpha=0.85,
+                zorder=5,
+            )
+
+        except Exception as exc:
+            log.debug("AVWAP curve error (%s): %s", kind, exc)
 
 
 # ── Public chart generators ───────────────────────────────────────────────────
@@ -283,15 +419,14 @@ def generate_daily_chart(
     df_full["sma50"]  = _sma(df_full["close"],  50)
     df_full["sma200"] = _sma(df_full["close"], 200)
 
-    df = df_full.tail(DAILY_BARS).copy()
+    n_full = len(df_full)
+    display_start = max(0, n_full - DAILY_BARS)
+    df = df_full.iloc[display_start:].copy()
     if len(df) < 10:
         return None
 
     n  = len(df)
     xs = range(n)
-
-    # Load feature row for AVWAP overlays
-    feat_row = _load_features_row(provider_symbol)
 
     # ── Figure ────────────────────────────────────────────────────────────────
     fig = plt.figure(figsize=(14, 8), facecolor=BG)
@@ -317,8 +452,8 @@ def generate_daily_chart(
     ax.plot(xs, df["sma50"],  color=AMBER,  linewidth=1.0, alpha=0.85, label="SMA50")
     ax.plot(xs, df["sma200"], color=PURPLE, linewidth=1.1, alpha=0.90, label="SMA200")
 
-    # AVWAP overlays
-    _overlay_avwap(ax, feat_row)
+    # AVWAP curves (anchored running VWAP from each anchor date forward)
+    _overlay_avwap_curves(ax, df_full, display_start, pivot=pivot, days_in_state=days_in_state)
 
     # Trade level annotations
     _annotate_hline(ax, pivot,    "Pivot",    PURPLE, "--")
@@ -486,16 +621,17 @@ def generate_weekly_chart(
         df = df.copy()
         df["open"] = df["close"]
 
-    df = df.tail(WEEKLY_BARS).copy()
+    # Compute MAs on full history; slice display window
+    df_wk_full = df.copy()
+    df_wk_full["wma10"] = _sma(df_wk_full["close"], 10)
+    df_wk_full["wma30"] = _sma(df_wk_full["close"], 30)
 
-    # Weekly MAs on close
-    df["wma10"] = _sma(df["close"], 10)
-    df["wma30"] = _sma(df["close"], 30)
+    n_wk_full = len(df_wk_full)
+    wk_display_start = max(0, n_wk_full - WEEKLY_BARS)
+    df = df_wk_full.iloc[wk_display_start:].copy()
 
     n  = len(df)
     xs = range(n)
-
-    feat_row = _load_features_row(provider_symbol)
 
     # ── Figure ────────────────────────────────────────────────────────────────
     fig = plt.figure(figsize=(14, 8), facecolor=BG)
@@ -514,14 +650,8 @@ def generate_weekly_chart(
     ax.plot(xs, df["wma10"], color=GREEN, linewidth=0.9, alpha=0.85, label="WMA10")
     ax.plot(xs, df["wma30"], color=AMBER, linewidth=1.0, alpha=0.85, label="WMA30")
 
-    # AVWAP overlays (ytd + swing_low only for weekly)
-    for key, label, color, ls in [
-        ("ytd_avwap",       "YTD AVWAP",   BLUE,  "--"),
-        ("swing_low_avwap", "SwgLo AVWAP", GREEN, "-."),
-    ]:
-        val = _safe_f(feat_row, key)
-        if math.isfinite(val):
-            _annotate_hline(ax, val, label, color, ls, alpha=0.75)
+    # AVWAP curves: YTD + swing_low on weekly chart
+    _overlay_avwap_curves(ax, df_wk_full, wk_display_start, pivot=pivot)
 
     # Trade levels
     _annotate_hline(ax, pivot, "Pivot", PURPLE, "--")
@@ -749,9 +879,13 @@ def generate_charts_for_packet(packet: dict, output_dir: Path) -> dict:
             )
         )
 
+    intraday_path: Path | None = None
     with contextlib.suppress(Exception):
-        result["chart_intraday"] = _rel(
-            generate_intraday_chart(sym, output_dir, pivot=_lvl("pivot"))
-        )
+        intraday_path = generate_intraday_chart(sym, output_dir, pivot=_lvl("pivot"))
+
+    # Always record whether intraday data actually exists so the dashboard
+    # can suppress the dead section cleanly rather than showing an empty box.
+    result["chart_intraday"] = _rel(intraday_path)
+    result["intraday_available"] = intraday_path is not None
 
     return result

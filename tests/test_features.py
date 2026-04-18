@@ -16,7 +16,7 @@ from swingtrader.features.registry import compute_features, load_all_feature_mod
 
 def _synthetic_daily(n: int = 200, seed: int = 42) -> pd.DataFrame:
     rng = np.random.default_rng(seed)
-    end = pd.Timestamp.today().normalize()
+    end = pd.offsets.BDay().rollback(pd.Timestamp.today().normalize())
     idx = pd.bdate_range(end=end, periods=n)
     close = 100 + np.cumsum(rng.normal(0, 1, n))
     close = np.maximum(close, 1.0)

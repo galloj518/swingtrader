@@ -25,7 +25,7 @@ from swingtrader.states.machine import (
 def _build_df(prices: list[float], volumes: list[float] | None = None) -> pd.DataFrame:
     """Create a minimal OHLCV DataFrame from a close-price list."""
     n = len(prices)
-    idx = pd.bdate_range(end=pd.Timestamp.today().normalize(), periods=n)
+    idx = pd.bdate_range(end=pd.offsets.BDay().rollback(pd.Timestamp.today().normalize()), periods=n)
     c = np.array(prices, dtype=float)
     vol = np.array(volumes, dtype=float) if volumes else np.full(n, 1_000_000.0)
     df = pd.DataFrame(

@@ -475,3 +475,279 @@ class TestChartsPathLogic:
         pkt = {"symbol": "", "provider_symbol": ""}
         result = generate_charts_for_packet(pkt, tmp_path)
         assert result is not None
+
+    def test_intraday_available_flag_set_false_when_no_file(self, tmp_path):
+        """generate_charts_for_packet must set intraday_available=False when no intraday data."""
+        from swingtrader.dashboard.charts import generate_charts_for_packet
+        pkt = {
+            "symbol": "FAKE",
+            "provider_symbol": "FAKE",
+            "pivot": "100.00",
+            "entry_lo": "100.00",
+            "entry_hi": "100.20",
+            "stop": "98.00",
+            "t1": "104.00",
+            "t2": "107.00",
+            "chart_daily": None,
+            "chart_weekly": None,
+            "chart_intraday": None,
+        }
+        result = generate_charts_for_packet(pkt, tmp_path)
+        assert result["intraday_available"] is False
+
+
+# ── Phase 3: multi-signal extension, top-5, fewer-than-5, coherence ──────────
+
+class TestMultiSignalExtension:
+    """Extension classification must catch near-pivot but MA-extended names."""
+
+    def test_sma50_extension_triggers_even_with_low_pivot_dist(self):
+        """12% above SMA50 → extended, regardless of pivot distance."""
+        from swingtrader.dashboard.freshness import EXT_SMA50_PCT
+        r = _row(state="ARMED", dist_atr=1.0)          # near pivot — would be fresh normally
+        r["close_vs_sma50"] = EXT_SMA50_PCT + 0.01     # just over 12% above SMA50
+        r["ytd_dist_atr"] = 1.0                         # well within YTD ATR cap
+        result = classify_row(r)
+        assert result["is_extended"] is True
+        assert "SMA50" in result["extension_reasons"]
+
+    def test_ytd_atr_extension_triggers(self):
+        """5+ ATR above YTD AVWAP → extended."""
+        from swingtrader.dashboard.freshness import EXT_YTD_ATR
+        r = _row(state="ARMED", dist_atr=1.0)
+        r["close_vs_sma50"] = 0.02                     # within SMA50 cap
+        r["ytd_dist_atr"] = EXT_YTD_ATR + 0.1
+        result = classify_row(r)
+        assert result["is_extended"] is True
+        assert "YTD" in result["extension_reasons"]
+
+    def test_both_signals_combined_appear_in_reasons(self):
+        """When multiple extension triggers fire, all appear in extension_reasons."""
+        from swingtrader.dashboard.freshness import EXT_ATR, EXT_SMA50_PCT, EXT_YTD_ATR
+        r = _row(state="ARMED")
+        r["dist_to_pivot_atr"] = EXT_ATR + 0.5
+        r["close_vs_sma50"] = EXT_SMA50_PCT + 0.02
+        r["ytd_dist_atr"] = EXT_YTD_ATR + 0.5
+        result = classify_row(r)
+        assert result["is_extended"] is True
+        reasons = result["extension_reasons"]
+        assert "pivot" in reasons.lower() or "atr" in reasons.lower()
+        assert "SMA50" in reasons
+        assert "YTD" in reasons
+
+    def test_near_pivot_not_extended_when_signals_within_bounds(self):
+        """Near pivot + within SMA50/YTD bounds → not extended."""
+        r = _row(state="ARMED", dist_atr=1.0)
+        r["close_vs_sma50"] = 0.05     # 5% — under 12% cap
+        r["ytd_dist_atr"] = 2.0        # under 5.0 ATR cap
+        result = classify_row(r)
+        assert result["is_extended"] is False
+        assert result["is_fresh"] is True
+
+    def test_extension_reasons_empty_when_not_extended(self):
+        r = _row(state="ARMED", dist_atr=0.5)
+        r["close_vs_sma50"] = 0.02
+        r["ytd_dist_atr"] = 1.0
+        result = classify_row(r)
+        assert result["extension_reasons"] == ""
+
+
+class TestTop5Enforcement:
+    """Selector must return ≤ TOP_N results; dashboard must rank them 1–N."""
+
+    def _make_large_snapshot(self, n: int = 20) -> pd.DataFrame:
+        """Build a larger snapshot with many fresh, eligible candidates."""
+        rows = []
+        for i in range(n):
+            rows.append({
+                "user_symbol": f"SYM{i:02d}",
+                "provider_symbol": f"SYM{i:02d}",
+                "state": "ARMED",
+                "pivot": 100.0 + i,
+                "atr14": 2.0,
+                "close": 100.5 + i,
+                "dist_to_pivot_atr": 0.5 + (i % 3) * 0.3,
+                "days_in_state": 5 + (i % 5),
+                "composite_score": 0.80 - i * 0.02,
+                "failure_risk": 0.15 + i * 0.01,
+                "setup_score": 0.70 - i * 0.02,
+                "trade_score": 0.65 - i * 0.02,
+                "percentile_rank": 90.0 - i * 2,
+                "base_length": 30,
+                "atr_compression_pct": 40.0,
+                "volume_dryup": 0.5,
+                "close_vs_sma50": 0.03,
+                "daily_rs_63": 0.05,
+                "ytd_dist_atr": 1.5,
+                "swing_low_dist_atr": 2.0,
+                "regime_spy_trend": 1.0,
+                "is_portfolio": False,
+                "is_watchlist": True,
+                "is_non_equity": False,
+                "groups": f"group{i % 4}",   # spread across 4 groups
+                "eligible": True,
+                "bucket": "breakout_long",
+            })
+        return pd.DataFrame(rows)
+
+    def test_selector_returns_at_most_5(self):
+        from swingtrader.dashboard.selector import TOP_N, select_top_setups
+        df = self._make_large_snapshot(20)
+        top = select_top_setups(df)
+        assert len(top) <= TOP_N
+
+    def test_selector_top_n_is_5(self):
+        """TOP_N must equal exactly 5."""
+        from swingtrader.dashboard.selector import TOP_N
+        assert TOP_N == 5
+
+    def test_dashboard_shows_rank_numbers(self):
+        """Each card should show #1, #2, … rank number in HTML."""
+        df = self._make_large_snapshot(20)
+        df = add_freshness_columns(df)
+        df = add_action_column(df)
+        top = select_top_setups(df)
+        pkts = build_packets(top)
+        html = render_dashboard(df, pkts, pd.Timestamp("2026-01-15"))
+        assert "#1" in html
+        if len(pkts) >= 2:
+            assert "#2" in html
+
+    def test_dashboard_shows_bucket_tags(self):
+        """Cards must show BREAKOUT or PULLBACK bucket tag."""
+        df = self._make_large_snapshot(10)
+        df = add_freshness_columns(df)
+        df = add_action_column(df)
+        top = select_top_setups(df)
+        pkts = build_packets(top)
+        html = render_dashboard(df, pkts, pd.Timestamp("2026-01-15"))
+        assert "BREAKOUT" in html or "PULLBACK" in html
+
+
+class TestFewerThan5Callout:
+    """When fewer than 5 setup slots are filled, dashboard must explain why."""
+
+    def test_fewer_than_5_warning_shown(self):
+        """Snapshot with only 2 fresh candidates → warning callout in HTML."""
+        df = _snapshot(5)   # only a few, mostly non-scored states
+        df = add_freshness_columns(df)
+        df = add_action_column(df)
+        top = select_top_setups(df)
+        pkts = build_packets(top)
+        html = render_dashboard(df, pkts, pd.Timestamp("2026-01-15"))
+        # If fewer than 5 packets, the warning should appear
+        if len(pkts) < 5:
+            assert "Only" in html or "slot" in html or "⚠" in html
+
+    def test_no_warning_when_5_cards_shown(self):
+        """When exactly 5 packets provided, no fewer-than-5 warning appears."""
+        df = _snapshot(5)
+        df = add_freshness_columns(df)
+        df = add_action_column(df)
+        # Manually build 5 packets
+        r = _row(state="ARMED", pivot=100.0, atr14=2.0)
+        r["action_label"] = "Actionable on breakout"
+        r["bucket"] = "breakout_long"
+        pkts = [build_packet(r) for _ in range(5)]
+        html = render_dashboard(df, pkts, pd.Timestamp("2026-01-15"))
+        # 5 packets → no "Only N of 5" warning
+        assert "Only" not in html
+
+    def test_empty_snapshot_shows_no_setups_message(self):
+        html = render_dashboard(pd.DataFrame(), [], pd.Timestamp("2026-01-15"))
+        assert "No setups qualify" in html or "No actionable" in html or "⚠" in html
+
+
+class TestCardCoherence:
+    """Extended flag must override action_label in narrative verdict."""
+
+    def test_extended_verdict_overrides_now_action(self):
+        """A symbol with is_extended=True must say 'Extended' in verdict
+        even if action_label mistakenly says 'Actionable now'."""
+        r = _row(state="TRIGGERED", pivot=100.0, atr14=2.0, close=110.0)
+        r["is_extended"] = True
+        r["extension_reasons"] = "pivot+4.0ATR>3.0"
+        r["close_vs_sma50"] = 0.14
+        lvl = compute_levels(r)
+        result = build_narrative(r, lvl, ACTION_NOW)   # wrong action passed
+        assert "extended" in result["verdict"].lower()
+        assert "do not chase" in result["verdict"].lower()
+
+    def test_extended_verdict_includes_reason_when_present(self):
+        r = _row(state="ARMED", pivot=100.0, atr14=2.0)
+        r["is_extended"] = True
+        r["extension_reasons"] = "SMA50+15%>12%"
+        lvl = compute_levels(r)
+        result = build_narrative(r, lvl, ACTION_EXTENDED)
+        assert "SMA50" in result["verdict"] or "15" in result["verdict"]
+
+    def test_non_extended_now_verdict_is_actionable(self):
+        r = _row(state="TRIGGERED", pivot=100.0, atr14=2.0, close=101.0, days=3)
+        r["is_extended"] = False
+        r["extension_reasons"] = ""
+        lvl = compute_levels(r)
+        result = build_narrative(r, lvl, ACTION_NOW)
+        assert "actionable" in result["verdict"].lower()
+        assert "extended" not in result["verdict"].lower()
+
+
+class TestMADirectionBrief:
+    """MA direction strip must appear as visible (non-collapsible) content."""
+
+    def _packet_with_ma_table(self) -> dict:
+        r = _row(state="ARMED", pivot=100.0, atr14=2.0)
+        r["action_label"] = ACTION_BREAKOUT
+        r["is_fresh"] = True
+        r["is_extended"] = False
+        pkt = build_packet(r)
+        # Inject a synthetic MA table
+        if "context" not in pkt or not pkt["context"]:
+            pkt["context"] = {}
+        pkt["context"]["ma_table"] = [
+            {"name": "SMA5",  "value": 99.0, "slope": "rising",  "bias": ""},
+            {"name": "SMA10", "value": 98.5, "slope": "rising",  "bias": ""},
+            {"name": "SMA20", "value": 97.0, "slope": "flat",    "bias": "Price within 0.5% of SMA20"},
+            {"name": "SMA50", "value": 95.0, "slope": "rising",  "bias": "Above SMA50 — bullish bias"},
+        ]
+        return pkt
+
+    def test_ma_brief_rendered_in_card(self):
+        """MA direction pills (▲/▼/—) must appear in card HTML, not just in collapsible."""
+        from swingtrader.reports.dashboard import _render_card  # type: ignore[attr-defined]
+        pkt = self._packet_with_ma_table()
+        html = _render_card(pkt, rank=1)
+        # The brief strip should be present (not inside a <details> block)
+        assert "ma-brief" in html
+        assert "▲" in html or "▼" in html or "—" in html
+
+    def test_ma_brief_shows_sma5_sma10_sma20(self):
+        """SMA5, SMA10, SMA20 pills must all appear in the brief."""
+        from swingtrader.reports.dashboard import _render_card  # type: ignore[attr-defined]
+        pkt = self._packet_with_ma_table()
+        html = _render_card(pkt, rank=1)
+        assert "SMA5" in html
+        assert "SMA10" in html
+        assert "SMA20" in html
+
+    def test_intraday_unavailable_shows_inline_note(self):
+        """When intraday_available=False, card must show compact inline note, not empty chart block."""
+        from swingtrader.reports.dashboard import _render_card  # type: ignore[attr-defined]
+        r = _row(state="ARMED")
+        r["action_label"] = ACTION_BREAKOUT
+        pkt = build_packet(r)
+        pkt["intraday_available"] = False
+        pkt["chart_intraday"] = None
+        html = _render_card(pkt, rank=1)
+        assert "chart-na-inline" in html
+        assert "Intraday confirmation unavailable" in html
+
+    def test_intraday_available_does_not_show_na_note(self):
+        """When a real intraday path is set, the inline note must not appear."""
+        from swingtrader.reports.dashboard import _render_card  # type: ignore[attr-defined]
+        r = _row(state="ARMED")
+        r["action_label"] = ACTION_BREAKOUT
+        pkt = build_packet(r)
+        pkt["intraday_available"] = True
+        pkt["chart_intraday"] = "path/to/intraday.png"
+        html = _render_card(pkt, rank=1)
+        assert "Intraday confirmation unavailable" not in html

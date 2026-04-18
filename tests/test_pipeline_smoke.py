@@ -18,7 +18,7 @@ from swingtrader.states.machine import compute_states
 
 def _make_df(n: int = 300, seed: int = 99) -> pd.DataFrame:
     rng = np.random.default_rng(seed)
-    idx = pd.bdate_range(end=pd.Timestamp.today().normalize(), periods=n)
+    idx = pd.bdate_range(end=pd.offsets.BDay().rollback(pd.Timestamp.today().normalize()), periods=n)
     close = 50 + np.cumsum(rng.normal(0.05, 1.0, n))
     close = np.maximum(close, 5.0)
     df = pd.DataFrame(

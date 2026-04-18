@@ -11,7 +11,7 @@ from swingtrader.bases.base_detect import detect_bases, resistance_touches
 def _flat_df(n: int = 60, center: float = 100.0, width_pct: float = 0.05) -> pd.DataFrame:
     """Synthetic flat base: price oscillates in a tight range."""
     rng = np.random.default_rng(1)
-    idx = pd.bdate_range(end=pd.Timestamp.today().normalize(), periods=n)
+    idx = pd.bdate_range(end=pd.offsets.BDay().rollback(pd.Timestamp.today().normalize()), periods=n)
     noise = rng.uniform(-width_pct / 2, width_pct / 2, n)
     close = center * (1 + noise)
     df = pd.DataFrame(
@@ -33,7 +33,7 @@ def _flat_df(n: int = 60, center: float = 100.0, width_pct: float = 0.05) -> pd.
 def _wide_range_df(n: int = 60) -> pd.DataFrame:
     """Synthetic choppy price: depth exceeds max_depth_pct — should NOT detect base."""
     rng = np.random.default_rng(2)
-    idx = pd.bdate_range(end=pd.Timestamp.today().normalize(), periods=n)
+    idx = pd.bdate_range(end=pd.offsets.BDay().rollback(pd.Timestamp.today().normalize()), periods=n)
     close = 100 + np.cumsum(rng.normal(0, 3, n))  # large moves
     close = np.maximum(close, 10.0)
     df = pd.DataFrame(

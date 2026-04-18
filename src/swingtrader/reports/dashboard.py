@@ -273,6 +273,39 @@ footer { margin-top: 2rem; font-size: .75rem; color: var(--fg3);
 .pg-defend { color: var(--orange); }
 .pg-exit   { color: var(--red); }
 .pg-info   { color: var(--fg3); }
+
+/* ── MA direction brief (visible strip on card, not collapsible) ──────────── */
+.ma-brief { display: flex; gap: .5rem; flex-wrap: wrap; align-items: center;
+            font-size: .77rem; margin: .3rem 0; padding: .25rem .4rem;
+            background: var(--bg3); border-radius: 4px; }
+.ma-brief-label { color: var(--fg3); font-size: .72rem; margin-right: .2rem; }
+.ma-pill { display: inline-flex; align-items: center; gap: .2rem;
+           padding: .1rem .35rem; border-radius: 3px; font-weight: 600;
+           font-size: .74rem; white-space: nowrap; }
+.ma-rising  { color: var(--green); background: #1a4f2a; }
+.ma-falling { color: var(--red);   background: #3d1212; }
+.ma-flat    { color: var(--fg3);   background: var(--bg2); }
+.ma-bias-note { font-size: .72rem; color: var(--fg3); margin-top: .15rem;
+                padding-left: .4rem; border-left: 2px solid var(--border); }
+
+/* ── Intraday unavailable inline note ────────────────────────────────────── */
+.chart-na-inline { font-size: .74rem; color: var(--fg3); padding: .3rem .4rem;
+                   border-left: 2px solid var(--bg3); margin-top: .3rem;
+                   font-style: italic; }
+
+/* ── Top-5 header bar ────────────────────────────────────────────────────── */
+.top5-header { background: var(--bg2); border: 1px solid var(--border);
+               border-radius: 6px; padding: .5rem .9rem; margin-bottom: .8rem; }
+.top5-count  { font-size: .82rem; color: var(--fg2); }
+.top5-warn   { background: #3d2f0a; border: 1px solid var(--amber);
+               border-radius: 4px; padding: .4rem .8rem; margin: .4rem 0;
+               font-size: .82rem; color: var(--amber); }
+.bucket-tag  { font-size: .72rem; padding: .1rem .35rem; border-radius: 3px;
+               font-weight: 600; margin-left: .3rem; }
+.bt-breakout { color: var(--blue);  background: #0f2d4f; }
+.bt-pullback { color: var(--amber); background: #3d2f0a; }
+.rank-num    { font-size: .85rem; color: var(--fg3); font-weight: 700;
+               min-width: 1.4rem; }
 """
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -610,6 +643,57 @@ def _export_links_html(packet: dict, report_dir_rel: str = "artifacts") -> str:
     )
 
 
+def _ma_direction_brief_html(ma_table: list[dict]) -> str:
+    """Render a compact always-visible MA direction strip for a card.
+
+    Shows the 3 short MAs (SMA5, SMA10, SMA20) as rising/flat/falling pills,
+    plus the SMA20/SMA50 bias notes (what close is needed to keep them rising).
+    This lives in the visible card area — not inside a collapsible element.
+    """
+    if not ma_table:
+        return ""
+
+    # Pull out the MAs we care about most for next-day context
+    short_mas = ["SMA5", "SMA10", "SMA20"]
+    slope_pills = ""
+    bias_notes: list[str] = []
+
+    for ma in ma_table:
+        name = ma.get("name", "")
+        slope = ma.get("slope", "flat")
+        bias = ma.get("bias", "")
+
+        if name in short_mas:
+            slope_cls = f"ma-{slope}"
+            arrow = "▲" if slope == "rising" else ("▼" if slope == "falling" else "—")
+            slope_pills += f'<span class="ma-pill {slope_cls}">{arrow} {name}</span>'
+
+        # Surface SMA20 and SMA50 bias notes (the "close needed" threshold)
+        if name in ("SMA20", "SMA50") and bias:
+            bias_notes.append(f"<strong>{name}:</strong> {bias}")
+
+    if not slope_pills and not bias_notes:
+        return ""
+
+    bias_html = ""
+    if bias_notes:
+        bias_html = (
+            '<div class="ma-bias-note">'
+            + " &nbsp;·&nbsp; ".join(bias_notes)
+            + "</div>"
+        )
+
+    return (
+        f'<div>'
+        f'<div class="ma-brief">'
+        f'<span class="ma-brief-label">MA direction:</span>'
+        f'{slope_pills}'
+        f'</div>'
+        f'{bias_html}'
+        f'</div>'
+    )
+
+
 # ── Table rendering ───────────────────────────────────────────────────────────
 
 _TABLE_COLS = [
@@ -656,7 +740,14 @@ def _html_table(df: pd.DataFrame, cols: list[str]) -> str:
 
 # ── Setup card rendering ──────────────────────────────────────────────────────
 
-def _render_card(packet: dict) -> str:
+def _render_card(packet: dict, rank: int = 0) -> str:
+    """Render a single setup card.
+
+    Parameters
+    ----------
+    packet : analysis packet dict (from packet.build_packet + charts).
+    rank   : 1-based position in the top-5 list; 0 means unranked.
+    """
     sym = packet.get("symbol", "?")
     state = packet.get("state", "NONE")
     action = packet.get("action_label", "—")
@@ -666,6 +757,7 @@ def _render_card(packet: dict) -> str:
     rank_raw = packet.get("percentile_rank", "—")
     score_cls = _score_cls(score_raw)
     freshness_label = packet.get("freshness_label", "")
+    bucket = packet.get("bucket", "")
 
     narrative = packet.get("narrative", {})
     context = packet.get("context", {}) or {}
@@ -676,20 +768,44 @@ def _render_card(packet: dict) -> str:
     # Setup classification badge
     sc_badge = _setup_class_badge(setup_cls_label) if setup_cls_label else ""
 
+    # Bucket tag (breakout vs pullback label)
+    bucket_tag = ""
+    if bucket == "breakout_long":
+        bucket_tag = '<span class="bucket-tag bt-breakout">BREAKOUT</span>'
+    elif bucket == "pullback_long":
+        bucket_tag = '<span class="bucket-tag bt-pullback">PULLBACK</span>'
+
     # Freshness tag
     fresh_tag = ""
     if freshness_label and freshness_label not in ("—", ""):
         fresh_color = "var(--green)" if packet.get("is_fresh") else "var(--fg3)"
         fresh_tag = f'<small style="color:{fresh_color};margin-left:.3rem">[{freshness_label}]</small>'
 
+    # Extension warning badge (overrides other labels visually)
+    ext_tag = ""
+    if packet.get("is_extended"):
+        ext_reasons = packet.get("extension_reasons", "")
+        ext_tag = (
+            f'<span style="color:var(--amber);font-size:.75rem;margin-left:.3rem" '
+            f'title="{ext_reasons}">⚠ Extended</span>'
+        )
+
+    # Rank indicator
+    rank_tag = ""
+    if rank > 0:
+        rank_tag = f'<span class="rank-num">#{rank}</span>'
+
     # Header
     header = (
         f'<div class="card-header">'
+        f'{rank_tag}'
         f'{_badge(action)}'
         f'<span class="card-symbol">{sym}{portfolio_tag}</span>'
         f'{_state_span(state)}'
         f'{sc_badge}'
+        f'{bucket_tag}'
         f'{fresh_tag}'
+        f'{ext_tag}'
         f'<span class="card-score">'
         f'Score: <span class="{score_cls}">{score_raw}</span>'
         f' &nbsp;|&nbsp; Fail: {failure_raw}'
@@ -698,15 +814,27 @@ def _render_card(packet: dict) -> str:
         f'</div>'
     )
 
-    # Charts
+    # Charts: intraday shown only when data actually exists
+    intraday_available = packet.get("intraday_available", packet.get("chart_intraday") is not None)
+    if intraday_available and packet.get("chart_intraday"):
+        intraday_section = (
+            f'<div style="font-size:.75rem;color:var(--fg3);margin:.4rem 0 .3rem">Intraday (5m)</div>'
+            f'{_chart_img(packet.get("chart_intraday"), f"{sym} Intraday")}'
+        )
+    else:
+        intraday_section = (
+            '<div class="chart-na-inline">'
+            '\u2139 Intraday confirmation unavailable today'
+            '</div>'
+        )
+
     charts_html = (
         f'<div class="card-charts">'
         f'<div style="font-size:.75rem;color:var(--fg3);margin-bottom:.3rem">Weekly</div>'
         f'{_chart_img(packet.get("chart_weekly"), f"{sym} Weekly")}'
         f'<div style="font-size:.75rem;color:var(--fg3);margin:.4rem 0 .3rem">Daily</div>'
         f'{_chart_img(packet.get("chart_daily"), f"{sym} Daily")}'
-        f'<div style="font-size:.75rem;color:var(--fg3);margin:.4rem 0 .3rem">Intraday (5m)</div>'
-        f'{_chart_img(packet.get("chart_intraday"), f"{sym} Intraday")}'
+        f'{intraday_section}'
         f'</div>'
     )
 
@@ -759,9 +887,13 @@ def _render_card(packet: dict) -> str:
             f'{(" &nbsp;|&nbsp; " + avwap_ctx) if avwap_ctx else ""}</dd>'
         )
 
+    # MA direction brief (always-visible short strip)
+    ma_brief_html = _ma_direction_brief_html(context.get("ma_table", []))
+
     narrative_section = (
         f'<div>'
         f'<h3>Narrative</h3>'
+        f'{ma_brief_html}'
         f'<dl class="narrative">'
         f'<dt>Setup</dt><dd>{n.get("setup", "—")}</dd>'
         f'<dt>Why now</dt><dd>{n.get("why", "—")}</dd>'
@@ -780,7 +912,7 @@ def _render_card(packet: dict) -> str:
     # AI analysis note
     ai_note_section = _ai_note_html(ai_note)
 
-    # Context deep-dives (collapsible)
+    # Context deep-dives (collapsible — full detail available on demand)
     ma_html = _ma_table_html(context.get("ma_table", []))
     avwap_html = _avwap_table_html(context.get("avwap_table", []))
     checklist_html_str = _checklist_html(context.get("checklist", []))
@@ -790,7 +922,7 @@ def _render_card(packet: dict) -> str:
     if ma_html:
         context_details += (
             f'<details style="margin-top:.4rem">'
-            f'<summary style="font-size:.78rem">MA State Table</summary>'
+            f'<summary style="font-size:.78rem">Full MA Table</summary>'
             f'<div class="details-body">{ma_html}</div>'
             f'</details>'
         )
@@ -1065,76 +1197,126 @@ def render_dashboard(
     regime_html = _regime_html(full_df)
     portfolio_html = _portfolio_strip_html(portfolio_df)
 
-    # Layer 2 — Top setup cards (bucketed into breakout vs pullback sections)
-    breakout_packets = [p for p in packets if p.get("bucket") == "breakout_long"]
-    pullback_packets  = [p for p in packets if p.get("bucket") == "pullback_long"]
-    other_packets     = [p for p in packets if p.get("bucket") not in ("breakout_long", "pullback_long", "portfolio_hold")]
-
-    def _cards_section_html(section_packets: list[dict], title: str, subtitle: str) -> str:
-        if not section_packets:
-            return ""
-        cards_html = "\n".join(_render_card(p) for p in section_packets)
-        return (
-            f'<h2>{title}</h2>'
-            f'<p style="font-size:.82rem;color:var(--fg3);margin:.2rem 0 .6rem">{subtitle}</p>'
-            f'<div class="setup-cards">{cards_html}</div>'
-        )
-
+    # ── Layer 2 — Unified Top-5 setup cards ──────────────────────────────────
     # Count action labels across ALL packets for summary bar
     now_n = sum(1 for p in packets if p.get("action_label") == "Actionable now")
     bo_n  = sum(1 for p in packets if p.get("action_label") == "Actionable on breakout")
     pb_n  = sum(1 for p in packets if p.get("action_label") == "Actionable on pullback")
 
     # Eligibility counts from snapshot
+    n_total = len(full_df) if not full_df.empty else 0
     n_eligible = 0
     n_excluded = 0
+    n_fresh = 0
+    n_extended = 0
     if not full_df.empty and "eligible" in full_df.columns:
-        n_eligible = int(full_df["eligible"].sum())
+        n_eligible = int(full_df["eligible"].astype(bool).sum())
         n_excluded = int((~full_df["eligible"].astype(bool)).sum())
+    if not full_df.empty and "is_fresh" in full_df.columns:
+        n_fresh = int(full_df["is_fresh"].astype(bool).sum())
+    if not full_df.empty and "is_extended" in full_df.columns:
+        n_extended = int(full_df["is_extended"].astype(bool).sum())
+    # Rejection counts by gate for the "fewer than 5" callout
+    # Build from snapshot for symbols in scored states that did NOT make the top list
+    gate_counts: dict[str, int] = {}
+    if not full_df.empty and "state" in full_df.columns:
+        scored_states_set = {"BASE", "ARMED", "TRIGGERED", "ACCEPTED"}
+        scored_mask = full_df["state"].isin(scored_states_set)
+        scored_excl = full_df[scored_mask].copy()
+
+        # Count by each rejection pathway for non-top-list candidates
+        if "eligible" in scored_excl.columns:
+            ineligible = scored_excl[~scored_excl["eligible"].astype(bool)]
+            gate_counts["ineligible (hard gate)"] = len(ineligible)
+
+        if "is_extended" in scored_excl.columns:
+            elig_mask = (
+                scored_excl["eligible"].astype(bool)
+                if "eligible" in scored_excl.columns
+                else pd.Series(True, index=scored_excl.index)
+            )
+            eligible_ext = scored_excl[elig_mask & scored_excl["is_extended"].astype(bool)]
+            gate_counts["extended (poor R/R)"] = len(eligible_ext)
+
+        if "is_fresh" in scored_excl.columns and "eligible" in scored_excl.columns:
+            ext_col = (
+                scored_excl["is_extended"].astype(bool)
+                if "is_extended" in scored_excl.columns
+                else pd.Series(False, index=scored_excl.index)
+            )
+            eligible_stale = scored_excl[
+                scored_excl["eligible"].astype(bool)
+                & ~scored_excl["is_fresh"].astype(bool)
+                & ~ext_col
+            ]
+            gate_counts["stale (aged out)"] = len(eligible_stale)
 
     summary_bar = (
-        f'<div style="font-size:.82rem;color:var(--fg2);margin-bottom:.6rem;'
-        f'display:flex;gap:1rem;flex-wrap:wrap">'
-        f'<span><span style="color:var(--green)">●</span> {now_n} actionable now</span>'
-        f'<span><span style="color:var(--blue)">●</span> {bo_n} on breakout</span>'
-        f'<span><span style="color:var(--amber)">●</span> {pb_n} on pullback</span>'
+        f'<div class="top5-header">'
+        f'<div style="display:flex;gap:1rem;flex-wrap:wrap;align-items:center">'
+        f'<span class="top5-count">'
+        f'<strong>{len(packets)}</strong> / 5 top setups today'
+        f'</span>'
         f'<span style="color:var(--fg3)">|</span>'
-        f'<span style="color:var(--fg3)">{n_eligible} eligible · {n_excluded} excluded by gates</span>'
+        f'<span style="font-size:.78rem;color:var(--fg3)">'
+        f'{n_total} universe &nbsp;·&nbsp; '
+        f'{n_eligible} eligible &nbsp;·&nbsp; '
+        f'{n_fresh} fresh &nbsp;·&nbsp; '
+        f'{n_extended} extended &nbsp;·&nbsp; '
+        f'{n_excluded} excluded by gates'
+        f'</span>'
+        f'</div>'
+        f'<div style="display:flex;gap:1rem;flex-wrap:wrap;margin-top:.25rem">'
+        f'<span style="font-size:.78rem"><span style="color:var(--green)">●</span>'
+        f' {now_n} actionable now</span>'
+        f'<span style="font-size:.78rem"><span style="color:var(--blue)">●</span>'
+        f' {bo_n} on breakout</span>'
+        f'<span style="font-size:.78rem"><span style="color:var(--amber)">●</span>'
+        f' {pb_n} on pullback</span>'
+        f'</div>'
         f'</div>'
     )
 
+    # Fewer-than-5 explanation callout
+    fewer5_html = ""
+    if len(packets) < 5:
+        n_shown = len(packets)
+        n_missing = 5 - n_shown
+        gate_lines = "".join(
+            f'<li>{reason}: <strong>{count}</strong></li>'
+            for reason, count in gate_counts.items()
+            if count > 0
+        )
+        gate_detail = f'<ul style="margin:.3rem 0 0 1rem;font-size:.78rem">{gate_lines}</ul>' if gate_lines else ""
+        fewer5_html = (
+            f'<div class="top5-warn">'
+            f'<strong>⚠ Only {n_shown} of 5 setup slots filled today.</strong>'
+            f' {n_missing} slot{"s" if n_missing != 1 else ""} empty — '
+            f'not enough names passed all filters simultaneously.'
+            f'{gate_detail}'
+            f'</div>'
+        )
+
     if packets:
-        bo_section = _cards_section_html(
-            breakout_packets,
-            "Breakout Candidates",
-            "Eligible, fresh, non-portfolio symbols at or near a pivot — primary long candidates.",
-        )
-        pb_section = _cards_section_html(
-            pullback_packets,
-            "Pullback / Re-entry Candidates",
-            "Constructive pullbacks in uptrends — add-on or re-entry candidates.",
-        )
-        other_section = _cards_section_html(
-            other_packets,
-            "Other Setups",
-            "Additional setups not classified as breakout or pullback.",
+        cards_html = "\n".join(
+            _render_card(p, rank=i + 1) for i, p in enumerate(packets)
         )
         cards_section = (
-            f'<h2>Top Decision-Ready Setups — {date_str}</h2>'
+            f'<h2>Top 5 Decision-Ready Setups — {date_str}</h2>'
             f'{summary_bar}'
-            f'{bo_section}'
-            f'{pb_section}'
-            f'{other_section}'
+            f'{fewer5_html}'
+            f'<div class="setup-cards">{cards_html}</div>'
         )
     else:
         cards_section = (
-            '<h2>Top Decision-Ready Setups</h2>'
+            f'<h2>Top 5 Decision-Ready Setups — {date_str}</h2>'
             f'{summary_bar}'
-            '<p style="color:var(--fg3)"><em>'
-            'No actionable setups today — either models are not yet fitted, '
-            'no symbols passed eligibility gates in BASE/ARMED/TRIGGERED/ACCEPTED state, '
-            'or all candidates are extended / low-score.'
-            '</em></p>'
+            f'<div class="top5-warn">'
+            f'<strong>⚠ No setups qualify today.</strong> '
+            f'No symbols passed all eligibility gates with fresh, non-extended '
+            f'status in BASE / ARMED / TRIGGERED / ACCEPTED state. '
+            f'Check the excluded table below for details.'
+            f'</div>'
         )
 
     # Excluded symbols section (compact, collapsible)
