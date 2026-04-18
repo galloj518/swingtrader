@@ -32,10 +32,17 @@ from swingtrader.dashboard.action import (
     add_portfolio_guidance_column,
     add_setup_classification_column,
 )
+from swingtrader.dashboard.buckets import add_bucket_column, bucket_counts
 from swingtrader.dashboard.charts import generate_charts_for_packet
+from swingtrader.dashboard.eligibility import add_eligibility_columns
 from swingtrader.dashboard.freshness import add_freshness_columns
 from swingtrader.dashboard.packet import build_packets
-from swingtrader.dashboard.selector import select_top_setups
+from swingtrader.dashboard.selector import (
+    select_breakout_candidates,
+    select_portfolio_holdings,
+    select_pullback_candidates,
+    select_top_setups,
+)
 from swingtrader.journal.schema import auto_update_open_trades
 from swingtrader.models.estimators import ModelBundle
 from swingtrader.models.train import train_pipeline
@@ -128,6 +135,22 @@ class ScoreRunner:
             ranked_snapshot = add_setup_classification_column(ranked_snapshot)
             ranked_snapshot = add_portfolio_guidance_column(ranked_snapshot)
 
+            # Step 6b — Hard eligibility gates + setup bucket assignment
+            ranked_snapshot = add_eligibility_columns(ranked_snapshot)
+            ranked_snapshot = add_bucket_column(ranked_snapshot)
+
+            buckets = bucket_counts(ranked_snapshot)
+            log.info(
+                "Bucket counts — breakout: %d  pullback: %d  portfolio: %d  "
+                "extended: %d  excluded: %d",
+                buckets.get("breakout_long", 0),
+                buckets.get("pullback_long", 0),
+                buckets.get("portfolio_hold", 0),
+                buckets.get("extended_leader", 0),
+                buckets.get("excluded", 0),
+            )
+            summary["bucket_counts"] = buckets
+
             # Step 7 — Persist scores
             scores_path = self._scores_dir / f"{self.as_of.date()}.parquet"
             scores_path.parent.mkdir(parents=True, exist_ok=True)
@@ -147,9 +170,18 @@ class ScoreRunner:
             report_dir = REPO_ROOT / "docs" / "reports" / "daily" / str(self.as_of.date())
             report_dir.mkdir(parents=True, exist_ok=True)
 
+            # Select breakout + pullback candidates separately, then combine
+            breakout_df = select_breakout_candidates(ranked_snapshot)
+            pullback_df = select_pullback_candidates(ranked_snapshot)
+
+            # Combine for packet building: breakout first, then pullback fill
+            # (select_top_setups does the same merge but we track counts here)
             top_df = select_top_setups(ranked_snapshot)
             packets = build_packets(top_df)
+
             summary["n_top_setups"] = len(packets)
+            summary["n_breakout"] = len(breakout_df)
+            summary["n_pullback"] = len(pullback_df)
 
             # Generate charts (best-effort; fails silently per symbol)
             packets_with_charts: list[dict] = []
@@ -181,17 +213,15 @@ class ScoreRunner:
 
             # Machine-readable JSON artifacts
             try:
-                portfolio_df = (
-                    ranked_snapshot[ranked_snapshot["is_portfolio"].astype(bool)].copy()
-                    if "is_portfolio" in ranked_snapshot.columns
-                    else pd.DataFrame()
-                )
+                portfolio_df = select_portfolio_holdings(ranked_snapshot)
                 artifact_paths = write_artifacts(
                     packets_with_charts,
                     portfolio_df,
                     ranked_snapshot,
                     self.as_of,
                     report_dir,
+                    breakout_df=breakout_df,
+                    pullback_df=pullback_df,
                 )
                 summary["artifacts_summary"] = str(artifact_paths.get("summary", ""))
             except Exception as exc:

@@ -162,6 +162,12 @@ def build_packet(row: pd.Series) -> dict:
         "swing_low_dist_atr": _num("swing_low_dist_atr", 1),
         "regime_spy_trend": _num("regime_spy_trend", 0),
 
+        # ── Eligibility & bucket (filled in after eligibility pass) ─────────────
+        "eligible": bool(row.get("eligible", True)),   # True = passes all hard gates
+        "rejection_reasons": _s(row.get("rejection_reasons", "")),
+        "eligibility_warnings": _s(row.get("eligibility_warnings", "")),
+        "bucket": _s(row.get("bucket", "")),
+
         # ── Narrative ─────────────────────────────────────────────────────────
         "narrative": narrative,
 

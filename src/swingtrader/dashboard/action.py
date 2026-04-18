@@ -47,6 +47,7 @@ ACTION_BREAKOUT = "Actionable on breakout"
 ACTION_PULLBACK = "Actionable on pullback"
 ACTION_EXTENDED = "Extended, wait"
 ACTION_AVOID    = "Avoid / low quality"
+ACTION_PORTFOLIO = "Portfolio hold"   # for is_portfolio symbols in action routing
 
 # Ordered list (determines priority in the CSS / table display)
 ALL_LABELS = [ACTION_NOW, ACTION_BREAKOUT, ACTION_PULLBACK, ACTION_EXTENDED, ACTION_AVOID]
@@ -68,6 +69,11 @@ NOW_MIN_SCORE: float = 0.30
 # Fresh trigger window (days_in_state ≤ this → fresh for TRIGGERED/ACCEPTED).
 FRESH_TRIGGER_DAYS: int = 8
 
+# In a confirmed market downtrend (regime_spy_trend < 0), the score threshold
+# for non-AVOID is raised: weaker setups are suppressed.
+DOWNTREND_SCORE_PENALTY: float = 0.08   # effective MIN_SCORE += this in downtrend
+DOWNTREND_NOW_PENALTY: float = 0.05     # effective NOW_MIN_SCORE += this in downtrend
+
 
 def _f(row: pd.Series, key: str) -> float:
     try:
@@ -77,6 +83,21 @@ def _f(row: pd.Series, key: str) -> float:
         return math.nan
 
 
+def _regime_adjusted_thresholds(row: pd.Series) -> tuple[float, float]:
+    """Return (min_score, now_min_score) adjusted for market regime.
+
+    In a confirmed market downtrend, score thresholds are raised so that
+    weaker setups that would normally squeak through are suppressed.
+    """
+    regime_trend = _f(row, "regime_spy_trend")
+    min_score = MIN_SCORE
+    now_min_score = NOW_MIN_SCORE
+    if math.isfinite(regime_trend) and regime_trend < 0:
+        min_score += DOWNTREND_SCORE_PENALTY
+        now_min_score += DOWNTREND_NOW_PENALTY
+    return min_score, now_min_score
+
+
 def assign_action(row: pd.Series) -> str:
     """Return one action label for a single snapshot row.
 
@@ -84,11 +105,12 @@ def assign_action(row: pd.Series) -> str:
     ----------
     row : Series from the scored snapshot DataFrame.
           Expected fields: state, composite_score, failure_risk, dist_to_pivot_atr,
-          days_in_state, is_extended (optional), is_fresh (optional).
+          days_in_state, is_extended (optional), is_fresh (optional),
+          regime_spy_trend (optional), is_portfolio (optional).
 
     Returns
     -------
-    One of the five ACTION_* constants.
+    One of the ACTION_* constants.
     """
     state = str(row.get("state", "NONE"))
     score = _f(row, "composite_score")
@@ -96,6 +118,11 @@ def assign_action(row: pd.Series) -> str:
     dist = _f(row, "dist_to_pivot_atr")
     days = int(row.get("days_in_state", 0) or 0)
     is_extended = bool(row.get("is_extended", dist > EXT_ATR if math.isfinite(dist) else False))
+    is_non_equity = bool(row.get("is_non_equity", False))
+
+    # ── 0. Non-equity: always portfolio/informational ─────────────────────────
+    if is_non_equity:
+        return ACTION_PORTFOLIO
 
     # ── 1. Extended states (before avoid so LATE → EXTENDED not AVOID) ───────
     if state in {"LATE", "EXHAUSTED"}:
@@ -104,7 +131,11 @@ def assign_action(row: pd.Series) -> str:
     # ── 2. Avoid ──────────────────────────────────────────────────────────────
     if state not in SCORED_STATES:
         return ACTION_AVOID
-    if math.isfinite(score) and score < MIN_SCORE:
+
+    # Regime-adjusted thresholds: stricter scoring in downtrend markets
+    min_score, now_min_score = _regime_adjusted_thresholds(row)
+
+    if math.isfinite(score) and score < min_score:
         return ACTION_AVOID
     # High failure risk + weak score
     if math.isfinite(failure) and math.isfinite(score) and failure > MAX_FAILURE_RISK and score < 0.35:
@@ -114,16 +145,21 @@ def assign_action(row: pd.Series) -> str:
     if is_extended:
         return ACTION_EXTENDED
 
-    # ── 3. Actionable now (TRIGGERED / ACCEPTED, fresh) ───────────────────────
+    # ── 4. Portfolio holdings: route to portfolio action, not entry action ────
+    # Portfolio labels are handled separately; action_label is informational.
+    # Still use entry labels here so the dashboard can show them in portfolio
+    # section, but the bucket system ensures they don't enter fresh entry lists.
+
+    # ── 5. Actionable now (TRIGGERED / ACCEPTED, fresh) ───────────────────────
     if state in {"TRIGGERED", "ACCEPTED"}:
         fresh = days <= FRESH_TRIGGER_DAYS
-        score_ok = not math.isfinite(score) or score >= NOW_MIN_SCORE
+        score_ok = not math.isfinite(score) or score >= now_min_score
         if fresh and score_ok:
             return ACTION_NOW
-        # Triggered but not fresh, or not re-test-able: pullback wait
+        # Triggered but not fresh, or score too low: pullback wait
         return ACTION_PULLBACK
 
-    # ── 4. Actionable on breakout (ARMED / BASE near pivot) ───────────────────
+    # ── 6. Actionable on breakout (ARMED / BASE near pivot) ───────────────────
     if state in {"ARMED", "BASE"}:
         near_pivot = math.isfinite(dist) and abs(dist) <= ARM_DIST_ATR
         if near_pivot:
@@ -260,7 +296,6 @@ def portfolio_guidance(row: pd.Series) -> str:
     state = str(row.get("state", "NONE"))
     days = int(row.get("days_in_state", 0) or 0)
     dist = _f(row, "dist_to_pivot_atr")
-    close = _f(row, "close")
     pivot = _f(row, "pivot")
     atr = _f(row, "atr14")
     failure_risk = _f(row, "failure_risk")
@@ -343,21 +378,24 @@ def add_portfolio_guidance_column(df: pd.DataFrame) -> pd.DataFrame:
 
 
 __all__ = [
-    "ACTION_NOW",
-    "ACTION_BREAKOUT",
-    "ACTION_PULLBACK",
-    "ACTION_EXTENDED",
     "ACTION_AVOID",
+    "ACTION_BREAKOUT",
+    "ACTION_EXTENDED",
+    "ACTION_NOW",
+    "ACTION_PORTFOLIO",
+    "ACTION_PULLBACK",
     "ALL_LABELS",
-    "MIN_SCORE",
-    "MAX_FAILURE_RISK",
     "ARM_DIST_ATR",
-    "NOW_MIN_SCORE",
+    "DOWNTREND_NOW_PENALTY",
+    "DOWNTREND_SCORE_PENALTY",
     "FRESH_TRIGGER_DAYS",
-    "assign_action",
+    "MAX_FAILURE_RISK",
+    "MIN_SCORE",
+    "NOW_MIN_SCORE",
     "add_action_column",
-    "classify_setup",
-    "add_setup_classification_column",
-    "portfolio_guidance",
     "add_portfolio_guidance_column",
+    "add_setup_classification_column",
+    "assign_action",
+    "classify_setup",
+    "portfolio_guidance",
 ]

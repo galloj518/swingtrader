@@ -3,10 +3,15 @@
 Writes stable structured outputs to an artifacts/ subdirectory alongside the
 HTML dashboard. These files are designed for downstream tooling and AI review:
 
-  artifacts/dashboard_summary.json  — top-level run metadata and regime snapshot
-  artifacts/top_setups.json         — array of sanitised, section-labelled packets
-  artifacts/portfolio_review.json   — portfolio-only review records
-  artifacts/{SYM}_packet.json       — full raw packet per top setup
+  artifacts/dashboard_summary.json    — top-level run metadata and regime snapshot
+  artifacts/top_setups.json           — combined top-N packets (breakout + pullback)
+  artifacts/breakout_top_setups.json  — breakout-bucket top candidates only
+  artifacts/pullback_top_setups.json  — pullback-bucket top candidates only
+  artifacts/extended_leaders.json     — extended-leader symbols (informational)
+  artifacts/portfolio_review.json     — portfolio-only review records
+  artifacts/eligibility_results.json  — eligibility gate results for all scored symbols
+  artifacts/bucket_assignments.json   — bucket membership for all scored symbols
+  artifacts/{SYM}_packet.json         — full raw packet per top setup
 
 All values are JSON-serializable: NaN/inf → null, "—" sentinel → null,
 floats rounded to 4 dp where numeric, strings preserved otherwise.
@@ -15,13 +20,16 @@ Usage::
 
     from swingtrader.reports.artifacts import write_artifacts
 
-    paths = write_artifacts(packets, portfolio_df, snapshot_df, as_of, output_dir)
+    paths = write_artifacts(
+        packets, portfolio_df, snapshot_df, as_of, output_dir,
+        breakout_df=breakout_df, pullback_df=pullback_df,
+    )
 """
 from __future__ import annotations
 
+import datetime
 import json
 import math
-import datetime
 from pathlib import Path
 
 import pandas as pd
@@ -281,36 +289,49 @@ def _section_packet(pkt: dict, as_of_str: str) -> dict:
 
 # ── Public API ────────────────────────────────────────────────────────────────
 
+def _df_to_simple_records(df: pd.DataFrame, cols: list[str]) -> list[dict]:
+    """Convert a DataFrame subset to a list of cleaned dicts."""
+    if df.empty:
+        return []
+    avail = [c for c in cols if c in df.columns]
+    records = []
+    for _, row in df[avail].iterrows():
+        records.append({c: _clean_value(row.get(c)) for c in avail})
+    return records
+
+
 def write_artifacts(
     packets: list[dict],
     portfolio_df: pd.DataFrame,
     snapshot_df: pd.DataFrame,
     as_of: pd.Timestamp,
     output_dir: Path,
+    *,
+    breakout_df: pd.DataFrame | None = None,
+    pullback_df: pd.DataFrame | None = None,
 ) -> dict:
     """Write all JSON artifacts for this run.
 
     Parameters
     ----------
-    packets      : list of packet dicts from dashboard.packet.build_packets()
-                   for the top setups. May include ai_note if enriched.
-    portfolio_df : subset of snapshot_df where is_portfolio == True.
-    snapshot_df  : full scored + freshness + action-labelled snapshot DataFrame.
+    packets      : list of packet dicts (combined top setups).
+    portfolio_df : portfolio holdings DataFrame.
+    snapshot_df  : full ranked + eligibility + bucket snapshot.
     as_of        : report date.
-    output_dir   : same directory as dashboard.html
-                   (e.g. docs/reports/daily/2026-04-17/).
+    output_dir   : same directory as dashboard.html.
+    breakout_df  : breakout-bucket top candidates (optional).
+    pullback_df  : pullback-bucket top candidates (optional).
 
     Returns
     -------
-    dict of {"summary": str, "top_setups": str, "portfolio": str,
-             "per_symbol": {sym: str, ...}} — all values are absolute path strings.
+    dict mapping artifact names to absolute path strings.
     """
     output_dir = Path(output_dir)
     artifacts_dir = output_dir / "artifacts"
     artifacts_dir.mkdir(parents=True, exist_ok=True)
 
     as_of_str = str(as_of.date())
-    generated_at = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    generated_at = datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
 
     # ── 1. Top setups ─────────────────────────────────────────────────────────
     top_setups_list = [_section_packet(p, as_of_str) for p in packets]
@@ -390,6 +411,88 @@ def write_artifacts(
 
     top_symbols = [str(p.get("symbol", "?")) for p in packets]
 
+    # ── 5. Breakout top setups ────────────────────────────────────────────────
+    breakout_list: list[dict] = []
+    breakout_path = artifacts_dir / "breakout_top_setups.json"
+    if breakout_df is not None and not breakout_df.empty:
+        breakout_sym_col = "user_symbol" if "user_symbol" in breakout_df.columns else "symbol"
+        breakout_syms = set(breakout_df[breakout_sym_col].tolist() if breakout_sym_col in breakout_df.columns else [])
+        breakout_list = [p for p in top_setups_list if p.get("symbol") in breakout_syms]
+    breakout_path.write_text(
+        json.dumps(breakout_list, indent=2, default=str),
+        encoding="utf-8",
+    )
+    log.info("Artifact written → %s (%d setups)", breakout_path, len(breakout_list))
+
+    # ── 6. Pullback top setups ────────────────────────────────────────────────
+    pullback_list: list[dict] = []
+    pullback_path = artifacts_dir / "pullback_top_setups.json"
+    if pullback_df is not None and not pullback_df.empty:
+        pullback_sym_col = "user_symbol" if "user_symbol" in pullback_df.columns else "symbol"
+        pullback_syms = set(pullback_df[pullback_sym_col].tolist() if pullback_sym_col in pullback_df.columns else [])
+        pullback_list = [p for p in top_setups_list if p.get("symbol") in pullback_syms]
+    pullback_path.write_text(
+        json.dumps(pullback_list, indent=2, default=str),
+        encoding="utf-8",
+    )
+    log.info("Artifact written → %s (%d setups)", pullback_path, len(pullback_list))
+
+    # ── 7. Extended leaders ───────────────────────────────────────────────────
+    extended_path = artifacts_dir / "extended_leaders.json"
+    extended_cols = [
+        "user_symbol", "symbol", "state", "bucket", "composite_score",
+        "percentile_rank", "dist_to_pivot_atr", "days_in_state",
+        "action_label", "is_extended", "close", "pivot",
+    ]
+    extended_records: list[dict] = []
+    if not snapshot_df.empty and "bucket" in snapshot_df.columns:
+        ext_df = snapshot_df[snapshot_df["bucket"] == "extended_leader"]
+        extended_records = _df_to_simple_records(ext_df, extended_cols)
+    extended_path.write_text(
+        json.dumps(extended_records, indent=2, default=str),
+        encoding="utf-8",
+    )
+    log.info("Artifact written → %s (%d leaders)", extended_path, len(extended_records))
+
+    # ── 8. Eligibility results ────────────────────────────────────────────────
+    elig_path = artifacts_dir / "eligibility_results.json"
+    elig_cols = [
+        "user_symbol", "symbol", "state", "eligible",
+        "rejection_reasons", "eligibility_warnings",
+        "composite_score", "failure_risk", "daily_rs_63",
+        "close_vs_sma200", "close_vs_sma50", "regime_spy_trend",
+    ]
+    elig_records: list[dict] = []
+    if not snapshot_df.empty and "eligible" in snapshot_df.columns:
+        elig_records = _df_to_simple_records(snapshot_df, elig_cols)
+    elig_path.write_text(
+        json.dumps(elig_records, indent=2, default=str),
+        encoding="utf-8",
+    )
+    log.info("Artifact written → %s (%d symbols)", elig_path, len(elig_records))
+
+    # ── 9. Bucket assignments ─────────────────────────────────────────────────
+    bucket_path = artifacts_dir / "bucket_assignments.json"
+    bucket_cols = [
+        "user_symbol", "symbol", "state", "bucket",
+        "action_label", "is_fresh", "is_portfolio", "is_extended",
+        "composite_score", "percentile_rank",
+    ]
+    bucket_records: list[dict] = []
+    if not snapshot_df.empty and "bucket" in snapshot_df.columns:
+        bucket_records = _df_to_simple_records(snapshot_df, bucket_cols)
+    bucket_path.write_text(
+        json.dumps(bucket_records, indent=2, default=str),
+        encoding="utf-8",
+    )
+    log.info("Artifact written → %s (%d symbols)", bucket_path, len(bucket_records))
+
+    # ── 10. Dashboard summary ─────────────────────────────────────────────────
+    # Enrich bucket counts from snapshot
+    bucket_summary: dict[str, int] = {}
+    if not snapshot_df.empty and "bucket" in snapshot_df.columns:
+        bucket_summary = snapshot_df["bucket"].value_counts().to_dict()
+
     summary_obj = {
         "as_of": as_of_str,
         "generated_at": generated_at,
@@ -398,11 +501,20 @@ def write_artifacts(
         "n_actionable_now": n_actionable,
         "n_breakout": n_breakout,
         "n_pullback": n_pullback,
+        "n_breakout_bucket": len(breakout_list),
+        "n_pullback_bucket": len(pullback_list),
+        "n_excluded": int(bucket_summary.get("excluded", 0)),
         "regime": _extract_regime(snapshot_df),
+        "bucket_counts": {k: int(v) for k, v in bucket_summary.items()},
         "top_symbols": top_symbols,
         "artifact_paths": {
             "top_setups": "artifacts/top_setups.json",
+            "breakout_top_setups": "artifacts/breakout_top_setups.json",
+            "pullback_top_setups": "artifacts/pullback_top_setups.json",
+            "extended_leaders": "artifacts/extended_leaders.json",
             "portfolio_review": "artifacts/portfolio_review.json",
+            "eligibility_results": "artifacts/eligibility_results.json",
+            "bucket_assignments": "artifacts/bucket_assignments.json",
         },
     }
 
@@ -417,5 +529,10 @@ def write_artifacts(
         "summary": str(summary_path),
         "top_setups": str(top_setups_path),
         "portfolio": str(portfolio_path),
+        "breakout": str(breakout_path),
+        "pullback": str(pullback_path),
+        "extended": str(extended_path),
+        "eligibility": str(elig_path),
+        "buckets": str(bucket_path),
         "per_symbol": per_symbol_paths,
     }

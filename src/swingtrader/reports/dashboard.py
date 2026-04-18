@@ -1037,35 +1037,109 @@ def render_dashboard(
     regime_html = _regime_html(full_df)
     portfolio_html = _portfolio_strip_html(portfolio_df)
 
-    # Layer 2 — Top setup cards
+    # Layer 2 — Top setup cards (bucketed into breakout vs pullback sections)
+    breakout_packets = [p for p in packets if p.get("bucket") == "breakout_long"]
+    pullback_packets  = [p for p in packets if p.get("bucket") == "pullback_long"]
+    other_packets     = [p for p in packets if p.get("bucket") not in ("breakout_long", "pullback_long", "portfolio_hold")]
+
+    def _cards_section_html(section_packets: list[dict], title: str, subtitle: str) -> str:
+        if not section_packets:
+            return ""
+        cards_html = "\n".join(_render_card(p) for p in section_packets)
+        return (
+            f'<h2>{title}</h2>'
+            f'<p style="font-size:.82rem;color:var(--fg3);margin:.2rem 0 .6rem">{subtitle}</p>'
+            f'<div class="setup-cards">{cards_html}</div>'
+        )
+
+    # Count action labels across ALL packets for summary bar
+    now_n = sum(1 for p in packets if p.get("action_label") == "Actionable now")
+    bo_n  = sum(1 for p in packets if p.get("action_label") == "Actionable on breakout")
+    pb_n  = sum(1 for p in packets if p.get("action_label") == "Actionable on pullback")
+
+    # Eligibility counts from snapshot
+    n_eligible = 0
+    n_excluded = 0
+    if not full_df.empty and "eligible" in full_df.columns:
+        n_eligible = int(full_df["eligible"].sum())
+        n_excluded = int((~full_df["eligible"].astype(bool)).sum())
+
+    summary_bar = (
+        f'<div style="font-size:.82rem;color:var(--fg2);margin-bottom:.6rem;'
+        f'display:flex;gap:1rem;flex-wrap:wrap">'
+        f'<span><span style="color:var(--green)">●</span> {now_n} actionable now</span>'
+        f'<span><span style="color:var(--blue)">●</span> {bo_n} on breakout</span>'
+        f'<span><span style="color:var(--amber)">●</span> {pb_n} on pullback</span>'
+        f'<span style="color:var(--fg3)">|</span>'
+        f'<span style="color:var(--fg3)">{n_eligible} eligible · {n_excluded} excluded by gates</span>'
+        f'</div>'
+    )
+
     if packets:
-        cards_html = "\n".join(_render_card(p) for p in packets)
-        now_n = sum(1 for p in packets if p.get("action_label") == "Actionable now")
-        bo_n  = sum(1 for p in packets if p.get("action_label") == "Actionable on breakout")
-        pb_n  = sum(1 for p in packets if p.get("action_label") == "Actionable on pullback")
-        summary_bar = (
-            f'<div style="font-size:.82rem;color:var(--fg2);margin-bottom:.6rem;'
-            f'display:flex;gap:1rem;flex-wrap:wrap">'
-            f'<span><span style="color:var(--green)">●</span> {now_n} actionable now</span>'
-            f'<span><span style="color:var(--blue)">●</span> {bo_n} on breakout</span>'
-            f'<span><span style="color:var(--amber)">●</span> {pb_n} on pullback</span>'
-            f'<span style="margin-left:auto;color:var(--fg3)">Top {len(packets)} of universe</span>'
-            f'</div>'
+        bo_section = _cards_section_html(
+            breakout_packets,
+            "Breakout Candidates",
+            "Eligible, fresh, non-portfolio symbols at or near a pivot — primary long candidates.",
+        )
+        pb_section = _cards_section_html(
+            pullback_packets,
+            "Pullback / Re-entry Candidates",
+            "Constructive pullbacks in uptrends — add-on or re-entry candidates.",
+        )
+        other_section = _cards_section_html(
+            other_packets,
+            "Other Setups",
+            "Additional setups not classified as breakout or pullback.",
         )
         cards_section = (
-            f'<h2>Top Actionable Setups</h2>'
+            f'<h2>Top Decision-Ready Setups — {date_str}</h2>'
             f'{summary_bar}'
-            f'<div class="setup-cards">{cards_html}</div>'
+            f'{bo_section}'
+            f'{pb_section}'
+            f'{other_section}'
         )
     else:
         cards_section = (
-            '<h2>Top Actionable Setups</h2>'
+            '<h2>Top Decision-Ready Setups</h2>'
+            f'{summary_bar}'
             '<p style="color:var(--fg3)"><em>'
             'No actionable setups today — either models are not yet fitted, '
-            'no symbols are in BASE/ARMED/TRIGGERED/ACCEPTED state, '
+            'no symbols passed eligibility gates in BASE/ARMED/TRIGGERED/ACCEPTED state, '
             'or all candidates are extended / low-score.'
             '</em></p>'
         )
+
+    # Excluded symbols section (compact, collapsible)
+    excluded_section = ""
+    if not full_df.empty and "eligible" in full_df.columns and "rejection_reasons" in full_df.columns:
+        excl_df = full_df[~full_df["eligible"].astype(bool) & full_df["state"].isin(
+            {"BASE", "ARMED", "TRIGGERED", "ACCEPTED"}
+        )].copy()
+        if not excl_df.empty:
+            sym_col = "user_symbol" if "user_symbol" in excl_df.columns else "symbol"
+            excl_rows = ""
+            for _, row in excl_df.iterrows():
+                sym = str(row.get(sym_col, "—"))
+                state = str(row.get("state", "—"))
+                reasons = str(row.get("rejection_reasons", ""))
+                score = row.get("composite_score", math.nan)
+                score_str = f"{float(score):.3f}" if (isinstance(score, (int, float)) and math.isfinite(float(score) if isinstance(score, str) else score)) else "—"
+                excl_rows += (
+                    f'<tr><td>{sym}</td><td class="s-{state}">{state}</td>'
+                    f'<td style="color:var(--red);font-size:.75rem">{reasons}</td>'
+                    f'<td>{score_str}</td></tr>'
+                )
+            excluded_section = (
+                f'<details style="margin-top:1rem">'
+                f'<summary style="color:var(--fg3);font-size:.85rem">'
+                f'Excluded by eligibility gates — {len(excl_df)} symbols in scored states'
+                f'</summary>'
+                f'<div class="details-body">'
+                f'<table><tr>'
+                f'<th>Symbol</th><th>State</th><th>Rejection Reasons</th><th>Score</th>'
+                f'</tr>{excl_rows}</table>'
+                f'</div></details>'
+            )
 
     # Layer 3 — Full tables (collapsible)
     scored_states = ["ARMED", "TRIGGERED", "ACCEPTED", "BASE"]
@@ -1148,6 +1222,8 @@ def render_dashboard(
 {portfolio_html}
 
 {cards_section}
+
+{excluded_section}
 
 <h2>Full Research Tables</h2>
 <p style="font-size:.82rem;color:var(--fg3);margin-bottom:.5rem">
