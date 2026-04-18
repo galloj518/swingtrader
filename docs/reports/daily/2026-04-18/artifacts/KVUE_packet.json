@@ -1,0 +1,274 @@
+{
+  "symbol": "KVUE",
+  "provider_symbol": "KVUE",
+  "state": "BASE",
+  "groups": "custom_watchlist",
+  "is_portfolio": false,
+  "is_watchlist": true,
+  "action_label": "Actionable on pullback",
+  "setup_classification": "Building base",
+  "portfolio_guidance": "Hold \u2014 building base. Defend on close below 18.83.",
+  "freshness_label": "fresh",
+  "is_fresh": true,
+  "is_extended": false,
+  "is_stale_confirmed": false,
+  "composite_score": null,
+  "setup_score": null,
+  "trade_score": null,
+  "failure_risk": 0.68,
+  "percentile_rank": null,
+  "close": 17.61,
+  "pivot": 19.18,
+  "atr14": 0.35,
+  "dist_to_pivot_atr": -4.5,
+  "base_length": 114,
+  "days_in_state": 27,
+  "entry_lo": 19.18,
+  "entry_hi": 19.21,
+  "stop": 18.83,
+  "t1": 19.87,
+  "t2": 20.39,
+  "t3": 20.91,
+  "s1": 18.84,
+  "s2": 18.83,
+  "s3": 18.49,
+  "r1": 19.18,
+  "r2": 19.87,
+  "r3": 20.39,
+  "risk_reward_t1": "1.9x",
+  "atr_compression_pct": 35.0,
+  "volume_dryup": 0.5,
+  "daily_rs_63": 0.003,
+  "rs_class": "neutral",
+  "close_vs_sma50": -0.017,
+  "ma_slope_direction": "falling",
+  "ytd_dist_atr": -0.2,
+  "swing_low_dist_atr": 1.2,
+  "regime_spy_trend": 1.0,
+  "narrative": {
+    "setup": "KVUE is building a 114-bar flat base (Day 27 in BASE state). Pivot resistance: $19.18. ATR compression is moderate (35th pct). Volume drying up.",
+    "why": "KVUE is tracking SPY closely over 63 days. Score: N/A (models not yet fitted), failure risk 0.68. Weekly: data unavailable. Market regime: SPY trend: 1.0. VIX: unavailable.",
+    "entry": "Wait for pullback to $19.18\u2013$19.21 range before entering. Avoid chasing current levels.",
+    "risk": "Invalidation: close below $18.83 (pivot minus 0.35 ATR). Violates base structure. Daily stop loss: $18.66.",
+    "targets": "T1: $19.87 (+12.8%) (R/R 1.9x from entry mid). T2: $20.39 (+15.8%). T3: $20.91 (+18.7%). Partial at T1 recommended.",
+    "ma_context": "Close is below the 50-day MA (0.9 ATR below) \u2014 MA trend is at risk of falling. Close above 17.91 needed to stop MA from declining.",
+    "avwap_context": "Price is near YTD AVWAP (-0.2 ATR) \u2014 neutral vs year-open cost basis.",
+    "verdict": "Setup exists but extended from optimal entry. Wait for pullback to $19.18\u2013$19.21. Stop: $18.83.",
+    "trade_plan": "Entry trigger: close/break above $19.21 on volume. Pullback entry: $19.18\u2013$19.21. Stop/invalidation: $18.83. T1: $19.87 | T2: $20.39 | T3: $20.91. R/R to T1: 1.9x from entry mid."
+  },
+  "context": {
+    "ma_table": [
+      {
+        "name": "SMA5",
+        "value": 17.4,
+        "pct_dist": 1.18,
+        "slope": "rising",
+        "bias": "Stays rising if close > 17.26"
+      },
+      {
+        "name": "SMA10",
+        "value": 17.32,
+        "pct_dist": 1.67,
+        "slope": "rising",
+        "bias": "Stays rising if close > 17.30"
+      },
+      {
+        "name": "SMA20",
+        "value": 17.37,
+        "pct_dist": 1.35,
+        "slope": "falling",
+        "bias": "Stays falling unless close > 17.40"
+      },
+      {
+        "name": "SMA50",
+        "value": 17.91,
+        "pct_dist": -1.71,
+        "slope": "flat",
+        "bias": "Flat; rises if close > 17.86"
+      },
+      {
+        "name": "SMA200",
+        "value": 17.83,
+        "pct_dist": -1.27,
+        "slope": "falling",
+        "bias": "Stays falling unless close > 20.21"
+      },
+      {
+        "name": "EMA20",
+        "value": 17.44,
+        "pct_dist": 0.95,
+        "slope": "rising",
+        "bias": "Stays rising if close > 17.44"
+      }
+    ],
+    "avwap_table": [
+      {
+        "anchor": "YTD",
+        "avwap": 17.67,
+        "pct_dist": -0.36,
+        "dist_atr": -0.18,
+        "role": "testing",
+        "status": "Testing",
+        "reclaim": false
+      },
+      {
+        "anchor": "Swing Low",
+        "avwap": 17.18,
+        "pct_dist": 2.44,
+        "dist_atr": 1.237,
+        "role": "support",
+        "status": "Accepted above",
+        "reclaim": true
+      },
+      {
+        "anchor": "Swing High",
+        "avwap": 17.83,
+        "pct_dist": -1.26,
+        "dist_atr": -0.64,
+        "role": "resistance",
+        "status": "Accepted below",
+        "reclaim": null
+      },
+      {
+        "anchor": "Breakout Day",
+        "avwap": 18.09,
+        "pct_dist": -2.74,
+        "dist_atr": -1.393,
+        "role": "resistance",
+        "status": "Accepted below",
+        "reclaim": false
+      }
+    ],
+    "volume_block": {
+      "volume_dryup_pct": 51.3,
+      "atr_compression_pct": 34.7,
+      "range_compression": 0.806,
+      "vol_contraction_5_20": 0.67,
+      "vol_contraction_10_50": 0.372,
+      "dollar_volume_log": 8.462,
+      "breakout_thrust_atr": null,
+      "weekly_vol_dryup": 0.44,
+      "weekly_atr_compression": 0.0,
+      "down_close_ratio": 0.45,
+      "relative_vol_label": "Low",
+      "compression_label": "Moderate - 35th percentile"
+    },
+    "confluence": {
+      "nearby_count": 1,
+      "nearby_levels": [
+        {
+          "name": "AVWAP YTD",
+          "value": 17.67,
+          "dist_atr": -0.173
+        }
+      ],
+      "cluster_role": "scattered"
+    },
+    "checklist": [
+      {
+        "item": "Higher timeframe trend",
+        "result": "pass",
+        "reason": "SPY above 200SMA"
+      },
+      {
+        "item": "Weekly trend constructive",
+        "result": "fail",
+        "reason": "Price 1.9% below 10-week WMA"
+      },
+      {
+        "item": "Daily structure",
+        "result": "neutral",
+        "reason": "State=BASE but dist_to_pivot=-4.53 ATR (out of -2 to +0.5 range)"
+      },
+      {
+        "item": "Pivot clarity",
+        "result": "pass",
+        "reason": "2 resistance touches at pivot"
+      },
+      {
+        "item": "Compression present",
+        "result": "pass",
+        "reason": "ATR at 35th percentile (tight)"
+      },
+      {
+        "item": "Volume dry-up",
+        "result": "pass",
+        "reason": "Volume dry-up score: 0.51"
+      },
+      {
+        "item": "Relative strength",
+        "result": "pass",
+        "reason": "RS-63: +0.3% vs SPY"
+      },
+      {
+        "item": "YTD AVWAP acceptance",
+        "result": "neutral",
+        "reason": "Testing YTD AVWAP (-0.18 ATR)"
+      },
+      {
+        "item": "MA alignment (above SMA50)",
+        "result": "neutral",
+        "reason": "Price near SMA50 (-1.7%)"
+      },
+      {
+        "item": "Not overextended",
+        "result": "pass",
+        "reason": "-4.53 ATR from pivot (within 3 ATR)"
+      },
+      {
+        "item": "Failure risk acceptable",
+        "result": "fail",
+        "reason": "Failure risk: 68% (elevated)"
+      },
+      {
+        "item": "Market regime supportive",
+        "result": "pass",
+        "reason": "SPY trend score: 1.00 (positive)"
+      },
+      {
+        "item": "R/R acceptable",
+        "result": "pass",
+        "reason": "Risk/reward to T1: 1.86:1"
+      },
+      {
+        "item": "Base freshness",
+        "result": "pass",
+        "reason": "27 days in BASE (max 60)"
+      },
+      {
+        "item": "Score quality",
+        "result": "neutral",
+        "reason": "Composite score unavailable"
+      }
+    ],
+    "score_drivers": {
+      "bullish_signals": [
+        "Volume dry-up score 0.51 - demand absorbed",
+        "2x resistance touches at pivot - tested level"
+      ],
+      "bearish_signals": [
+        "Pivot flatness 0.14 - loose structure",
+        "Failure risk 68% - elevated model estimate"
+      ],
+      "model_based": [
+        "composite_score",
+        "setup_score",
+        "trade_score",
+        "failure_risk",
+        "percentile_rank"
+      ],
+      "rule_based": [
+        "action_label",
+        "freshness_label",
+        "setup_classification",
+        "portfolio_guidance",
+        "state"
+      ],
+      "why_selected": "Selected because: action=Actionable on pullback; Volume dry-up score 0.51 - demand absorbed; 2x resistance touches at pivot - tested level."
+    }
+  },
+  "ai_note": "[KVUE \u2014 Rule-based note]\n\nSetup\nKVUE is building a 114-bar flat base (Day 27 in BASE state). Pivot resistance: $19.18. ATR compression is moderate (35th pct). Volume drying up.\n\nWhy It Matters Now\nKVUE is tracking SPY closely over 63 days. Score: N/A (models not yet fitted), failure risk 0.68. Weekly: data unavailable. Market regime: SPY trend: 1.0. VIX: unavailable.\n\nEntry Idea\nWait for pullback to $19.18\u2013$19.21 range before entering. Avoid chasing current levels.\n\nRisk/Invalidation\nInvalidation: close below $18.83 (pivot minus 0.35 ATR). Violates base structure. Daily stop loss: $18.66.\n\nTargets\nT1: $19.87 (+12.8%) (R/R 1.9x from entry mid). T2: $20.39 (+15.8%). T3: $20.91 (+18.7%). Partial at T1 recommended.\n\nVerdict\nSetup exists but extended from optimal entry. Wait for pullback to $19.18\u2013$19.21. Stop: $18.83.",
+  "chart_weekly": "charts/KVUE_weekly.png",
+  "chart_daily": "charts/KVUE_daily.png",
+  "chart_intraday": null
+}

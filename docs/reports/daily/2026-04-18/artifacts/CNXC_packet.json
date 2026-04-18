@@ -1,0 +1,283 @@
+{
+  "symbol": "CNXC",
+  "provider_symbol": "CNXC",
+  "state": "ARMED",
+  "groups": "custom_watchlist",
+  "is_portfolio": false,
+  "is_watchlist": true,
+  "action_label": "Actionable on breakout",
+  "setup_classification": "Near breakout / poised",
+  "portfolio_guidance": "Watch for breakout. Not yet actionable; hold existing position.",
+  "freshness_label": "fresh",
+  "is_fresh": true,
+  "is_extended": false,
+  "is_stale_confirmed": false,
+  "composite_score": null,
+  "setup_score": null,
+  "trade_score": null,
+  "failure_risk": 0.73,
+  "percentile_rank": null,
+  "close": 30.0,
+  "pivot": 30.82,
+  "atr14": 2.03,
+  "dist_to_pivot_atr": -0.4,
+  "base_length": 18,
+  "days_in_state": 3,
+  "entry_lo": 30.82,
+  "entry_hi": 31.02,
+  "stop": 28.79,
+  "t1": 34.89,
+  "t2": 37.94,
+  "t3": 40.99,
+  "s1": 28.98,
+  "s2": 28.79,
+  "s3": 26.75,
+  "r1": 30.82,
+  "r2": 34.89,
+  "r3": 37.94,
+  "risk_reward_t1": "1.9x",
+  "atr_compression_pct": 2.0,
+  "volume_dryup": 0.6,
+  "daily_rs_63": -0.36,
+  "rs_class": "underperforming",
+  "close_vs_sma50": -0.035,
+  "ma_slope_direction": "falling",
+  "ytd_dist_atr": -1.4,
+  "swing_low_dist_atr": 1.4,
+  "regime_spy_trend": 1.0,
+  "narrative": {
+    "setup": "CNXC is armed near the pivot of a 18-bar base (Day 3 in ARMED state). Pivot resistance: $30.82. ATR is in the 2th percentile of its own 50-bar history \u2014 tight compression.",
+    "why": "CNXC is underperforming SPY by 36% over 63 days. Score: N/A (models not yet fitted), failure risk 0.73. Weekly: data unavailable. Market regime: SPY trend: 1.0. VIX: unavailable.",
+    "entry": "Buy break above $31.02 (pivot + 0.10 ATR) on volume expansion. Aggressive entry: $30.82 pivot break on close. Pullback entry: $30.62\u2013$30.82 zone.",
+    "risk": "Invalidation: close below $28.79 (pivot minus 2.03 ATR). Violates base structure. Daily stop loss: $27.77.",
+    "targets": "T1: $34.89 (+16.3%) (R/R 1.9x from entry mid). T2: $37.94 (+26.5%). T3: $40.99 (+36.6%). Partial at T1 recommended.",
+    "ma_context": "Close is below the 50-day MA (0.5 ATR below) \u2014 MA trend is at risk of falling. Close above 31.09 needed to stop MA from declining.",
+    "avwap_context": "Price is near YTD AVWAP (-1.4 ATR) \u2014 neutral vs year-open cost basis.",
+    "verdict": "Ready to trigger. Buy above $31.02 on volume. Stop: $28.79. Market regime: SPY trend: 1.0. VIX: unavailable.",
+    "trade_plan": "Entry trigger: close/break above $31.02 on volume. Pullback entry: $30.82\u2013$31.02. Stop/invalidation: $28.79. T1: $34.89 | T2: $37.94 | T3: $40.99. R/R to T1: 1.9x from entry mid."
+  },
+  "context": {
+    "ma_table": [
+      {
+        "name": "SMA5",
+        "value": 28.91,
+        "pct_dist": 3.63,
+        "slope": "rising",
+        "bias": "Stays rising if close > 27.86"
+      },
+      {
+        "name": "SMA10",
+        "value": 28.21,
+        "pct_dist": 5.98,
+        "slope": "rising",
+        "bias": "Stays rising if close > 27.48"
+      },
+      {
+        "name": "SMA20",
+        "value": 27.99,
+        "pct_dist": 6.7,
+        "slope": "falling",
+        "bias": "Stays falling unless close > 31.52"
+      },
+      {
+        "name": "SMA50",
+        "value": 31.09,
+        "pct_dist": -3.64,
+        "slope": "falling",
+        "bias": "Stays falling unless close > 37.46"
+      },
+      {
+        "name": "SMA200",
+        "value": 41.78,
+        "pct_dist": -39.27,
+        "slope": "falling",
+        "bias": "Stays falling unless close > 55.52"
+      },
+      {
+        "name": "EMA20",
+        "value": 28.8,
+        "pct_dist": 4.0,
+        "slope": "rising",
+        "bias": "Stays rising if close > 28.80"
+      }
+    ],
+    "avwap_table": [
+      {
+        "anchor": "YTD",
+        "avwap": 32.9,
+        "pct_dist": -9.66,
+        "dist_atr": -1.424,
+        "role": "resistance",
+        "status": "Accepted below",
+        "reclaim": false
+      },
+      {
+        "anchor": "Swing Low",
+        "avwap": 27.21,
+        "pct_dist": 9.31,
+        "dist_atr": 1.373,
+        "role": "support",
+        "status": "Accepted above",
+        "reclaim": true
+      },
+      {
+        "anchor": "Swing High",
+        "avwap": 37.97,
+        "pct_dist": -26.55,
+        "dist_atr": -3.915,
+        "role": "resistance",
+        "status": "Accepted below",
+        "reclaim": null
+      },
+      {
+        "anchor": "Breakout Day",
+        "avwap": 28.73,
+        "pct_dist": 4.23,
+        "dist_atr": 0.624,
+        "role": "support",
+        "status": "Accepted above",
+        "reclaim": true
+      }
+    ],
+    "volume_block": {
+      "volume_dryup_pct": 58.6,
+      "atr_compression_pct": 2.0,
+      "range_compression": 0.749,
+      "vol_contraction_5_20": 0.464,
+      "vol_contraction_10_50": 0.319,
+      "dollar_volume_log": 7.461,
+      "breakout_thrust_atr": null,
+      "weekly_vol_dryup": 1.134,
+      "weekly_atr_compression": 46.2,
+      "down_close_ratio": 0.4,
+      "relative_vol_label": "Low",
+      "compression_label": "Tight (<30th pct) - 2th percentile"
+    },
+    "confluence": {
+      "nearby_count": 2,
+      "nearby_levels": [
+        {
+          "name": "Pivot",
+          "value": 30.82,
+          "dist_atr": -0.403
+        },
+        {
+          "name": "R1",
+          "value": 30.82,
+          "dist_atr": -0.403
+        }
+      ],
+      "cluster_role": "resistance cluster"
+    },
+    "checklist": [
+      {
+        "item": "Higher timeframe trend",
+        "result": "pass",
+        "reason": "SPY above 200SMA"
+      },
+      {
+        "item": "Weekly trend constructive",
+        "result": "fail",
+        "reason": "Price 1.4% below 10-week WMA"
+      },
+      {
+        "item": "Daily structure",
+        "result": "pass",
+        "reason": "State=ARMED, -0.40 ATR from pivot"
+      },
+      {
+        "item": "Pivot clarity",
+        "result": "pass",
+        "reason": "4 resistance touches at pivot"
+      },
+      {
+        "item": "Compression present",
+        "result": "pass",
+        "reason": "ATR at 2th percentile (tight)"
+      },
+      {
+        "item": "Volume dry-up",
+        "result": "pass",
+        "reason": "Volume dry-up score: 0.59"
+      },
+      {
+        "item": "Relative strength",
+        "result": "fail",
+        "reason": "RS-63: -36.0% vs SPY (underperforming)"
+      },
+      {
+        "item": "YTD AVWAP acceptance",
+        "result": "fail",
+        "reason": "Price 1.42 ATR below YTD AVWAP"
+      },
+      {
+        "item": "MA alignment (above SMA50)",
+        "result": "neutral",
+        "reason": "Price near SMA50 (-3.5%)"
+      },
+      {
+        "item": "Not overextended",
+        "result": "pass",
+        "reason": "-0.40 ATR from pivot (within 3 ATR)"
+      },
+      {
+        "item": "Failure risk acceptable",
+        "result": "fail",
+        "reason": "Failure risk: 73% (elevated)"
+      },
+      {
+        "item": "Market regime supportive",
+        "result": "pass",
+        "reason": "SPY trend score: 1.00 (positive)"
+      },
+      {
+        "item": "R/R acceptable",
+        "result": "pass",
+        "reason": "Risk/reward to T1: 1.86:1"
+      },
+      {
+        "item": "Base freshness",
+        "result": "pass",
+        "reason": "3 days in ARMED (max 30)"
+      },
+      {
+        "item": "Score quality",
+        "result": "neutral",
+        "reason": "Composite score unavailable"
+      }
+    ],
+    "score_drivers": {
+      "bullish_signals": [
+        "ATR compressed to 2th pct - coiled",
+        "Volume dry-up score 0.59 - demand absorbed",
+        "4x resistance touches at pivot - tested level",
+        "Pivot flatness 1.91 - tight, well-defined base"
+      ],
+      "bearish_signals": [
+        "Price 3.5% below SMA50",
+        "RS-63: -36% vs SPY - underperforming",
+        "YTD AVWAP -1.4 ATR - below year-open cost basis",
+        "Failure risk 73% - elevated model estimate"
+      ],
+      "model_based": [
+        "composite_score",
+        "setup_score",
+        "trade_score",
+        "failure_risk",
+        "percentile_rank"
+      ],
+      "rule_based": [
+        "action_label",
+        "freshness_label",
+        "setup_classification",
+        "portfolio_guidance",
+        "state"
+      ],
+      "why_selected": "Selected because: action=Actionable on breakout; ATR compressed to 2th pct - coiled; Volume dry-up score 0.59 - demand absorbed."
+    }
+  },
+  "ai_note": "[CNXC \u2014 Rule-based note]\n\nSetup\nCNXC is armed near the pivot of a 18-bar base (Day 3 in ARMED state). Pivot resistance: $30.82. ATR is in the 2th percentile of its own 50-bar history \u2014 tight compression.\n\nWhy It Matters Now\nCNXC is underperforming SPY by 36% over 63 days. Score: N/A (models not yet fitted), failure risk 0.73. Weekly: data unavailable. Market regime: SPY trend: 1.0. VIX: unavailable.\n\nEntry Idea\nBuy break above $31.02 (pivot + 0.10 ATR) on volume expansion. Aggressive entry: $30.82 pivot break on close. Pullback entry: $30.62\u2013$30.82 zone.\n\nRisk/Invalidation\nInvalidation: close below $28.79 (pivot minus 2.03 ATR). Violates base structure. Daily stop loss: $27.77.\n\nTargets\nT1: $34.89 (+16.3%) (R/R 1.9x from entry mid). T2: $37.94 (+26.5%). T3: $40.99 (+36.6%). Partial at T1 recommended.\n\nVerdict\nReady to trigger. Buy above $31.02 on volume. Stop: $28.79. Market regime: SPY trend: 1.0. VIX: unavailable.",
+  "chart_weekly": "charts/CNXC_weekly.png",
+  "chart_daily": "charts/CNXC_daily.png",
+  "chart_intraday": null
+}

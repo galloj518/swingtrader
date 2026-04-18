@@ -1,0 +1,278 @@
+[
+  {
+    "symbol": "XLRE",
+    "provider_symbol": "XLRE",
+    "as_of": "2026-04-18",
+    "identity": {
+      "state": "TRIGGERED",
+      "action_label": "Actionable now",
+      "setup_classification": "Pullback entry",
+      "freshness_label": "fresh",
+      "days_in_state": 1
+    },
+    "model_scores": {
+      "composite_score": 0.75,
+      "setup_score": null,
+      "trade_score": 1.15,
+      "failure_risk": 0.01,
+      "percentile_rank": 100.0,
+      "note": "Model-calibrated probabilities from fitted classifiers"
+    },
+    "price_and_levels": {
+      "close": 44.48,
+      "pivot": 44.56,
+      "atr14": 0.61,
+      "dist_to_pivot_atr": -0.1,
+      "entry_lo": 44.56,
+      "entry_hi": 44.62,
+      "stop": 43.95,
+      "t1": 45.78,
+      "t2": 46.69,
+      "t3": 47.6,
+      "s1": 44.56,
+      "s2": 43.95,
+      "r1": 45.78,
+      "r2": 46.69,
+      "risk_reward_t1": "1.9x",
+      "level_method": "ATR-pivot: entry=pivot+0.10*ATR, stop=pivot-1.0*ATR, T1=pivot+2.0*ATR"
+    },
+    "context": {
+      "ma_table": null,
+      "avwap_table": null,
+      "volume_block": null,
+      "checklist": null,
+      "confluence": null,
+      "ma_context": "Close is above the 50-day MA (3.6 ATR above) \u2014 MA trend is rising.",
+      "avwap_context": "Price is 4.5 ATR above YTD AVWAP \u2014 extended vs year-open cost basis."
+    },
+    "narrative": {
+      "setup": "XLRE has triggered above a 120-bar base (Day 1 in TRIGGERED state). Trigger pivot: $44.56. ATR compression is moderate (49th pct).",
+      "why": "XLRE is tracking SPY closely over 63 days. Score: 0.75, failure risk 0.01. Weekly: data unavailable. Market regime: SPY trend: 1.0. VIX: unavailable.",
+      "entry": "In trade. Original breakout zone: $44.56\u2013$44.62. Pullback entry: $44.50\u2013$44.56 zone. Avoid adding above $44.62.",
+      "risk": "Invalidation: close below $43.95 (pivot minus 0.61 ATR). Violates base structure. Daily stop loss: $43.65.",
+      "targets": "T1: $45.78 (+2.9%) (R/R 1.9x from entry mid). T2: $46.69 (+5.0%). T3: $47.60 (+7.0%). Partial at T1 recommended.",
+      "verdict": "Actionable on breakout above $44.62. Set alert. Buy break + volume; stop $43.95. Market regime: SPY trend: 1.0. VIX: unavailable."
+    },
+    "ai_note": "[XLRE \u2014 Rule-based note]\n\nSetup\nXLRE has triggered above a 120-bar base (Day 1 in TRIGGERED state). Trigger pivot: $44.56. ATR compression is moderate (49th pct).\n\nWhy It Matters Now\nXLRE is tracking SPY closely over 63 days. Score: 0.75, failure risk 0.01. Weekly: data unavailable. Market regime: SPY trend: 1.0. VIX: unavailable.\n\nEntry Idea\nIn trade. Original breakout zone: $44.56\u2013$44.62. Pullback entry: $44.50\u2013$44.56 zone. Avoid adding above $44.62.\n\nRisk/Invalidation\nInvalidation: close below $43.95 (pivot minus 0.61 ATR). Violates base structure. Daily stop loss: $43.65.\n\nTargets\nT1: $45.78 (+2.9%) (R/R 1.9x from entry mid). T2: $46.69 (+5.0%). T3: $47.60 (+7.0%). Partial at T1 recommended.\n\nVerdict\nActionable on breakout above $44.62. Set alert. Buy break + volume; stop $43.95. Market regime: SPY trend: 1.0. VIX: unavailable.",
+    "chart_paths": {
+      "daily": "charts/XLRE_daily.png",
+      "weekly": "charts/XLRE_weekly.png",
+      "intraday": null
+    },
+    "freshness_metadata": {
+      "is_fresh": true,
+      "is_extended": false,
+      "is_stale_confirmed": false,
+      "days_since_trigger": null,
+      "days_since_confirmation": null,
+      "last_actionable_check": "2026-04-18"
+    }
+  },
+  {
+    "symbol": "PYPL",
+    "provider_symbol": "PYPL",
+    "as_of": "2026-04-18",
+    "identity": {
+      "state": "TRIGGERED",
+      "action_label": "Actionable now",
+      "setup_classification": "Pullback entry",
+      "freshness_label": "fresh",
+      "days_in_state": 3
+    },
+    "model_scores": {
+      "composite_score": 0.36,
+      "setup_score": null,
+      "trade_score": 2.1,
+      "failure_risk": 0.6,
+      "percentile_rank": 50.0,
+      "note": "Model-calibrated probabilities from fitted classifiers"
+    },
+    "price_and_levels": {
+      "close": 50.81,
+      "pivot": 51.2,
+      "atr14": 1.54,
+      "dist_to_pivot_atr": -0.3,
+      "entry_lo": 51.2,
+      "entry_hi": 51.35,
+      "stop": 49.66,
+      "t1": 54.27,
+      "t2": 56.58,
+      "t3": 58.89,
+      "s1": 51.2,
+      "s2": 49.66,
+      "r1": 54.27,
+      "r2": 56.58,
+      "risk_reward_t1": "1.9x",
+      "level_method": "ATR-pivot: entry=pivot+0.10*ATR, stop=pivot-1.0*ATR, T1=pivot+2.0*ATR"
+    },
+    "context": {
+      "ma_table": null,
+      "avwap_table": null,
+      "volume_block": null,
+      "checklist": null,
+      "confluence": null,
+      "ma_context": "Close is above the 50-day MA (4.0 ATR above) \u2014 MA trend is rising.",
+      "avwap_context": "Price is 2.9 ATR above YTD AVWAP \u2014 extended vs year-open cost basis."
+    },
+    "narrative": {
+      "setup": "PYPL has triggered above a 44-bar base (Day 3 in TRIGGERED state). Trigger pivot: $51.20. ATR is in the 10th percentile of its own 50-bar history \u2014 tight compression.",
+      "why": "PYPL is underperforming SPY by 14% over 63 days. Score: 0.36, failure risk 0.60. Weekly: data unavailable. Market regime: SPY trend: 1.0. VIX: unavailable.",
+      "entry": "In trade. Original breakout zone: $51.20\u2013$51.35. Pullback entry: $51.05\u2013$51.20 zone. Avoid adding above $51.35.",
+      "risk": "Invalidation: close below $49.66 (pivot minus 1.54 ATR). Violates base structure. Daily stop loss: $48.89.",
+      "targets": "T1: $54.27 (+6.8%) (R/R 1.9x from entry mid). T2: $56.58 (+11.4%). T3: $58.89 (+15.9%). Partial at T1 recommended.",
+      "verdict": "Actionable on breakout above $51.35. Set alert. Buy break + volume; stop $49.66. Market regime: SPY trend: 1.0. VIX: unavailable."
+    },
+    "ai_note": "[PYPL \u2014 Rule-based note]\n\nSetup\nPYPL has triggered above a 44-bar base (Day 3 in TRIGGERED state). Trigger pivot: $51.20. ATR is in the 10th percentile of its own 50-bar history \u2014 tight compression.\n\nWhy It Matters Now\nPYPL is underperforming SPY by 14% over 63 days. Score: 0.36, failure risk 0.60. Weekly: data unavailable. Market regime: SPY trend: 1.0. VIX: unavailable.\n\nEntry Idea\nIn trade. Original breakout zone: $51.20\u2013$51.35. Pullback entry: $51.05\u2013$51.20 zone. Avoid adding above $51.35.\n\nRisk/Invalidation\nInvalidation: close below $49.66 (pivot minus 1.54 ATR). Violates base structure. Daily stop loss: $48.89.\n\nTargets\nT1: $54.27 (+6.8%) (R/R 1.9x from entry mid). T2: $56.58 (+11.4%). T3: $58.89 (+15.9%). Partial at T1 recommended.\n\nVerdict\nActionable on breakout above $51.35. Set alert. Buy break + volume; stop $49.66. Market regime: SPY trend: 1.0. VIX: unavailable.",
+    "chart_paths": {
+      "daily": "charts/PYPL_daily.png",
+      "weekly": "charts/PYPL_weekly.png",
+      "intraday": null
+    },
+    "freshness_metadata": {
+      "is_fresh": true,
+      "is_extended": false,
+      "is_stale_confirmed": false,
+      "days_since_trigger": null,
+      "days_since_confirmation": null,
+      "last_actionable_check": "2026-04-18"
+    }
+  },
+  {
+    "symbol": "CNXC",
+    "provider_symbol": "CNXC",
+    "as_of": "2026-04-18",
+    "identity": {
+      "state": "ARMED",
+      "action_label": "Actionable on breakout",
+      "setup_classification": "Near breakout / poised",
+      "freshness_label": "fresh",
+      "days_in_state": 3
+    },
+    "model_scores": {
+      "composite_score": null,
+      "setup_score": null,
+      "trade_score": null,
+      "failure_risk": 0.73,
+      "percentile_rank": null,
+      "note": "Model-calibrated probabilities from fitted classifiers"
+    },
+    "price_and_levels": {
+      "close": 30.0,
+      "pivot": 30.82,
+      "atr14": 2.03,
+      "dist_to_pivot_atr": -0.4,
+      "entry_lo": 30.82,
+      "entry_hi": 31.02,
+      "stop": 28.79,
+      "t1": 34.89,
+      "t2": 37.94,
+      "t3": 40.99,
+      "s1": 28.98,
+      "s2": 28.79,
+      "r1": 30.82,
+      "r2": 34.89,
+      "risk_reward_t1": "1.9x",
+      "level_method": "ATR-pivot: entry=pivot+0.10*ATR, stop=pivot-1.0*ATR, T1=pivot+2.0*ATR"
+    },
+    "context": {
+      "ma_table": null,
+      "avwap_table": null,
+      "volume_block": null,
+      "checklist": null,
+      "confluence": null,
+      "ma_context": "Close is below the 50-day MA (0.5 ATR below) \u2014 MA trend is at risk of falling. Close above 31.09 needed to stop MA from declining.",
+      "avwap_context": "Price is near YTD AVWAP (-1.4 ATR) \u2014 neutral vs year-open cost basis."
+    },
+    "narrative": {
+      "setup": "CNXC is armed near the pivot of a 18-bar base (Day 3 in ARMED state). Pivot resistance: $30.82. ATR is in the 2th percentile of its own 50-bar history \u2014 tight compression.",
+      "why": "CNXC is underperforming SPY by 36% over 63 days. Score: N/A (models not yet fitted), failure risk 0.73. Weekly: data unavailable. Market regime: SPY trend: 1.0. VIX: unavailable.",
+      "entry": "Buy break above $31.02 (pivot + 0.10 ATR) on volume expansion. Aggressive entry: $30.82 pivot break on close. Pullback entry: $30.62\u2013$30.82 zone.",
+      "risk": "Invalidation: close below $28.79 (pivot minus 2.03 ATR). Violates base structure. Daily stop loss: $27.77.",
+      "targets": "T1: $34.89 (+16.3%) (R/R 1.9x from entry mid). T2: $37.94 (+26.5%). T3: $40.99 (+36.6%). Partial at T1 recommended.",
+      "verdict": "Ready to trigger. Buy above $31.02 on volume. Stop: $28.79. Market regime: SPY trend: 1.0. VIX: unavailable."
+    },
+    "ai_note": "[CNXC \u2014 Rule-based note]\n\nSetup\nCNXC is armed near the pivot of a 18-bar base (Day 3 in ARMED state). Pivot resistance: $30.82. ATR is in the 2th percentile of its own 50-bar history \u2014 tight compression.\n\nWhy It Matters Now\nCNXC is underperforming SPY by 36% over 63 days. Score: N/A (models not yet fitted), failure risk 0.73. Weekly: data unavailable. Market regime: SPY trend: 1.0. VIX: unavailable.\n\nEntry Idea\nBuy break above $31.02 (pivot + 0.10 ATR) on volume expansion. Aggressive entry: $30.82 pivot break on close. Pullback entry: $30.62\u2013$30.82 zone.\n\nRisk/Invalidation\nInvalidation: close below $28.79 (pivot minus 2.03 ATR). Violates base structure. Daily stop loss: $27.77.\n\nTargets\nT1: $34.89 (+16.3%) (R/R 1.9x from entry mid). T2: $37.94 (+26.5%). T3: $40.99 (+36.6%). Partial at T1 recommended.\n\nVerdict\nReady to trigger. Buy above $31.02 on volume. Stop: $28.79. Market regime: SPY trend: 1.0. VIX: unavailable.",
+    "chart_paths": {
+      "daily": "charts/CNXC_daily.png",
+      "weekly": "charts/CNXC_weekly.png",
+      "intraday": null
+    },
+    "freshness_metadata": {
+      "is_fresh": true,
+      "is_extended": false,
+      "is_stale_confirmed": false,
+      "days_since_trigger": null,
+      "days_since_confirmation": null,
+      "last_actionable_check": "2026-04-18"
+    }
+  },
+  {
+    "symbol": "KVUE",
+    "provider_symbol": "KVUE",
+    "as_of": "2026-04-18",
+    "identity": {
+      "state": "BASE",
+      "action_label": "Actionable on pullback",
+      "setup_classification": "Building base",
+      "freshness_label": "fresh",
+      "days_in_state": 27
+    },
+    "model_scores": {
+      "composite_score": null,
+      "setup_score": null,
+      "trade_score": null,
+      "failure_risk": 0.68,
+      "percentile_rank": null,
+      "note": "Model-calibrated probabilities from fitted classifiers"
+    },
+    "price_and_levels": {
+      "close": 17.61,
+      "pivot": 19.18,
+      "atr14": 0.35,
+      "dist_to_pivot_atr": -4.5,
+      "entry_lo": 19.18,
+      "entry_hi": 19.21,
+      "stop": 18.83,
+      "t1": 19.87,
+      "t2": 20.39,
+      "t3": 20.91,
+      "s1": 18.84,
+      "s2": 18.83,
+      "r1": 19.18,
+      "r2": 19.87,
+      "risk_reward_t1": "1.9x",
+      "level_method": "ATR-pivot: entry=pivot+0.10*ATR, stop=pivot-1.0*ATR, T1=pivot+2.0*ATR"
+    },
+    "context": {
+      "ma_table": null,
+      "avwap_table": null,
+      "volume_block": null,
+      "checklist": null,
+      "confluence": null,
+      "ma_context": "Close is below the 50-day MA (0.9 ATR below) \u2014 MA trend is at risk of falling. Close above 17.91 needed to stop MA from declining.",
+      "avwap_context": "Price is near YTD AVWAP (-0.2 ATR) \u2014 neutral vs year-open cost basis."
+    },
+    "narrative": {
+      "setup": "KVUE is building a 114-bar flat base (Day 27 in BASE state). Pivot resistance: $19.18. ATR compression is moderate (35th pct). Volume drying up.",
+      "why": "KVUE is tracking SPY closely over 63 days. Score: N/A (models not yet fitted), failure risk 0.68. Weekly: data unavailable. Market regime: SPY trend: 1.0. VIX: unavailable.",
+      "entry": "Wait for pullback to $19.18\u2013$19.21 range before entering. Avoid chasing current levels.",
+      "risk": "Invalidation: close below $18.83 (pivot minus 0.35 ATR). Violates base structure. Daily stop loss: $18.66.",
+      "targets": "T1: $19.87 (+12.8%) (R/R 1.9x from entry mid). T2: $20.39 (+15.8%). T3: $20.91 (+18.7%). Partial at T1 recommended.",
+      "verdict": "Setup exists but extended from optimal entry. Wait for pullback to $19.18\u2013$19.21. Stop: $18.83."
+    },
+    "ai_note": "[KVUE \u2014 Rule-based note]\n\nSetup\nKVUE is building a 114-bar flat base (Day 27 in BASE state). Pivot resistance: $19.18. ATR compression is moderate (35th pct). Volume drying up.\n\nWhy It Matters Now\nKVUE is tracking SPY closely over 63 days. Score: N/A (models not yet fitted), failure risk 0.68. Weekly: data unavailable. Market regime: SPY trend: 1.0. VIX: unavailable.\n\nEntry Idea\nWait for pullback to $19.18\u2013$19.21 range before entering. Avoid chasing current levels.\n\nRisk/Invalidation\nInvalidation: close below $18.83 (pivot minus 0.35 ATR). Violates base structure. Daily stop loss: $18.66.\n\nTargets\nT1: $19.87 (+12.8%) (R/R 1.9x from entry mid). T2: $20.39 (+15.8%). T3: $20.91 (+18.7%). Partial at T1 recommended.\n\nVerdict\nSetup exists but extended from optimal entry. Wait for pullback to $19.18\u2013$19.21. Stop: $18.83.",
+    "chart_paths": {
+      "daily": "charts/KVUE_daily.png",
+      "weekly": "charts/KVUE_weekly.png",
+      "intraday": null
+    },
+    "freshness_metadata": {
+      "is_fresh": true,
+      "is_extended": false,
+      "is_stale_confirmed": false,
+      "days_since_trigger": null,
+      "days_since_confirmation": null,
+      "last_actionable_check": "2026-04-18"
+    }
+  }
+]
