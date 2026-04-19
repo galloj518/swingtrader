@@ -1,0 +1,71 @@
+[
+  {
+    "symbol": "XLRE",
+    "provider_symbol": "XLRE",
+    "as_of": "2026-04-19",
+    "identity": {
+      "state": "TRIGGERED",
+      "action_label": "Actionable now",
+      "setup_classification": "Pullback entry",
+      "freshness_label": "fresh",
+      "days_in_state": 1
+    },
+    "model_scores": {
+      "composite_score": 0.75,
+      "setup_score": null,
+      "trade_score": 1.15,
+      "failure_risk": 0.01,
+      "percentile_rank": 100.0,
+      "note": "Model-calibrated probabilities from fitted classifiers"
+    },
+    "price_and_levels": {
+      "close": 44.48,
+      "pivot": 44.56,
+      "atr14": 0.61,
+      "dist_to_pivot_atr": -0.1,
+      "entry_lo": 44.56,
+      "entry_hi": 44.62,
+      "stop": 43.95,
+      "t1": 45.78,
+      "t2": 46.69,
+      "t3": 47.6,
+      "s1": 44.56,
+      "s2": 43.95,
+      "r1": 45.78,
+      "r2": 46.69,
+      "risk_reward_t1": "1.9x",
+      "level_method": "ATR-pivot: entry=pivot+0.10*ATR, stop=pivot-1.0*ATR, T1=pivot+2.0*ATR"
+    },
+    "context": {
+      "ma_table": null,
+      "avwap_table": null,
+      "volume_block": null,
+      "checklist": null,
+      "confluence": null,
+      "ma_context": "Close is above the 50-day MA (3.6 ATR above) \u2014 MA trend is rising.",
+      "avwap_context": "Price is 4.5 ATR above YTD AVWAP \u2014 extended vs year-open cost basis."
+    },
+    "narrative": {
+      "setup": "XLRE has triggered above a 120-bar base (Day 1 in TRIGGERED state). Trigger pivot: $44.56. ATR compression is moderate (49th pct).",
+      "why": "XLRE is tracking SPY closely over 63 days. Score: 0.75, failure risk 0.01. Weekly: data unavailable. Market regime: SPY trend: 1.0. VIX: unavailable.",
+      "entry": "In trade. Original breakout zone: $44.56\u2013$44.62. Pullback entry: $44.50\u2013$44.56 zone. Avoid adding above $44.62.",
+      "risk": "Invalidation: close below $43.95 (pivot minus 0.61 ATR). Violates base structure. Daily stop loss: $43.65.",
+      "targets": "T1: $45.78 (+2.9%) (R/R 1.9x from entry mid). T2: $46.69 (+5.0%). T3: $47.60 (+7.0%). Partial at T1 recommended.",
+      "verdict": "Actionable now \u2014 break above $44.62 on volume. Set alert. Stop: $43.95. Market regime: SPY trend: 1.0. VIX: unavailable."
+    },
+    "ai_note": "[XLRE \u2014 Rule-based note]\n\nSetup\nXLRE has triggered above a 120-bar base (Day 1 in TRIGGERED state). Trigger pivot: $44.56. ATR compression is moderate (49th pct).\n\nWhy It Matters Now\nXLRE is tracking SPY closely over 63 days. Score: 0.75, failure risk 0.01. Weekly: data unavailable. Market regime: SPY trend: 1.0. VIX: unavailable.\n\nEntry Idea\nIn trade. Original breakout zone: $44.56\u2013$44.62. Pullback entry: $44.50\u2013$44.56 zone. Avoid adding above $44.62.\n\nRisk/Invalidation\nInvalidation: close below $43.95 (pivot minus 0.61 ATR). Violates base structure. Daily stop loss: $43.65.\n\nTargets\nT1: $45.78 (+2.9%) (R/R 1.9x from entry mid). T2: $46.69 (+5.0%). T3: $47.60 (+7.0%). Partial at T1 recommended.\n\nVerdict\nActionable now \u2014 break above $44.62 on volume. Set alert. Stop: $43.95. Market regime: SPY trend: 1.0. VIX: unavailable.",
+    "chart_paths": {
+      "daily": "charts/XLRE_daily.png",
+      "weekly": "charts/XLRE_weekly.png",
+      "intraday": null
+    },
+    "freshness_metadata": {
+      "is_fresh": true,
+      "is_extended": false,
+      "is_stale_confirmed": false,
+      "days_since_trigger": null,
+      "days_since_confirmation": null,
+      "last_actionable_check": "2026-04-19"
+    }
+  }
+]
