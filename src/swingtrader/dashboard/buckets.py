@@ -96,6 +96,46 @@ def _f(row: pd.Series, key: str) -> float:
         return math.nan
 
 
+def _is_reversal_candidate(row: pd.Series, rejection_str: str) -> bool:
+    """Check if an ineligible symbol qualifies for the speculative reversal bucket.
+
+    A name enters REVERSAL_SPEC when:
+    - It failed primarily on structural gates (broken trend or weak daily structure),
+      NOT on catastrophic model gates (high failure risk, very low score)
+    - It still has a meaningful model score (composite ≥ 0.22)
+    - It has pulled back significantly vs YTD AVWAP (potential oversold value)
+    - It has a real base forming (base_length ≥ 10)
+    - It is not a non-equity or invalid state
+
+    Explicitly kept SEPARATE from breakout/pullback — reversal ideas contaminate
+    the primary long list if mixed in.
+    """
+    # Hard disqualifiers — no redemption for these (inline constants, no circular import)
+    for hard_gate in ("non_equity", "invalid_state", "high_failure_risk"):
+        if hard_gate in rejection_str:
+            return False
+
+    # Must still have a viable model score (not rock-bottom)
+    composite = _f(row, "composite_score")
+    if math.isfinite(composite) and composite < 0.22:
+        return False
+
+    # Must have some basing structure
+    base_length = int(row.get("base_length", 0) or 0)
+    if base_length < 10:
+        return False
+
+    # Must be in a scored state
+    state = str(row.get("state", "NONE"))
+    if state not in SCORED_STATES:
+        return False
+
+    # Need to be pulled back meaningfully (potential capitulation setup),
+    # but not a complete disaster.  Data must be present — NaN → not a reversal.
+    ytd_dist = _f(row, "ytd_dist_atr")
+    return math.isfinite(ytd_dist) and -4.0 <= ytd_dist <= -0.5
+
+
 def assign_bucket(row: pd.Series) -> str:
     """Return the bucket for a single snapshot row.
 
@@ -113,6 +153,7 @@ def assign_bucket(row: pd.Series) -> str:
     eligible = bool(row.get("eligible", False))
     state = str(row.get("state", "NONE"))
     dist = _f(row, "dist_to_pivot_atr")
+    cvs50 = _f(row, "close_vs_sma50")
     days = int(row.get("days_in_state", 0) or 0)
     is_extended = bool(row.get("is_extended", False))
     is_fresh = bool(row.get("is_fresh", False))
@@ -127,35 +168,42 @@ def assign_bucket(row: pd.Series) -> str:
     if is_portfolio:
         return BUCKET_PORTFOLIO
 
-    # ── Priority 3: Excluded (failed eligibility) ─────────────────────────────
+    # ── Priority 3: Excluded (failed eligibility) — check reversal before hard exclude
     if not eligible:
+        rejection_str = str(row.get("rejection_reasons", ""))
+        if _is_reversal_candidate(row, rejection_str):
+            return BUCKET_REVERSAL
         return BUCKET_EXCLUDED
 
     # ── Priority 4: Extended leader ───────────────────────────────────────────
-    # Extended names are interesting to watch but not entry candidates.
+    # Extended names are interesting to watch but not fresh-entry candidates.
     if is_extended or state in {"LATE", "EXHAUSTED"}:
         return BUCKET_EXTENDED
 
     # ── Priority 5: State not in scored set ───────────────────────────────────
-    # Eligible check above requires state in SCORED_STATES, but double-check.
     if state not in SCORED_STATES:
         return BUCKET_EXCLUDED
 
     # ── Priority 6: BREAKOUT_LONG ─────────────────────────────────────────────
     # Two sub-cases:
-    #   a) BASE/ARMED near pivot — ready for breakout entry
-    #   b) Fresh TRIGGERED/ACCEPTED — active breakout, early days
+    #   a) BASE/ARMED near pivot — requires structural integrity (above SMA50 or very near)
+    #   b) Fresh TRIGGERED/ACCEPTED — active breakout in early days
     if state in {"ARMED", "BASE"}:
         near_pivot = math.isfinite(dist) and abs(dist) <= BREAKOUT_DIST_ATR
         if near_pivot and is_fresh:
+            # Structural check: price should not be materially below SMA50.
+            # Names below a falling SMA50 near pivot look like failed breakouts, not setups.
+            # Threshold: more than 3% below SMA50 → pullback, not breakout.
+            if math.isfinite(cvs50) and cvs50 < -0.03:
+                return BUCKET_PULLBACK
             return BUCKET_BREAKOUT
-        # Far from pivot or stale → pullback candidate
+        # Far from pivot or stale → pullback / re-entry candidate
         return BUCKET_PULLBACK
 
     if state in {"TRIGGERED", "ACCEPTED"}:
         if is_fresh and days <= BREAKOUT_TRIGGER_DAYS:
             return BUCKET_BREAKOUT
-        # Past the breakout window but still in trade → pullback re-entry context
+        # Past the breakout window → constructive pullback context
         return BUCKET_PULLBACK
 
     # ── Default ───────────────────────────────────────────────────────────────

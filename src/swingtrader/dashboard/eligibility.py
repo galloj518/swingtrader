@@ -17,17 +17,20 @@ was excluded. Rejection reasons are persisted in eligibility_results.json.
 
 Gate catalogue
 --------------
-  NON_EQUITY          — cash / non-equity instruments (SPAXX, etc.)
-  INVALID_STATE       — state not in scoreable set (NONE, FAILED, ERROR, …)
-  BROKEN_TREND        — price significantly below 200 SMA (clear downtrend)
-  POOR_RS             — relative strength vs SPY well below zero over 63 days
-  WEAK_REGIME_POOR_RS — market in downtrend AND stock also underperforming
-  HIGH_FAILURE_RISK   — failure_risk model output exceeds hard ceiling
-  LOW_SCORE           — composite_score below hard floor (structural weakness)
-  THIN_BASE           — base_length too short to be a real base structure
+  NON_EQUITY            — cash / non-equity instruments (SPAXX, etc.)
+  INVALID_STATE         — state not in scoreable set (NONE, FAILED, ERROR, …)
+  BROKEN_TREND          — price significantly below 200 SMA (clear downtrend)
+  POOR_RS               — relative strength vs SPY well below zero over 63 days
+  WEAK_REGIME_POOR_RS   — market in downtrend AND stock also underperforming
+  HIGH_FAILURE_RISK     — failure_risk model output exceeds hard ceiling
+  LOW_SCORE             — composite_score below hard floor (structural weakness)
+  THIN_BASE             — base_length too short to be a real base structure
+  WEAK_WEEKLY_TREND     — price below declining 10-week WMA (broken weekly structure)
+  WEAK_DAILY_STRUCTURE  — price below declining 50-day SMA (BASE/ARMED only)
 
 Warning conditions (not rejected, but flagged):
   BELOW_SMA50         — price below 50-day SMA (weak short-term trend)
+  BELOW_EMA20         — price below 20-day EMA (momentum fading)
   NEUTRAL_REGIME      — SPY in neutral / sideways regime
   AGING_BASE          — BASE state but days_in_state > threshold
   ELEVATED_FAILURE    — failure_risk elevated but not at hard ceiling
@@ -42,28 +45,32 @@ from swingtrader.dashboard.freshness import SCORED_STATES
 
 # ── Gate reason constants ─────────────────────────────────────────────────────
 
-GATE_NON_EQUITY         = "non_equity"
-GATE_INVALID_STATE      = "invalid_state"
-GATE_BROKEN_TREND       = "broken_trend"
-GATE_POOR_RS            = "poor_rs"
-GATE_WEAK_REGIME_POOR_RS = "weak_regime_poor_rs"
-GATE_HIGH_FAILURE_RISK  = "high_failure_risk"
-GATE_LOW_SCORE          = "low_score"
-GATE_THIN_BASE          = "thin_base"
+GATE_NON_EQUITY           = "non_equity"
+GATE_INVALID_STATE        = "invalid_state"
+GATE_BROKEN_TREND         = "broken_trend"
+GATE_POOR_RS              = "poor_rs"
+GATE_WEAK_REGIME_POOR_RS  = "weak_regime_poor_rs"
+GATE_HIGH_FAILURE_RISK    = "high_failure_risk"
+GATE_LOW_SCORE            = "low_score"
+GATE_THIN_BASE            = "thin_base"
+GATE_WEAK_WEEKLY_TREND    = "weak_weekly_trend"
+GATE_WEAK_DAILY_STRUCTURE = "weak_daily_structure"
 
-WARN_BELOW_SMA50        = "below_sma50"
-WARN_NEUTRAL_REGIME     = "neutral_regime"
-WARN_AGING_BASE         = "aging_base"
-WARN_ELEVATED_FAILURE   = "elevated_failure_risk"
+WARN_BELOW_SMA50          = "below_sma50"
+WARN_BELOW_EMA20          = "below_ema20"
+WARN_NEUTRAL_REGIME       = "neutral_regime"
+WARN_AGING_BASE           = "aging_base"
+WARN_ELEVATED_FAILURE     = "elevated_failure_risk"
 
 # ── Thresholds ─────────────────────────────────────────────────────────────────
 
 # Price below 200 SMA by more than this fraction → broken trend gate.
 # close_vs_sma200 is typically (close − sma200) / sma200.
-BROKEN_TREND_SMA200: float = -0.08   # 8% below 200 SMA
+# Tightened from -0.08 to -0.06: 6% below 200 SMA is already meaningful deterioration.
+BROKEN_TREND_SMA200: float = -0.06   # 6% below 200 SMA
 
 # Relative strength 63-day (vs SPY) below this → poor RS gate.
-POOR_RS_THRESHOLD: float = -0.10     # underperforming SPY by 10%+ over 63 days
+POOR_RS_THRESHOLD: float = -0.08     # underperforming SPY by 8%+ over 63 days
 
 # In a market downtrend (regime_spy_trend < 0), the RS threshold is tighter:
 # any negative RS + downtrend → excluded.
@@ -78,8 +85,19 @@ SCORE_FLOOR: float = 0.18
 # Minimum base_length for ARMED / BASE states to be considered a real base.
 MIN_BASE_LENGTH: int = 5
 
+# Weekly trend gate: price below 10-week WMA by this fraction AND slope declining.
+# Both conditions must hold — one alone is not sufficient.
+WEAK_WEEKLY_DIST: float = -0.03      # 3% below 10-week WMA
+
+# Daily structure gate: for BASE/ARMED, close below falling 50-day SMA by this much.
+# Fires only when close_vs_sma50 < threshold AND slope_50 < 0 simultaneously.
+WEAK_DAILY_SMA50: float = -0.02      # 2% below SMA50
+
 # Warning: price below 50 SMA by more than this fraction.
 BELOW_SMA50_WARN: float = -0.02
+
+# Warning: price below 20-day EMA.
+BELOW_EMA20_WARN: float = -0.005     # just below EMA20
 
 # Warning: BASE aging out after this many days.
 AGING_BASE_DAYS: int = 45
@@ -119,10 +137,14 @@ def assess_eligibility(row: pd.Series) -> dict:
     failure = _f(row, "failure_risk")
     cvs200 = _f(row, "close_vs_sma200")
     cvs50 = _f(row, "close_vs_sma50")
+    cvs_ema20 = _f(row, "close_vs_ema20")
     rs63 = _f(row, "daily_rs_63")
     regime_trend = _f(row, "regime_spy_trend")
     base_length = int(row.get("base_length", 0) or 0)
     days = int(row.get("days_in_state", 0) or 0)
+    slope50 = _f(row, "slope_50")
+    weekly_dist = _f(row, "weekly_dist_wma10")
+    weekly_slope = _f(row, "weekly_trend_slope_26")
 
     # ── Gate 1: Non-equity ────────────────────────────────────────────────────
     if is_non_equity:
@@ -165,9 +187,35 @@ def assess_eligibility(row: pd.Series) -> dict:
     if state in {"BASE", "ARMED"} and base_length > 0 and base_length < MIN_BASE_LENGTH:
         rejection_reasons.append(GATE_THIN_BASE)
 
+    # ── Gate 9: Weak weekly trend ────────────────────────────────────────────
+    # Both conditions must hold: price below 10-week WMA AND weekly slope negative.
+    # Only fires if weekly data is available — graceful when features not computed.
+    if (
+        math.isfinite(weekly_dist)
+        and weekly_dist < WEAK_WEEKLY_DIST
+        and math.isfinite(weekly_slope)
+        and weekly_slope < 0
+    ):
+        rejection_reasons.append(GATE_WEAK_WEEKLY_TREND)
+
+    # ── Gate 10: Weak daily structure (BASE / ARMED fresh-entry candidates) ───
+    # A name below its declining 50-day SMA is not building a valid breakout base.
+    # Requires both: price below SMA50 by threshold AND SMA50 slope is negative.
+    # Only applies to BASE/ARMED (pre-entry states), not TRIGGERED/ACCEPTED.
+    if state in {"BASE", "ARMED"} and (
+        math.isfinite(cvs50)
+        and cvs50 < WEAK_DAILY_SMA50
+        and math.isfinite(slope50)
+        and slope50 < 0
+    ):
+        rejection_reasons.append(GATE_WEAK_DAILY_STRUCTURE)
+
     # ── Warnings (not disqualifying) ─────────────────────────────────────────
     if math.isfinite(cvs50) and cvs50 < BELOW_SMA50_WARN:
         warnings.append(WARN_BELOW_SMA50)
+
+    if math.isfinite(cvs_ema20) and cvs_ema20 < BELOW_EMA20_WARN:
+        warnings.append(WARN_BELOW_EMA20)
 
     if math.isfinite(regime_trend) and regime_trend == 0:
         warnings.append(WARN_NEUTRAL_REGIME)
@@ -224,18 +272,21 @@ def add_eligibility_columns(df: pd.DataFrame) -> pd.DataFrame:
 # ── Human-readable descriptions ───────────────────────────────────────────────
 
 GATE_DESCRIPTIONS: dict[str, str] = {
-    GATE_NON_EQUITY:          "Non-equity / cash instrument — not a swing trade candidate",
-    GATE_INVALID_STATE:       "State not in scoreable set (NONE, FAILED, ERROR, etc.)",
-    GATE_BROKEN_TREND:        "Price significantly below 200-day SMA — broken trend structure",
-    GATE_POOR_RS:             "Relative strength vs SPY well below zero over 63 days",
-    GATE_WEAK_REGIME_POOR_RS: "Market in downtrend and stock underperforming SPY",
-    GATE_HIGH_FAILURE_RISK:   "Model failure-risk estimate exceeds hard ceiling",
-    GATE_LOW_SCORE:           "Composite score below structural minimum floor",
-    GATE_THIN_BASE:           "Base structure too short — likely a bounce, not a real base",
+    GATE_NON_EQUITY:           "Non-equity / cash instrument — not a swing trade candidate",
+    GATE_INVALID_STATE:        "State not in scoreable set (NONE, FAILED, ERROR, etc.)",
+    GATE_BROKEN_TREND:         "Price below 200-day SMA by ≥6% — broken long-term trend structure",
+    GATE_POOR_RS:              "Relative strength vs SPY below -8% over 63 days -- lagging badly",
+    GATE_WEAK_REGIME_POOR_RS:  "Market in downtrend and stock underperforming SPY",
+    GATE_HIGH_FAILURE_RISK:    "Model failure-risk estimate exceeds hard ceiling",
+    GATE_LOW_SCORE:            "Composite score below structural minimum floor",
+    GATE_THIN_BASE:            "Base structure too short — likely a bounce, not a real base",
+    GATE_WEAK_WEEKLY_TREND:    "Price below declining 10-week WMA — broken weekly structure",
+    GATE_WEAK_DAILY_STRUCTURE: "Price below declining 50-day SMA (BASE/ARMED) — not a breakout setup",
 }
 
 WARN_DESCRIPTIONS: dict[str, str] = {
     WARN_BELOW_SMA50:      "Price below 50-day SMA — weak short-term trend",
+    WARN_BELOW_EMA20:      "Price below 20-day EMA — short-term momentum fading",
     WARN_NEUTRAL_REGIME:   "Broad market in neutral / sideways regime",
     WARN_AGING_BASE:       "BASE state aging out — may need to refresh base structure",
     WARN_ELEVATED_FAILURE: "Failure risk elevated (above warning threshold)",
@@ -252,8 +303,11 @@ __all__ = [  # noqa: RUF022
     "GATE_HIGH_FAILURE_RISK",
     "GATE_LOW_SCORE",
     "GATE_THIN_BASE",
+    "GATE_WEAK_WEEKLY_TREND",
+    "GATE_WEAK_DAILY_STRUCTURE",
     # Warning constants
     "WARN_BELOW_SMA50",
+    "WARN_BELOW_EMA20",
     "WARN_NEUTRAL_REGIME",
     "WARN_AGING_BASE",
     "WARN_ELEVATED_FAILURE",
@@ -264,6 +318,8 @@ __all__ = [  # noqa: RUF022
     "FAILURE_RISK_HARD",
     "SCORE_FLOOR",
     "MIN_BASE_LENGTH",
+    "WEAK_WEEKLY_DIST",
+    "WEAK_DAILY_SMA50",
     # Functions
     "assess_eligibility",
     "add_eligibility_columns",

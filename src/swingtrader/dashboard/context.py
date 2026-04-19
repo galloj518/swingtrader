@@ -17,6 +17,7 @@ from typing import Any
 
 import pandas as pd
 
+from swingtrader.dashboard.assessments import run_all_assessments
 from swingtrader.utils.config import REPO_ROOT
 from swingtrader.utils.logging import get_logger
 
@@ -35,12 +36,37 @@ FRESH_MAX_DAYS: dict[str, int] = {
     "BASE": 60,
 }
 
-_AVWAP_ANCHORS: list[tuple[str, str, str, str | None]] = [
-    ("YTD",          "ytd_avwap",          "ytd_dist_atr",          "ytd_reclaim_flag"),
-    ("Swing Low",    "swing_low_avwap",    "swing_low_dist_atr",    "swing_low_reclaim_flag"),
-    ("Swing High",   "swing_high_avwap",   "swing_high_dist_atr",   None),
-    ("Breakout Day", "breakout_day_avwap", "breakout_day_dist_atr", "breakout_day_reclaim_flag"),
+_AVWAP_ANCHORS: list[tuple[str, str, str, str | None, str]] = [
+    # (label, avwap_key, dist_key, reclaim_key, priority)
+    ("YTD",          "ytd_avwap",          "ytd_dist_atr",          "ytd_reclaim_flag",          "primary"),
+    ("Swing Low",    "swing_low_avwap",    "swing_low_dist_atr",    "swing_low_reclaim_flag",    "primary"),
+    ("Swing High",   "swing_high_avwap",   "swing_high_dist_atr",   "swing_high_reclaim_flag",   "secondary"),
+    ("Breakout Day", "breakout_day_avwap", "breakout_day_dist_atr", "breakout_day_reclaim_flag", "secondary"),
 ]
+
+# Per-anchor enrichment columns available in features parquet
+_AVWAP_EXTRAS: dict[str, dict[str, str]] = {
+    "YTD": {
+        "stretch_atr":     "ytd_stretch_atr",
+        "slope_20":        "ytd_slope_20",
+        "closes_above_20": "ytd_closes_above_20",
+    },
+    "Swing Low": {
+        "stretch_atr":     "swing_low_stretch_atr",
+        "slope_20":        "swing_low_slope_20",
+        "closes_above_20": "swing_low_closes_above_20",
+    },
+    "Swing High": {
+        "stretch_atr":     "swing_high_stretch_atr",
+        "slope_20":        "swing_high_slope_20",
+        "closes_above_20": "swing_high_closes_above_20",
+    },
+    "Breakout Day": {
+        "stretch_atr":     "breakout_day_stretch_atr",
+        "slope_20":        "breakout_day_slope_20",
+        "closes_above_20": "breakout_day_closes_above_20",
+    },
+}
 
 # State sets
 _CONSTRUCTIVE_STATES = frozenset({"BASE", "ARMED", "TRIGGERED", "ACCEPTED"})
@@ -207,12 +233,54 @@ def build_ma_table(provider_symbol: str, close: float) -> list[dict]:
 
             pct_dist = (close - ma_now) / close * 100
 
+            # ---- Tomorrow-bias -----------------------------------------------
+            # For SMA: the bar rolling off tomorrow is `period` bars ago.
+            # need_tomorrow = that bar's close (the price that must be replaced).
+            # If need_tomorrow >> close → rolling off a big value → MA headwind.
+            # If need_tomorrow << close → rolling off a small value → MA tailwind.
+            need_tomorrow: float = math.nan
+            tomorrow_bias: str = "neutral"
+
+            if kind == "sma":
+                # Position of oldest bar (will roll off when tomorrow's bar is added)
+                # ma_vals.index[-1] is the last date with a valid MA.
+                # The bar at position (last_ma_pos - period + 1) rolls off next.
+                try:
+                    last_ma_pos = int(closes.index.get_loc(ma_vals.index[-1]))
+                    roll_off_pos = last_ma_pos - period + 1
+                    if 0 <= roll_off_pos < len(closes):
+                        need_tomorrow = float(closes.iloc[roll_off_pos])
+                        if math.isfinite(need_tomorrow) and close > 0:
+                            pct_diff = (need_tomorrow - close) / close
+                            if pct_diff > 0.015:
+                                # Old bar much higher → it's been holding MA up;
+                                # dropping it will pull MA down (headwind).
+                                tomorrow_bias = "headwind"
+                            elif pct_diff < -0.015:
+                                # Old bar much lower → dropping it lets MA rise
+                                # even if tomorrow closes flat (tailwind).
+                                tomorrow_bias = "tailwind"
+                            else:
+                                tomorrow_bias = "neutral"
+                except Exception:
+                    pass
+            else:
+                # EMA: keeps rising as long as close > EMA.
+                tomorrow_bias = (
+                    "tailwind" if close > ma_now * 1.005
+                    else "headwind" if close < ma_now * 0.995
+                    else "neutral"
+                )
+                need_tomorrow = ma_now  # flat-level for EMA is the EMA itself
+
             rows.append({
-                "name":     name,
-                "value":    round(ma_now, 2),
-                "pct_dist": round(pct_dist, 2),
-                "slope":    slope,
-                "bias":     bias,
+                "name":          name,
+                "value":         round(ma_now, 2),
+                "pct_dist":      round(pct_dist, 2),
+                "slope":         slope,
+                "bias":          bias,
+                "need_tomorrow": round(need_tomorrow, 2) if math.isfinite(need_tomorrow) else None,
+                "tomorrow_bias": tomorrow_bias,
             })
 
         except Exception as exc:
@@ -249,7 +317,7 @@ def build_avwap_table(provider_symbol: str, close: float, atr: float) -> list[di
         return []
 
     rows: list[dict] = []
-    for anchor, avwap_key, dist_key, reclaim_key in _AVWAP_ANCHORS:
+    for anchor, avwap_key, dist_key, reclaim_key, priority in _AVWAP_ANCHORS:
         try:
             avwap = _sf(feat, avwap_key)
             if not math.isfinite(avwap) or avwap <= 0:
@@ -258,7 +326,7 @@ def build_avwap_table(provider_symbol: str, close: float, atr: float) -> list[di
             dist_atr = _sf(feat, dist_key)  # may be nan
             pct_dist = (close - avwap) / close * 100
 
-            # Role / status
+            # Role / status — tighter threshold for "testing" zone (0.25 ATR)
             if math.isfinite(dist_atr) and abs(dist_atr) < 0.25:
                 role = "testing"
                 status = "Testing"
@@ -284,19 +352,109 @@ def build_avwap_table(provider_symbol: str, close: float, atr: float) -> list[di
                 if math.isfinite(rv):
                     reclaim = bool(rv >= 0.5)
 
+            # Extra enrichment columns: stretch_atr, slope_20, closes_above_20
+            extras = _AVWAP_EXTRAS.get(anchor, {})
+            stretch_atr     = _sf(feat, extras.get("stretch_atr", ""))
+            slope_20        = _sf(feat, extras.get("slope_20", ""))
+            closes_above_20 = _sf(feat, extras.get("closes_above_20", ""))
+
+            # Slope label for the AVWAP anchor
+            if math.isfinite(slope_20):
+                if slope_20 > 0.002:
+                    slope_label = "rising"
+                elif slope_20 < -0.002:
+                    slope_label = "falling"
+                else:
+                    slope_label = "flat"
+            else:
+                slope_label = None
+
             rows.append({
-                "anchor":   anchor,
-                "avwap":    round(avwap, 2),
-                "pct_dist": round(pct_dist, 2),
-                "dist_atr": round(dist_atr, 3) if math.isfinite(dist_atr) else _NAN,
-                "role":     role,
-                "status":   status,
-                "reclaim":  reclaim,
+                "anchor":           anchor,
+                "priority":         priority,
+                "avwap":            round(avwap, 2),
+                "pct_dist":         round(pct_dist, 2),
+                "dist_atr":         round(dist_atr, 3) if math.isfinite(dist_atr) else _NAN,
+                "role":             role,
+                "status":           status,
+                "reclaim":          reclaim,
+                # Enrichment
+                "stretch_atr":     round(stretch_atr, 3)     if math.isfinite(stretch_atr)     else None,
+                "slope_20":        round(slope_20, 4)        if math.isfinite(slope_20)        else None,
+                "slope_label":     slope_label,
+                "closes_above_20": round(closes_above_20, 3) if math.isfinite(closes_above_20) else None,
             })
 
         except Exception as exc:
             _log.warning("AVWAP table - error on %s/%s: %s", provider_symbol, anchor, exc)
             continue
+
+    # ── Dynamic anchors (WTD, MTD) computed from raw daily ────────────────────
+    # These are not stored in features parquet; compute on-the-fly from raw OHLCV.
+    try:
+        raw_df = _load_raw_daily(provider_symbol)
+        if raw_df is not None and not raw_df.empty and math.isfinite(atr) and atr > 0:
+            _dynamic_anchors: list[tuple[str, pd.Timestamp | None]] = []
+
+            latest_date = raw_df.index.max()
+
+            # WTD: first trading day of the current ISO week
+            week_start = latest_date - pd.Timedelta(days=latest_date.dayofweek)
+            wtd_dates = raw_df.index[raw_df.index >= week_start]
+            wtd_anchor: pd.Timestamp | None = pd.Timestamp(wtd_dates[0]) if len(wtd_dates) > 1 else None
+            if wtd_anchor is not None:
+                _dynamic_anchors.append(("WTD", wtd_anchor))
+
+            # MTD: first trading day of the current calendar month
+            month_start = latest_date.replace(day=1)
+            mtd_dates = raw_df.index[raw_df.index >= month_start]
+            mtd_anchor: pd.Timestamp | None = pd.Timestamp(mtd_dates[0]) if len(mtd_dates) > 1 else None
+            if mtd_anchor is not None:
+                _dynamic_anchors.append(("MTD", mtd_anchor))
+
+            for dyn_label, anchor_date in _dynamic_anchors:
+                try:
+                    # Compute AVWAP from anchor_date to latest using close x volume / cumvol
+                    since = raw_df.loc[anchor_date:]
+                    if len(since) < 1:
+                        continue
+                    vp = (since["close"] * since["volume"]).cumsum()
+                    cv = since["volume"].cumsum()
+                    avwap_dyn = float(vp.iloc[-1] / cv.iloc[-1]) if float(cv.iloc[-1]) > 0 else math.nan
+                    if not math.isfinite(avwap_dyn) or avwap_dyn <= 0:
+                        continue
+
+                    dist_atr_dyn = (close - avwap_dyn) / atr
+                    pct_dist_dyn = (close - avwap_dyn) / close * 100
+
+                    if abs(dist_atr_dyn) < 0.25:
+                        dyn_role, dyn_status = "testing", "Testing"
+                    elif dist_atr_dyn > 0:
+                        dyn_role, dyn_status = "support", "Accepted above"
+                    else:
+                        dyn_role, dyn_status = "resistance", "Accepted below"
+
+                    rows.append({
+                        "anchor":           dyn_label,
+                        "priority":         "dynamic",
+                        "anchor_date":      str(anchor_date.date()),
+                        "avwap":            round(avwap_dyn, 2),
+                        "pct_dist":         round(pct_dist_dyn, 2),
+                        "dist_atr":         round(dist_atr_dyn, 3),
+                        "role":             dyn_role,
+                        "status":           dyn_status,
+                        "reclaim":          None,
+                        "stretch_atr":      None,
+                        "slope_20":         None,
+                        "slope_label":      None,
+                        "closes_above_20":  None,
+                    })
+                except Exception as exc:
+                    _log.debug("AVWAP dynamic anchor %s/%s: %s", provider_symbol, dyn_label, exc)
+                    continue
+
+    except Exception as exc:
+        _log.debug("AVWAP dynamic anchors error for %s: %s", provider_symbol, exc)
 
     return rows
 
@@ -512,13 +670,20 @@ def build_checklist(
     provider_symbol: str,
     snapshot_row: pd.Series,
     levels: dict,
+    assessments: dict | None = None,
 ) -> list[dict]:
-    """Build the 15-item structured trade checklist.
+    """Build structured trade checklist (15 core items + up to 3 assessment items).
 
     Each item: {"item": str, "result": "pass"|"fail"|"neutral", "reason": str}
 
-    All feature values are loaded from data/features/{sym}.parquet.
-    Snapshot fields are read from snapshot_row.
+    Core items (1-15) use features parquet and snapshot columns.
+    Assessment items (16-18) use the pre-computed assessments dict if provided;
+    these cover base quality, continuation pattern, and clean air.
+
+    Parameters
+    ----------
+    assessments : optional dict from run_all_assessments(); if None, the
+                  assessment items are skipped (not shown as failures).
     """
     try:
         feat = _load_features(provider_symbol)
@@ -900,11 +1065,184 @@ def build_checklist(
         else:
             items.append(_item("Score quality", "neutral", "Composite score unavailable"))
 
+        # ── Assessment items (16-18) — only if assessments were pre-computed ────
+        if assessments:
+            # 16. Base quality
+            bq = assessments.get("base_quality", {})
+            bq_grade = bq.get("grade", "")
+            bq_score = bq.get("score", math.nan)
+            if isinstance(bq_score, float) and math.isfinite(bq_score):
+                bq_note = bq.get("notes", [""])[0] if bq.get("notes") else bq.get("label", "")
+                if bq_grade in ("A", "B"):
+                    items.append(_item("Base quality", "pass", f"Grade {bq_grade}: {bq_note}"))
+                elif bq_grade == "D":
+                    items.append(_item("Base quality", "fail", f"Grade {bq_grade}: {bq_note}"))
+                else:
+                    items.append(_item("Base quality", "neutral", f"Grade {bq_grade}: {bq_note}"))
+
+            # 17. Continuation pattern
+            cp = assessments.get("continuation", {})
+            patterns = cp.get("patterns", [])
+            strongest = cp.get("strongest_pattern", "none")
+            cp_notes = cp.get("notes", [])
+            if patterns:
+                cp_desc = cp_notes[0] if cp_notes else strongest
+                items.append(_item("Continuation pattern", "pass", cp_desc))
+            else:
+                items.append(_item("Continuation pattern", "neutral",
+                                   "No tight continuation pattern detected (NR7/3WT/tight5d)"))
+
+            # 18. Clean air above
+            ca = assessments.get("clean_air", {})
+            ca_score = ca.get("score", math.nan)
+            ca_atrs  = ca.get("clean_air_atrs", math.nan)
+            ca_notes = ca.get("notes", [])
+            if isinstance(ca_score, float) and math.isfinite(ca_score):
+                ca_desc = ca_notes[0] if ca_notes else f"Clean air: {ca_atrs:.1f} ATR"
+                if ca_score >= 0.70:
+                    items.append(_item("Clean air above pivot", "pass", ca_desc))
+                elif ca_score <= 0.30:
+                    items.append(_item("Clean air above pivot", "fail", ca_desc))
+                else:
+                    items.append(_item("Clean air above pivot", "neutral", ca_desc))
+            else:
+                items.append(_item("Clean air above pivot", "neutral", "AVWAP resistance data unavailable"))
+
         return items
 
     except Exception as exc:
         _log.warning("checklist - unexpected error for %s: %s", provider_symbol, exc)
         return []
+
+
+# ---------------------------------------------------------------------------
+# Trend state (Tier 2 — from features parquet)
+# ---------------------------------------------------------------------------
+
+
+def build_trend_state(provider_symbol: str, snapshot_row: pd.Series) -> dict:
+    """Build trend state from features parquet (requires file I/O).
+
+    Returns a dict:
+      daily_trend_state   : str  — more precise than snapshot-only version
+      weekly_trend_state  : str  — weekly structure classification
+      daily_detail        : dict — raw values used for classification
+      weekly_detail       : dict — raw weekly values
+    """
+    feat = _load_features(provider_symbol)
+
+    def _ff(key: str) -> float:
+        if feat is None:
+            return _NAN
+        return _sf(feat, key, _NAN)
+
+    def _sr(key: str) -> float:
+        return _sf(snapshot_row, key, _NAN)
+
+    # Daily: use features for more complete picture
+    cvs50    = _ff("close_vs_sma50")  if not math.isfinite(_sr("close_vs_sma50"))  else _sr("close_vs_sma50")
+    cvs200   = _ff("close_vs_sma200")
+    slope50   = _ff("slope_50")
+    cvs_ema20 = _ff("close_vs_ema20")
+    rs63      = _sr("daily_rs_63")
+    if not math.isfinite(rs63):
+        rs63 = _ff("daily_rs_63")
+
+    # Weekly
+    wk_dist  = _ff("weekly_dist_wma10")
+    wk_slope = _ff("weekly_trend_slope_26")
+    wk_rs26  = _ff("weekly_rs_26")
+    wk_dist40 = _ff("weekly_dist_wma40")
+
+    # --- Daily classification ---
+    if not math.isfinite(cvs50) and not math.isfinite(cvs200):
+        daily = "unknown"
+    elif math.isfinite(cvs200) and cvs200 < -0.06:
+        daily = "broken"  # below 200 SMA — major structural breakdown
+    elif math.isfinite(cvs200) and cvs200 < 0:
+        daily = "below_200sma"
+    elif math.isfinite(cvs50) and cvs50 < -0.05:
+        if math.isfinite(slope50) and slope50 < 0:
+            daily = "below_sma50_declining"
+        else:
+            daily = "below_sma50"
+    elif math.isfinite(cvs50) and cvs50 < 0:
+        daily = "near_sma50"  # within 5% below SMA50
+    elif math.isfinite(cvs50) and cvs50 >= 0:
+        if math.isfinite(slope50) and slope50 > 0.002:
+            if math.isfinite(rs63) and rs63 > 0.03:
+                daily = "strong_uptrend"  # above rising SMA50, outperforming
+            else:
+                daily = "uptrend_sma50_rising"
+        elif math.isfinite(slope50) and slope50 < -0.002:
+            daily = "above_sma50_declining"  # above but MA heading down — late stage
+        else:
+            daily = "above_sma50_flat"
+    else:
+        daily = "unknown"
+
+    # EMA20 note
+    ema20_note = None
+    if math.isfinite(cvs_ema20):
+        if cvs_ema20 > 0:
+            ema20_note = f"Above EMA20 (+{cvs_ema20*100:.1f}%)"
+        else:
+            ema20_note = f"Below EMA20 ({cvs_ema20*100:.1f}%)"
+
+    # --- Weekly classification ---
+    if not math.isfinite(wk_dist) and not math.isfinite(wk_slope):
+        weekly = "unknown"
+    elif math.isfinite(wk_dist) and wk_dist < -0.05 and math.isfinite(wk_slope) and wk_slope < 0:
+        weekly = "broken_weekly"
+    elif math.isfinite(wk_dist) and wk_dist < -0.03:
+        weekly = "below_wma10_weekly"
+    elif math.isfinite(wk_dist) and wk_dist >= 0:
+        if math.isfinite(wk_slope) and wk_slope > 0.001:
+            if math.isfinite(wk_rs26) and wk_rs26 > 0.03:
+                weekly = "strong_weekly_uptrend"
+            else:
+                weekly = "weekly_uptrend"
+        elif math.isfinite(wk_slope) and wk_slope < -0.001:
+            weekly = "above_wma10_declining"
+        else:
+            weekly = "above_wma10_flat"
+    else:
+        weekly = "neutral_weekly"
+
+    # 40-week check (long-term health)
+    wma40_note = None
+    if math.isfinite(wk_dist40):
+        if wk_dist40 > 0:
+            wma40_note = f"Above 40-week WMA (+{wk_dist40*100:.1f}%)"
+        else:
+            wma40_note = f"Below 40-week WMA ({wk_dist40*100:.1f}%)"
+
+    # Summary note
+    trend_notes: list[str] = []
+    if math.isfinite(cvs50):
+        trend_notes.append(f"SMA50 dist: {cvs50*100:+.1f}%")
+    if math.isfinite(cvs200):
+        trend_notes.append(f"SMA200 dist: {cvs200*100:+.1f}%")
+    if math.isfinite(wk_dist):
+        trend_notes.append(f"WMA10 wk dist: {wk_dist*100:+.1f}%")
+
+    return {
+        "daily_trend_state":  daily,
+        "weekly_trend_state": weekly,
+        "daily_detail": {
+            "close_vs_sma50":  round(cvs50, 4)   if math.isfinite(cvs50)    else None,
+            "close_vs_sma200": round(cvs200, 4)  if math.isfinite(cvs200)   else None,
+            "slope_50":        round(slope50, 5) if math.isfinite(slope50)  else None,
+            "ema20_note":      ema20_note,
+        },
+        "weekly_detail": {
+            "weekly_dist_wma10":      round(wk_dist, 4)   if math.isfinite(wk_dist)   else None,
+            "weekly_trend_slope_26":  round(wk_slope, 5)  if math.isfinite(wk_slope)  else None,
+            "weekly_rs_26":           round(wk_rs26, 4)   if math.isfinite(wk_rs26)   else None,
+            "wma40_note":             wma40_note,
+        },
+        "trend_summary": trend_notes,
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -1090,12 +1428,24 @@ def build_context(
         except (TypeError, ValueError):
             pivot = _NAN
 
-        ma_table    = build_ma_table(provider_symbol, close)
-        avwap_table = build_avwap_table(provider_symbol, close, atr)
+        ma_table     = build_ma_table(provider_symbol, close)
+        avwap_table  = build_avwap_table(provider_symbol, close, atr)
         volume_block = build_volume_block(provider_symbol, close, atr)
-        confluence  = build_confluence(close, pivot, atr, avwap_table, levels)
-        checklist   = build_checklist(provider_symbol, snapshot_row, levels)
+        confluence   = build_confluence(close, pivot, atr, avwap_table, levels)
+
+        # Run deterministic pattern assessments from raw daily OHLCV.
+        raw_df = _load_raw_daily(provider_symbol)
+        assessments = run_all_assessments(
+            df=raw_df if raw_df is not None else pd.DataFrame(),
+            close=close,
+            atr=atr,
+            avwap_table=avwap_table,
+            pivot=pivot,
+        )
+
+        checklist     = build_checklist(provider_symbol, snapshot_row, levels, assessments)
         score_drivers = build_score_drivers(provider_symbol, snapshot_row)
+        trend_state   = build_trend_state(provider_symbol, snapshot_row)
 
         return {
             "ma_table":      ma_table,
@@ -1104,6 +1454,8 @@ def build_context(
             "confluence":    confluence,
             "checklist":     checklist,
             "score_drivers": score_drivers,
+            "assessments":   assessments,
+            "trend_state":   trend_state,
         }
 
     except Exception as exc:
@@ -1115,4 +1467,7 @@ def build_context(
             "confluence":   {"nearby_count": 0, "nearby_levels": [], "cluster_role": "scattered"},
             "checklist":    [],
             "score_drivers": {"bullish_signals": [], "bearish_signals": [], "model_based": [], "rule_based": [], "why_selected": "Error"},
+            "assessments":  {},
+            "trend_state":  {"daily_trend_state": "unknown", "weekly_trend_state": "unknown",
+                             "daily_detail": {}, "weekly_detail": {}, "trend_summary": []},
         }

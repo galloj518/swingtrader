@@ -1,4 +1,17 @@
-"""Top setup selection logic — bucket-aware.
+"""Top setup selection logic — bucket-aware and packet-first.
+
+Packet-first API (preferred)
+-----------------------------
+select_packets(all_packets, ...)
+    Accepts a list of lightweight packets (from build_all_lightweight_packets).
+    Returns a PacketSelections dict keyed by bucket name, each value being a
+    ranked list of packet dicts.  No DataFrame access — pure dict operations.
+
+DataFrame API (backward compatibility)
+---------------------------------------
+select_breakout_candidates / select_pullback_candidates / select_top_setups
+    Legacy functions that operate on DataFrame rows.  Kept for callers that
+    have not yet migrated to the packet-first flow.
 
 Implements three separate selection functions:
 
@@ -45,7 +58,18 @@ from swingtrader.dashboard.action import (
     ACTION_NOW,
     ACTION_PULLBACK,
 )
-from swingtrader.dashboard.buckets import BUCKET_BREAKOUT, BUCKET_PORTFOLIO, BUCKET_PULLBACK
+from swingtrader.dashboard.buckets import (
+    BUCKET_BREAKOUT,
+    BUCKET_EXCLUDED,
+    BUCKET_EXTENDED,
+    BUCKET_NON_EQUITY,
+    BUCKET_PORTFOLIO,
+    BUCKET_PULLBACK,
+    BUCKET_REVERSAL,
+)
+
+# Type alias for the structured selection result
+PacketSelections = dict[str, list[dict]]
 
 # ── Configuration ─────────────────────────────────────────────────────────────
 
@@ -85,6 +109,28 @@ def _safe_score(row: pd.Series) -> float:
         return -1.0
 
 
+def _breakout_ranking_score(row: pd.Series) -> float:
+    """Score for ranking within the breakout bucket.
+
+    For BASE/ARMED (pre-trigger), use setup_score: it is the model's dedicated
+    assessment of base / setup quality independent of failure-risk scaling.
+    For TRIGGERED/ACCEPTED (already triggered), composite_score is appropriate
+    since it uses the trade_score model output designed for in-trade assessment.
+
+    Falls back to composite_score if setup_score is unavailable.
+    """
+    state = str(row.get("state", ""))
+    if state in {"BASE", "ARMED"}:
+        v = row.get("setup_score", math.nan)
+        try:
+            f = float(v)
+            if math.isfinite(f):
+                return f
+        except (TypeError, ValueError):
+            pass
+    return _safe_score(row)
+
+
 def _primary_group(row: pd.Series) -> str:
     """Return the first group tag for diversity checking."""
     g = str(row.get("groups", ""))
@@ -95,15 +141,24 @@ def _sort_and_cap(
     candidates: pd.DataFrame,
     n: int,
     diversity: bool = True,
+    score_fn=None,
 ) -> pd.DataFrame:
-    """Sort by (tier, score desc), apply group diversity cap, return top-n."""
+    """Sort by (tier, score desc), apply group diversity cap, return top-n.
+
+    Parameters
+    ----------
+    score_fn : optional callable(row) → float for bucket-specific ranking.
+               Defaults to _safe_score (composite_score) when not provided.
+    """
     if candidates.empty:
         return candidates.head(0)
+
+    _score_fn = score_fn if score_fn is not None else _safe_score
 
     df = candidates.copy()
     df["_tier"] = df["action_label"].map(lambda x: _BREAKOUT_TIER.get(x, 9)) \
         if "action_label" in df.columns else 9
-    df["_score"] = df.apply(_safe_score, axis=1)
+    df["_score"] = df.apply(_score_fn, axis=1)
     df["_group"] = df.apply(_primary_group, axis=1)
     df = df.sort_values(["_tier", "_score"], ascending=[True, False])
 
@@ -181,7 +236,9 @@ def select_breakout_candidates(df: pd.DataFrame, n: int = TOP_N_BREAKOUT) -> pd.
 
     candidates = _base_filter(candidates)
 
-    return _sort_and_cap(candidates, n, diversity=True)
+    # Breakout bucket ranks by setup_score for BASE/ARMED (model's dedicated base-quality
+    # assessment), falling back to composite_score for TRIGGERED/ACCEPTED.
+    return _sort_and_cap(candidates, n, diversity=True, score_fn=_breakout_ranking_score)
 
 
 def select_pullback_candidates(df: pd.DataFrame, n: int = TOP_N_PULLBACK) -> pd.DataFrame:
@@ -214,6 +271,50 @@ def select_pullback_candidates(df: pd.DataFrame, n: int = TOP_N_PULLBACK) -> pd.
     candidates = _base_filter(candidates)
 
     return _sort_and_cap(candidates, n, diversity=True)
+
+
+def select_extended_leaders(df: pd.DataFrame, n: int = 8) -> pd.DataFrame:
+    """Return extended-leader symbols for the monitoring section.
+
+    Extended leaders are healthy names that are too extended for fresh entry.
+    Shown for informational monitoring only — NOT in the primary action list.
+    Ranked by composite_score desc (highest quality first).
+
+    Parameters
+    ----------
+    df : snapshot DataFrame with bucket column.
+    n  : max symbols to return.
+    """
+    if df.empty or "bucket" not in df.columns:
+        return df.head(0)
+    leaders = df[df["bucket"] == BUCKET_EXTENDED].copy()
+    if leaders.empty:
+        return leaders
+    leaders["_score"] = leaders.apply(_safe_score, axis=1)
+    leaders = leaders.sort_values("_score", ascending=False)
+    return leaders.drop(columns=["_score"], errors="ignore").head(n)
+
+
+def select_reversal_candidates(df: pd.DataFrame, n: int = 3) -> pd.DataFrame:
+    """Return speculative reversal candidates for the watch section.
+
+    These are structurally weak names with some reversal characteristics.
+    Explicitly NOT in the primary long list — kept in a separate section.
+    Ranked by composite_score desc.
+
+    Parameters
+    ----------
+    df : snapshot DataFrame with bucket column.
+    n  : max symbols to return.
+    """
+    if df.empty or "bucket" not in df.columns:
+        return df.head(0)
+    candidates = df[df["bucket"] == BUCKET_REVERSAL].copy()
+    if candidates.empty:
+        return candidates
+    candidates["_score"] = candidates.apply(_safe_score, axis=1)
+    candidates = candidates.sort_values("_score", ascending=False)
+    return candidates.drop(columns=["_score"], errors="ignore").head(n)
 
 
 def select_portfolio_holdings(df: pd.DataFrame) -> pd.DataFrame:
@@ -308,6 +409,240 @@ def select_top_setups(df: pd.DataFrame, n: int = TOP_N) -> pd.DataFrame:
             return result.head(n)
 
     return breakout.head(n)
+
+
+# ── Packet-first selection API ───────────────────────────────────────────────
+
+
+def _pkt_score(pkt: dict) -> float:
+    """Extract composite_score from a packet as a sortable float."""
+    v = pkt.get("composite_score", -1.0)
+    try:
+        f = float(v)
+        return f if math.isfinite(f) else -1.0
+    except (TypeError, ValueError):
+        return -1.0
+
+
+def _pkt_breakout_score(pkt: dict) -> float:
+    """Score for ranking within the breakout bucket.
+
+    BASE/ARMED: use setup_score (dedicated base-quality model output).
+    TRIGGERED/ACCEPTED: use composite_score (trade-quality model output).
+    Falls back to composite_score when setup_score is absent.
+    """
+    state = str(pkt.get("state", ""))
+    if state in {"BASE", "ARMED"}:
+        v = pkt.get("setup_score")
+        try:
+            f = float(v)
+            if math.isfinite(f):
+                return f
+        except (TypeError, ValueError):
+            pass
+    return _pkt_score(pkt)
+
+
+def _pkt_structural_tiebreaker(pkt: dict) -> tuple[int, float, float]:
+    """Secondary sort key for breakout candidates with similar model scores.
+
+    Returns a tuple used as a tiebreaker after (action_tier, -model_score).
+    Lower values rank higher (used in ascending sort).
+
+    Three components (all secondary — model score is primary):
+      1. not_near_pivot   : 0 if abs(dist_to_pivot_atr) <= 0.5, else 1
+                             Near-pivot names rank before distant ones.
+      2. atr_compression  : lower = more compressed = better.
+                             Normalised to [0, 1] from raw percentile.
+                             Names with compressed ATR rank above noisy ones.
+      3. rs_penalty       : 0 if rs63 > 0, else small positive penalty.
+                             Outperformers rank ahead of flat/lagging names.
+
+    Note: this is a purely ordinal tiebreaker for selector ranking.
+    It is not a model score and is not stored in the packet.
+    """
+    # Component 1: proximity to pivot
+    dist_v = pkt.get("dist_to_pivot_atr", math.nan)
+    try:
+        dist_f = float(dist_v)
+        not_near_pivot = 0 if (math.isfinite(dist_f) and abs(dist_f) <= 0.5) else 1
+    except (TypeError, ValueError):
+        not_near_pivot = 1
+
+    # Component 2: ATR compression (lower percentile = better)
+    atr_v = pkt.get("atr_compression_pct", math.nan)
+    try:
+        atr_f = float(atr_v)
+        atr_norm = atr_f / 100.0 if math.isfinite(atr_f) else 0.5
+    except (TypeError, ValueError):
+        atr_norm = 0.5
+
+    # Component 3: RS penalty for lagging names
+    rs_v = pkt.get("daily_rs_63", math.nan)
+    try:
+        rs_f = float(rs_v)
+        rs_penalty = 0.0 if (math.isfinite(rs_f) and rs_f > 0) else 0.1
+    except (TypeError, ValueError):
+        rs_penalty = 0.0
+
+    return (not_near_pivot, atr_norm, rs_penalty)
+
+
+def _pkt_primary_group(pkt: dict) -> str:
+    g = str(pkt.get("groups", ""))
+    return g.split(",")[0].strip() if g else "other"
+
+
+def _pkt_sort_and_cap(
+    packets: list[dict],
+    n: int,
+    score_fn=None,
+    diversity: bool = True,
+    use_structural_tiebreaker: bool = False,
+) -> list[dict]:
+    """Sort packets by (action tier, score desc, structural tiebreaker), apply diversity cap, return top-n.
+
+    Parameters
+    ----------
+    use_structural_tiebreaker : when True, adds a secondary structural sort key
+        (pivot proximity, ATR compression, RS) as a tiebreaker after model score.
+        Used for breakout bucket where near-pivot, compressed, outperforming names
+        should be preferred among candidates with similar model scores.
+        This is ordinal ranking only — NOT a model score.
+    """
+    if not packets:
+        return []
+    sf = score_fn if score_fn is not None else _pkt_score
+    if use_structural_tiebreaker:
+        keyed = sorted(
+            packets,
+            key=lambda p: (
+                _BREAKOUT_TIER.get(str(p.get("action_label", "")), 9),
+                -sf(p),
+                _pkt_structural_tiebreaker(p),
+            ),
+        )
+    else:
+        keyed = sorted(
+            packets,
+            key=lambda p: (
+                _BREAKOUT_TIER.get(str(p.get("action_label", "")), 9),
+                -sf(p),
+            ),
+        )
+    if not diversity:
+        return keyed[:n]
+
+    selected: list[dict] = []
+    group_counts: dict[str, int] = {}
+    for pkt in keyed:
+        if len(selected) >= n:
+            break
+        g = _pkt_primary_group(pkt)
+        if group_counts.get(g, 0) >= MAX_PER_GROUP:
+            continue
+        selected.append(pkt)
+        group_counts[g] = group_counts.get(g, 0) + 1
+    return selected[:n]
+
+
+def select_packets(
+    all_packets: list[dict],
+    n_breakout: int = TOP_N_BREAKOUT,
+    n_pullback: int = TOP_N_PULLBACK,
+    n_extended: int = 8,
+    n_reversal: int = 3,
+) -> PacketSelections:
+    """Select and rank packets from the full symbol list by bucket.
+
+    This is the packet-first selector.  It receives a list of lightweight
+    packets (produced by build_all_lightweight_packets) and groups them by
+    their pre-computed ``bucket`` field.  No DataFrame access, no recomputation
+    of eligibility or scores.
+
+    Parameters
+    ----------
+    all_packets : list of lightweight packet dicts (from build_all_lightweight_packets).
+    n_breakout  : max breakout-long candidates to return.
+    n_pullback  : max pullback-long candidates to return.
+    n_extended  : max extended-leader symbols to return.
+    n_reversal  : max reversal-speculative symbols to return.
+
+    Returns
+    -------
+    PacketSelections dict with keys:
+      ``breakout``  — top breakout-long packets (fresh, eligible, non-portfolio)
+      ``pullback``  — top pullback-long packets (fresh, eligible, non-portfolio)
+      ``extended``  — top extended-leader packets (informational)
+      ``reversal``  — top reversal-speculative packets (informational)
+      ``portfolio`` — all portfolio-hold packets
+      ``excluded``  — all excluded packets (for diagnostics / artifacts)
+      ``top``       — combined breakout + pullback (for backward-compat callers)
+    """
+    # Partition by bucket
+    by_bucket: dict[str, list[dict]] = {
+        BUCKET_BREAKOUT:   [],
+        BUCKET_PULLBACK:   [],
+        BUCKET_EXTENDED:   [],
+        BUCKET_REVERSAL:   [],
+        BUCKET_PORTFOLIO:  [],
+        BUCKET_EXCLUDED:   [],
+        BUCKET_NON_EQUITY: [],
+    }
+    for pkt in all_packets:
+        b = str(pkt.get("bucket", BUCKET_EXCLUDED))
+        by_bucket.setdefault(b, []).append(pkt)
+
+    # Breakout: fresh only, non-portfolio, ranked by setup_score/composite_score
+    bo_candidates = [
+        p for p in by_bucket[BUCKET_BREAKOUT]
+        if bool(p.get("is_fresh", False)) and not bool(p.get("is_portfolio", False))
+           and str(p.get("action_label", "")) != ACTION_AVOID
+    ]
+    breakout_selected = _pkt_sort_and_cap(
+        bo_candidates, n_breakout,
+        score_fn=_pkt_breakout_score,
+        diversity=True,
+        use_structural_tiebreaker=True,
+    )
+
+    # Pullback: fresh only, non-portfolio, ranked by composite_score
+    pb_candidates = [
+        p for p in by_bucket[BUCKET_PULLBACK]
+        if bool(p.get("is_fresh", False)) and not bool(p.get("is_portfolio", False))
+           and str(p.get("action_label", "")) != ACTION_AVOID
+    ]
+    # Exclude symbols already in breakout list
+    bo_syms = {p.get("symbol") for p in breakout_selected}
+    pb_candidates = [p for p in pb_candidates if p.get("symbol") not in bo_syms]
+    pullback_selected = _pkt_sort_and_cap(pb_candidates, n_pullback, diversity=True)
+
+    # Extended: informational, ranked by composite_score desc
+    ext_sorted = sorted(by_bucket[BUCKET_EXTENDED], key=_pkt_score, reverse=True)
+    extended_selected = ext_sorted[:n_extended]
+
+    # Reversal: informational, ranked by composite_score desc
+    rev_sorted = sorted(by_bucket[BUCKET_REVERSAL], key=_pkt_score, reverse=True)
+    reversal_selected = rev_sorted[:n_reversal]
+
+    # Portfolio: all holdings, sorted by active-trade state priority then score
+    _state_pri = {"TRIGGERED": 1, "ACCEPTED": 2, "CONFIRMED": 3, "ARMED": 4, "BASE": 5}
+    portfolio_sorted = sorted(
+        by_bucket[BUCKET_PORTFOLIO],
+        key=lambda p: (_state_pri.get(str(p.get("state", "")), 9), -_pkt_score(p)),
+    )
+
+    top = breakout_selected + pullback_selected
+
+    return {
+        "breakout":  breakout_selected,
+        "pullback":  pullback_selected,
+        "extended":  extended_selected,
+        "reversal":  reversal_selected,
+        "portfolio": portfolio_sorted,
+        "excluded":  by_bucket[BUCKET_EXCLUDED],
+        "top":       top,
+    }
 
 
 # ── Legacy fallback ───────────────────────────────────────────────────────────

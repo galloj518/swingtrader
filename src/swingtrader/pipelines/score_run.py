@@ -27,22 +27,12 @@ from pathlib import Path
 
 import pandas as pd
 
-from swingtrader.dashboard.action import (
-    add_action_column,
-    add_portfolio_guidance_column,
-    add_setup_classification_column,
-)
-from swingtrader.dashboard.buckets import add_bucket_column, bucket_counts
 from swingtrader.dashboard.charts import generate_charts_for_packet
-from swingtrader.dashboard.eligibility import add_eligibility_columns
-from swingtrader.dashboard.freshness import add_freshness_columns
-from swingtrader.dashboard.packet import build_packets
-from swingtrader.dashboard.selector import (
-    select_breakout_candidates,
-    select_portfolio_holdings,
-    select_pullback_candidates,
-    select_top_setups,
+from swingtrader.dashboard.packet import (
+    build_all_lightweight_packets,
+    enrich_with_context,
 )
+from swingtrader.dashboard.selector import select_packets
 from swingtrader.journal.schema import auto_update_open_trades
 from swingtrader.models.estimators import ModelBundle
 from swingtrader.models.train import train_pipeline
@@ -129,17 +119,17 @@ class ScoreRunner:
                 log.warning("No snapshot found — reports will be scores-only.")
                 ranked_snapshot = scored_with_ranks.reset_index()
 
-            # Step 6 — Add freshness + action labels + setup classification + portfolio guidance
-            ranked_snapshot = add_freshness_columns(ranked_snapshot)
-            ranked_snapshot = add_action_column(ranked_snapshot)
-            ranked_snapshot = add_setup_classification_column(ranked_snapshot)
-            ranked_snapshot = add_portfolio_guidance_column(ranked_snapshot)
+            # Step 6 — Build lightweight packets for ALL symbols (packet-first)
+            # Eligibility, freshness, action, bucket are all computed internally
+            # by build_lightweight_packet.  No separate DataFrame column passes needed.
+            log.info("Building lightweight packets for all symbols…")
+            all_packets = build_all_lightweight_packets(ranked_snapshot)
+            summary["n_all_packets"] = len(all_packets)
 
-            # Step 6b — Hard eligibility gates + setup bucket assignment
-            ranked_snapshot = add_eligibility_columns(ranked_snapshot)
-            ranked_snapshot = add_bucket_column(ranked_snapshot)
-
-            buckets = bucket_counts(ranked_snapshot)
+            # Bucket counts from packets (canonical)
+            from collections import Counter
+            bucket_counter = Counter(p.get("bucket", "excluded") for p in all_packets)
+            buckets = dict(bucket_counter)
             log.info(
                 "Bucket counts — breakout: %d  pullback: %d  portfolio: %d  "
                 "extended: %d  excluded: %d",
@@ -166,62 +156,83 @@ class ScoreRunner:
                 log.warning("Journal update error: %s", exc)
                 summary["journal_updated"] = 0
 
-            # Step 9 — Build top setup packets + generate charts + render dashboard
+            # Step 9 — Select from packets → enrich top-N → charts → artifacts → dashboard
             report_dir = REPO_ROOT / "docs" / "reports" / "daily" / str(self.as_of.date())
             report_dir.mkdir(parents=True, exist_ok=True)
 
-            # Select breakout + pullback candidates separately, then combine
-            breakout_df = select_breakout_candidates(ranked_snapshot)
-            pullback_df = select_pullback_candidates(ranked_snapshot)
+            # Select using packet-first selector
+            selections = select_packets(all_packets)
+            top_packets = selections["top"]   # breakout + pullback combined
 
-            # Combine for packet building: breakout first, then pullback fill
-            # (select_top_setups does the same merge but we track counts here)
-            top_df = select_top_setups(ranked_snapshot)
-            packets = build_packets(top_df)
+            summary["n_top_setups"] = len(top_packets)
+            summary["n_breakout"] = len(selections["breakout"])
+            summary["n_pullback"] = len(selections["pullback"])
 
-            summary["n_top_setups"] = len(packets)
-            summary["n_breakout"] = len(breakout_df)
-            summary["n_pullback"] = len(pullback_df)
+            # Build row lookup for enrich_with_context (needs raw snapshot row for file paths)
+            sym_col = "user_symbol" if "user_symbol" in ranked_snapshot.columns else "symbol"
+            row_by_sym = {
+                str(row.get(sym_col, row.get("symbol", ""))): row
+                for _, row in ranked_snapshot.iterrows()
+            }
+
+            # Enrich only the selected top-N packets with MA table / AVWAP / assessments
+            enriched: list[dict] = []
+            for pkt in top_packets:
+                sym = pkt.get("symbol", "")
+                row = row_by_sym.get(sym)
+                if row is not None:
+                    try:
+                        pkt = enrich_with_context(pkt, row)
+                    except Exception as exc:
+                        log.warning("Context enrichment error for %s: %s", sym, exc)
+                enriched.append(pkt)
+
+            # Rebuild selections with enriched packets
+            enriched_by_sym = {p.get("symbol"): p for p in enriched}
+            selections["breakout"] = [enriched_by_sym.get(p["symbol"], p) for p in selections["breakout"]]
+            selections["pullback"] = [enriched_by_sym.get(p["symbol"], p) for p in selections["pullback"]]
+            selections["top"] = enriched
 
             # Generate charts (best-effort; fails silently per symbol)
-            packets_with_charts: list[dict] = []
-            for pkt in packets:
+            charted: list[dict] = []
+            for pkt in enriched:
                 try:
                     pkt = generate_charts_for_packet(pkt, report_dir)
                 except Exception as exc:
                     log.warning("Chart error for %s: %s", pkt.get("symbol"), exc)
-                packets_with_charts.append(pkt)
+                charted.append(pkt)
+            selections["top"] = charted
+            charted_by_sym = {p.get("symbol"): p for p in charted}
+            selections["breakout"] = [charted_by_sym.get(p["symbol"], p) for p in selections["breakout"]]
+            selections["pullback"] = [charted_by_sym.get(p["symbol"], p) for p in selections["pullback"]]
 
-            # AI analysis notes (best-effort; falls back to rule-based if no key)
+            # AI analysis notes (best-effort)
             try:
-                packets_with_charts = enrich_packets_with_ai(packets_with_charts)
+                selections["top"] = enrich_packets_with_ai(selections["top"])
             except Exception as exc:
                 log.warning("AI enrichment error: %s", exc)
 
-            # Trader dashboard (primary output)
+            # Trader dashboard — thin rendering from packet selections
             try:
                 dash_path = write_dashboard(
-                    ranked_snapshot,
-                    packets_with_charts,
+                    ranked_snapshot,          # kept for regime columns only
+                    selections["top"],
                     self.as_of,
                     report_dir,
+                    selections=selections,    # packet-first: extended/reversal/portfolio from packets
                     oos_metrics=oos_metrics or None,
                 )
                 summary["dashboard"] = str(dash_path)
             except Exception as exc:
                 log.warning("Dashboard render error: %s", exc)
 
-            # Machine-readable JSON artifacts
+            # Machine-readable JSON artifacts — fully packet-driven
             try:
-                portfolio_df = select_portfolio_holdings(ranked_snapshot)
                 artifact_paths = write_artifacts(
-                    packets_with_charts,
-                    portfolio_df,
+                    selections,
                     ranked_snapshot,
                     self.as_of,
                     report_dir,
-                    breakout_df=breakout_df,
-                    pullback_df=pullback_df,
                 )
                 summary["artifacts_summary"] = str(artifact_paths.get("summary", ""))
             except Exception as exc:

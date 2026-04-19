@@ -381,6 +381,7 @@ def _rich_df(n_breakout=3, n_pullback=2, n_portfolio=1, n_excluded=1) -> pd.Data
             is_fresh=True,
             action_label=ACTION_BREAKOUT,
             composite_score=0.5 + i * 0.02,
+            setup_score=0.5 + i * 0.02,   # setup_score is the ranking key for ARMED/BASE
             percentile_rank=70 + i * 5,
         ))
     for i in range(n_pullback):
@@ -443,11 +444,12 @@ class TestSelectBreakoutCandidates:
         result = select_breakout_candidates(pd.DataFrame())
         assert result.empty
 
-    def test_ranked_by_composite_score(self):
+    def test_ranked_by_setup_score_for_armed_base(self):
+        """Breakout candidates in ARMED/BASE are ranked by setup_score (not composite)."""
         df = _rich_df(n_breakout=3)
         result = select_breakout_candidates(df)
-        scores = result["composite_score"].tolist()
-        # Should be sorted descending
+        scores = result["setup_score"].tolist()
+        # Should be sorted descending by setup_score
         for i in range(len(scores) - 1):
             with contextlib.suppress(TypeError, ValueError):
                 assert float(scores[i]) >= float(scores[i + 1]) - 0.001

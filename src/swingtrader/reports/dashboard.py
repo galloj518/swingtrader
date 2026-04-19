@@ -23,6 +23,7 @@ so it renders correctly when viewed locally or via GitHub Pages.
 """
 from __future__ import annotations
 
+import itertools
 import json
 import math
 from datetime import UTC, datetime
@@ -293,19 +294,61 @@ footer { margin-top: 2rem; font-size: .75rem; color: var(--fg3);
                    border-left: 2px solid var(--bg3); margin-top: .3rem;
                    font-style: italic; }
 
-/* ── Top-5 header bar ────────────────────────────────────────────────────── */
-.top5-header { background: var(--bg2); border: 1px solid var(--border);
-               border-radius: 6px; padding: .5rem .9rem; margin-bottom: .8rem; }
-.top5-count  { font-size: .82rem; color: var(--fg2); }
+/* ── Universe summary bar ─────────────────────────────────────────────────── */
+.universe-bar { background: var(--bg2); border: 1px solid var(--border);
+                border-radius: 6px; padding: .5rem .9rem; margin-bottom: 1.2rem;
+                font-size: .78rem; color: var(--fg3); }
+.universe-bar strong { color: var(--fg); }
+
+/* ── Bucket section headings ─────────────────────────────────────────────── */
+.bucket-section { margin-bottom: 2rem; }
+.bucket-header  { display: flex; align-items: center; gap: .7rem; flex-wrap: wrap;
+                  background: var(--bg2); border: 1px solid var(--border);
+                  border-radius: 6px; padding: .55rem 1rem; margin-bottom: .8rem; }
+.bh-title  { font-size: 1rem; font-weight: 700; color: var(--fg); }
+.bh-count  { font-size: .8rem; color: var(--fg2); }
+.bh-desc   { font-size: .75rem; color: var(--fg3); margin-left: auto; }
+.bh-breakout { border-left: 3px solid var(--blue); }
+.bh-pullback { border-left: 3px solid var(--amber); }
+.bh-extended { border-left: 3px solid var(--fg3); }
+.bh-reversal { border-left: 3px solid var(--red); }
+
+/* ── "No setups" notice ──────────────────────────────────────────────────── */
+.no-setups-note { background: var(--bg3); border: 1px solid var(--border);
+                  border-radius: 4px; padding: .5rem .9rem;
+                  font-size: .82rem; color: var(--fg3); }
+
+/* ── Setup quality warning ────────────────────────────────────────────────── */
 .top5-warn   { background: #3d2f0a; border: 1px solid var(--amber);
                border-radius: 4px; padding: .4rem .8rem; margin: .4rem 0;
                font-size: .82rem; color: var(--amber); }
+
+/* ── Bucket tag on card header ────────────────────────────────────────────── */
 .bucket-tag  { font-size: .72rem; padding: .1rem .35rem; border-radius: 3px;
                font-weight: 600; margin-left: .3rem; }
 .bt-breakout { color: var(--blue);  background: #0f2d4f; }
 .bt-pullback { color: var(--amber); background: #3d2f0a; }
 .rank-num    { font-size: .85rem; color: var(--fg3); font-weight: 700;
                min-width: 1.4rem; }
+
+/* ── Compact monitoring list (Extended Leaders / Speculative Watch) ─────── */
+.monitor-list { background: var(--bg2); border: 1px solid var(--border);
+                border-radius: 6px; overflow: hidden; margin-bottom: .6rem; }
+.monitor-row  { display: flex; align-items: center; gap: .7rem; flex-wrap: wrap;
+                padding: .4rem .8rem; border-bottom: 1px solid var(--bg3);
+                font-size: .82rem; }
+.monitor-row:last-child { border-bottom: none; }
+.mr-sym   { font-weight: 700; color: var(--fg); min-width: 60px; }
+.mr-state { font-size: .75rem; min-width: 70px; }
+.mr-score { font-family: monospace; color: var(--fg2); font-size: .78rem; }
+.mr-note  { color: var(--fg3); font-size: .76rem; flex: 1; }
+.mr-warn  { background: #3d2f0a; color: var(--amber); font-size: .7rem;
+            padding: .1rem .35rem; border-radius: 3px; white-space: nowrap; }
+
+/* ── Speculative warning banner ───────────────────────────────────────────── */
+.reversal-banner { background: #3d1212; border: 1px solid var(--red);
+                   border-radius: 4px; padding: .4rem .8rem; margin-bottom: .6rem;
+                   font-size: .78rem; color: var(--red); }
 """
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -1157,6 +1200,134 @@ def _portfolio_strip_html(portfolio_df: pd.DataFrame) -> str:
     )
 
 
+# ── Packet-first rendering helpers ───────────────────────────────────────────
+
+
+def _portfolio_strip_html_from_packets(portfolio_pkts: list[dict]) -> str:
+    """Render portfolio strip from packet list (packet-first path)."""
+    if not portfolio_pkts:
+        return ""
+    chips = []
+    for pkt in portfolio_pkts:
+        sym     = str(pkt.get("symbol", "?"))
+        state   = str(pkt.get("state", "NONE"))
+        action  = str(pkt.get("action_label", "—"))
+        guidance = str(pkt.get("portfolio_guidance", ""))
+        score_v = pkt.get("composite_score", "—")
+        pct_v   = pkt.get("percentile_rank", "—")
+
+        try:
+            score_f = float(score_v)
+            pct_f   = float(pct_v)
+            score_pill = (
+                f'<span class="pc-score" title="composite_score · percentile">'
+                f'{score_f:.2f} <span style="color:var(--fg3)">({pct_f:.0f}p)</span>'
+                f'</span>'
+            ) if math.isfinite(score_f) else ""
+        except (TypeError, ValueError):
+            score_pill = ""
+
+        # Prefer portfolio_health.recommended_action if present
+        ph = pkt.get("portfolio_health", {})
+        if isinstance(ph, dict) and ph.get("recommended_action"):
+            guidance = ph["recommended_action"]
+
+        warn_str = str(pkt.get("eligibility_warnings", ""))
+        warn_html = (
+            f'<span class="pc-warn" title="{warn_str}">\u26a0 {warn_str[:40]}{"…" if len(warn_str) > 40 else ""}</span>'
+        ) if warn_str and warn_str not in ("—", "") else ""
+
+        if guidance and guidance not in ("—", ""):
+            gl = guidance.lower()
+            if "exit" in gl or "fail" in gl:
+                icon, pg_cls = "✗", "pg-exit"
+            elif "trim" in gl or "de-risk" in gl:
+                icon, pg_cls = "↓", "pg-trim"
+            elif "defend" in gl or "tighten" in gl or "stop" in gl:
+                icon, pg_cls = "⚠", "pg-defend"
+            elif "hold" in gl or "watch" in gl:
+                icon, pg_cls = "✓", "pg-hold"
+            else:
+                icon, pg_cls = "\u2139", "pg-info"
+            guidance_html = (
+                f'<span class="pc-guidance {pg_cls}">'
+                f'{icon} {guidance[:70]}{"…" if len(guidance) > 70 else ""}'
+                f'</span>'
+            )
+        else:
+            guidance_html = ""
+
+        chips.append(
+            f'<div class="port-chip">'
+            f'<span class="pc-sym">{sym}</span>'
+            f'<span class="pc-state s-{state}">{state}</span>'
+            f'{score_pill}'
+            f'<span class="pc-action">{action}</span>'
+            f'{warn_html}'
+            f'{guidance_html}'
+            f'</div>'
+        )
+
+    return (
+        f'<h2>Portfolio Holdings</h2>'
+        f'<div class="portfolio-strip">{"".join(chips)}</div>'
+    )
+
+
+def _compact_monitor_rows_from_packets(pkts: list[dict], max_rows: int = 8) -> str:
+    """Render compact monitor rows for extended leaders from packet list."""
+    rows = []
+    for pkt in pkts[:max_rows]:
+        sym   = str(pkt.get("symbol", "—"))
+        state = str(pkt.get("state", "—"))
+        score_v = pkt.get("composite_score", "—")
+        dist_v  = pkt.get("dist_to_pivot_atr", "—")
+        ext_reason = str(pkt.get("extension_reasons", ""))
+        try:
+            score_str = f"{float(score_v):.3f}"
+        except (TypeError, ValueError):
+            score_str = "—"
+        try:
+            dist_f = float(dist_v)
+            dist_str = f"+{dist_f:.1f} ATR extended" if math.isfinite(dist_f) and dist_f > 0 else ""
+        except (TypeError, ValueError):
+            dist_str = ""
+        note = ext_reason if ext_reason and ext_reason not in ("—",) else "do not chase; watch for pullback to add zone"
+        rows.append(
+            f'<div class="monitor-row">'
+            f'<span class="mr-sym">{sym}</span>'
+            f'<span class="mr-state s-{state}">{state}</span>'
+            f'<span class="mr-score">{score_str}</span>'
+            f'<span class="mr-note">{dist_str}{" — " if dist_str else ""}{note}</span>'
+            f'</div>'
+        )
+    return f'<div class="monitor-list">{"".join(rows)}</div>' if rows else ""
+
+
+def _compact_reversal_rows_from_packets(pkts: list[dict], max_rows: int = 3) -> str:
+    """Render compact monitor rows for reversal candidates from packet list."""
+    rows = []
+    for pkt in pkts[:max_rows]:
+        sym       = str(pkt.get("symbol", "—"))
+        state     = str(pkt.get("state", "—"))
+        score_v   = pkt.get("composite_score", "—")
+        rejection = str(pkt.get("rejection_reasons", ""))
+        try:
+            score_str = f"{float(score_v):.3f}"
+        except (TypeError, ValueError):
+            score_str = "—"
+        rows.append(
+            f'<div class="monitor-row">'
+            f'<span class="mr-sym">{sym}</span>'
+            f'<span class="mr-state s-{state}">{state}</span>'
+            f'<span class="mr-score">{score_str}</span>'
+            f'<span class="mr-warn">failed: {rejection[:60]}</span>'
+            f'<span class="mr-note">speculative only — 25-50% size, strict stop</span>'
+            f'</div>'
+        )
+    return f'<div class="monitor-list">{"".join(rows)}</div>' if rows else ""
+
+
 # ── Public API ────────────────────────────────────────────────────────────────
 
 def render_dashboard(
@@ -1164,15 +1335,21 @@ def render_dashboard(
     packets: list[dict],
     as_of: pd.Timestamp,
     *,
+    selections: dict | None = None,
     oos_metrics: dict | None = None,
 ) -> str:
     """Render the complete 3-layer dashboard as an HTML string.
 
     Parameters
     ----------
-    snapshot_df : full scored + freshness + action-labelled snapshot.
-    packets     : list of dicts from packet.build_packets() for the top setups.
+    snapshot_df : full scored snapshot (used for regime columns).  Pass an empty
+                  DataFrame if not available; regime section will be blank.
+    packets     : list of dicts for the top setups (breakout + pullback).
     as_of       : report date.
+    selections  : optional PacketSelections dict from select_packets().  When
+                  provided, extended/reversal/portfolio sections are rendered
+                  from packet lists rather than from snapshot_df.  This is the
+                  preferred packet-first path.
     oos_metrics : optional OOS calibration metrics for the footer.
 
     Returns
@@ -1182,142 +1359,263 @@ def render_dashboard(
     generated_at = datetime.now(UTC).strftime("%Y-%m-%d %H:%M UTC")
     date_str = str(as_of.date())
 
-    # Partition snapshot
-    portfolio_df = pd.DataFrame()
+    # Partition snapshot (kept for regime columns)
     full_df = snapshot_df.copy() if not snapshot_df.empty else pd.DataFrame()
 
+    # Layer 1 — Regime strip
+    regime_html = _regime_html(full_df)
+
+    # Portfolio strip: prefer packet-first (selections["portfolio"]) over DataFrame.
+    # portfolio_df is always initialised so the detail table below can reference it.
+    portfolio_df = pd.DataFrame()
     if not full_df.empty:
         if "bucket" in full_df.columns:
-            # Prefer bucket column (set by add_bucket_column in score_run step 6b)
             portfolio_df = full_df[full_df["bucket"] == "portfolio_hold"].copy()
         elif "is_portfolio" in full_df.columns:
             portfolio_df = full_df[full_df["is_portfolio"].astype(bool)].copy()
 
-    # Layer 1 — Regime + portfolio strip
-    regime_html = _regime_html(full_df)
-    portfolio_html = _portfolio_strip_html(portfolio_df)
+    if selections is not None and selections.get("portfolio"):
+        portfolio_html = _portfolio_strip_html_from_packets(selections["portfolio"])
+    else:
+        portfolio_html = _portfolio_strip_html(portfolio_df)
 
-    # ── Layer 2 — Unified Top-5 setup cards ──────────────────────────────────
-    # Count action labels across ALL packets for summary bar
-    now_n = sum(1 for p in packets if p.get("action_label") == "Actionable now")
-    bo_n  = sum(1 for p in packets if p.get("action_label") == "Actionable on breakout")
-    pb_n  = sum(1 for p in packets if p.get("action_label") == "Actionable on pullback")
+    # ── Layer 2 — Bucket-separated setup sections ────────────────────────────
 
-    # Eligibility counts from snapshot
-    n_total = len(full_df) if not full_df.empty else 0
-    n_eligible = 0
-    n_excluded = 0
-    n_fresh = 0
-    n_extended = 0
-    if not full_df.empty and "eligible" in full_df.columns:
-        n_eligible = int(full_df["eligible"].astype(bool).sum())
-        n_excluded = int((~full_df["eligible"].astype(bool)).sum())
-    if not full_df.empty and "is_fresh" in full_df.columns:
-        n_fresh = int(full_df["is_fresh"].astype(bool).sum())
-    if not full_df.empty and "is_extended" in full_df.columns:
-        n_extended = int(full_df["is_extended"].astype(bool).sum())
-    # Rejection counts by gate for the "fewer than 5" callout
-    # Build from snapshot for symbols in scored states that did NOT make the top list
-    gate_counts: dict[str, int] = {}
-    if not full_df.empty and "state" in full_df.columns:
-        scored_states_set = {"BASE", "ARMED", "TRIGGERED", "ACCEPTED"}
-        scored_mask = full_df["state"].isin(scored_states_set)
-        scored_excl = full_df[scored_mask].copy()
+    # Prefer packet-based partitioning when selections are available
+    if selections is not None:
+        breakout_packets = selections.get("breakout", [])
+        pullback_packets  = selections.get("pullback", [])
+        extended_pkts     = selections.get("extended", [])
+        reversal_pkts     = selections.get("reversal", [])
+    else:
+        breakout_packets = [p for p in packets if p.get("bucket") == "breakout_long"]
+        pullback_packets  = [p for p in packets if p.get("bucket") == "pullback_long"]
+        extended_pkts     = []
+        reversal_pkts     = []
 
-        # Count by each rejection pathway for non-top-list candidates
-        if "eligible" in scored_excl.columns:
-            ineligible = scored_excl[~scored_excl["eligible"].astype(bool)]
-            gate_counts["ineligible (hard gate)"] = len(ineligible)
+    # Counts: from selections when available, else from snapshot_df
+    if selections is not None:
+        all_pkts = list(itertools.chain.from_iterable(selections.values()))
+        n_total    = len(all_pkts)
+        n_eligible = sum(1 for p in all_pkts if bool(p.get("eligible", False)))
+        n_fresh    = sum(1 for p in all_pkts if bool(p.get("is_fresh", False)))
+        n_bo_cands   = len(selections.get("breakout", []))
+        n_pb_cands   = len(selections.get("pullback", []))
+        n_ext_cands  = len(selections.get("extended", []))
+        n_rev_cands  = len(selections.get("reversal", []))
+        n_excl_cands = len(selections.get("excluded", []))
+    else:
+        n_total = len(full_df) if not full_df.empty else 0
+        n_eligible = 0
+        n_fresh = 0
+        snapshot_bucket_counts: dict[str, int] = {}
+        if not full_df.empty:
+            if "eligible" in full_df.columns:
+                n_eligible = int(full_df["eligible"].astype(bool).sum())
+            if "is_fresh" in full_df.columns:
+                n_fresh = int(full_df["is_fresh"].astype(bool).sum())
+            if "bucket" in full_df.columns:
+                for bk, cnt in full_df["bucket"].value_counts().items():
+                    snapshot_bucket_counts[str(bk)] = int(cnt)
+        n_bo_cands   = snapshot_bucket_counts.get("breakout_long", 0)
+        n_pb_cands   = snapshot_bucket_counts.get("pullback_long", 0)
+        n_ext_cands  = snapshot_bucket_counts.get("extended_leader", 0)
+        n_rev_cands  = snapshot_bucket_counts.get("reversal_speculative", 0)
+        n_excl_cands = snapshot_bucket_counts.get("excluded", 0)
 
-        if "is_extended" in scored_excl.columns:
-            elig_mask = (
-                scored_excl["eligible"].astype(bool)
-                if "eligible" in scored_excl.columns
-                else pd.Series(True, index=scored_excl.index)
-            )
-            eligible_ext = scored_excl[elig_mask & scored_excl["is_extended"].astype(bool)]
-            gate_counts["extended (poor R/R)"] = len(eligible_ext)
-
-        if "is_fresh" in scored_excl.columns and "eligible" in scored_excl.columns:
-            ext_col = (
-                scored_excl["is_extended"].astype(bool)
-                if "is_extended" in scored_excl.columns
-                else pd.Series(False, index=scored_excl.index)
-            )
-            eligible_stale = scored_excl[
-                scored_excl["eligible"].astype(bool)
-                & ~scored_excl["is_fresh"].astype(bool)
-                & ~ext_col
-            ]
-            gate_counts["stale (aged out)"] = len(eligible_stale)
-
-    summary_bar = (
-        f'<div class="top5-header">'
-        f'<div style="display:flex;gap:1rem;flex-wrap:wrap;align-items:center">'
-        f'<span class="top5-count">'
-        f'<strong>{len(packets)}</strong> / 5 top setups today'
-        f'</span>'
-        f'<span style="color:var(--fg3)">|</span>'
-        f'<span style="font-size:.78rem;color:var(--fg3)">'
-        f'{n_total} universe &nbsp;·&nbsp; '
-        f'{n_eligible} eligible &nbsp;·&nbsp; '
-        f'{n_fresh} fresh &nbsp;·&nbsp; '
-        f'{n_extended} extended &nbsp;·&nbsp; '
-        f'{n_excluded} excluded by gates'
-        f'</span>'
-        f'</div>'
-        f'<div style="display:flex;gap:1rem;flex-wrap:wrap;margin-top:.25rem">'
-        f'<span style="font-size:.78rem"><span style="color:var(--green)">●</span>'
-        f' {now_n} actionable now</span>'
-        f'<span style="font-size:.78rem"><span style="color:var(--blue)">●</span>'
-        f' {bo_n} on breakout</span>'
-        f'<span style="font-size:.78rem"><span style="color:var(--amber)">●</span>'
-        f' {pb_n} on pullback</span>'
-        f'</div>'
+    # Universe summary bar
+    universe_bar = (
+        f'<div class="universe-bar">'
+        f'<strong>{n_total}</strong> universe &nbsp;·&nbsp; '
+        f'<strong>{n_eligible}</strong> eligible &nbsp;·&nbsp; '
+        f'<strong>{n_fresh}</strong> fresh &nbsp;·&nbsp; '
+        f'<strong style="color:var(--blue)">{n_bo_cands}</strong> breakout candidates &nbsp;·&nbsp; '
+        f'<strong style="color:var(--amber)">{n_pb_cands}</strong> pullback candidates &nbsp;·&nbsp; '
+        f'<strong style="color:var(--fg3)">{n_ext_cands}</strong> extended &nbsp;·&nbsp; '
+        f'<strong style="color:var(--red)">{n_rev_cands}</strong> reversal watch &nbsp;·&nbsp; '
+        f'<strong>{n_excl_cands}</strong> excluded by gates'
         f'</div>'
     )
 
-    # Fewer-than-5 explanation callout
-    fewer5_html = ""
-    if len(packets) < 5:
-        n_shown = len(packets)
-        n_missing = 5 - n_shown
-        gate_lines = "".join(
-            f'<li>{reason}: <strong>{count}</strong></li>'
-            for reason, count in gate_counts.items()
-            if count > 0
+    # ── Breakout section ──────────────────────────────────────────────────────
+    bo_header = (
+        f'<div class="bucket-header bh-breakout">'
+        f'<span class="bh-title">Top Breakout Longs</span>'
+        f'<span class="bh-count">{len(breakout_packets)} shown</span>'
+        f'<span class="bh-desc">'
+        f'Eligible, fresh setups at or near pivot. Ranked by setup quality score.'
+        f'</span>'
+        f'</div>'
+    )
+    if breakout_packets:
+        bo_cards = "\n".join(
+            _render_card(p, rank=i + 1) for i, p in enumerate(breakout_packets)
         )
-        gate_detail = f'<ul style="margin:.3rem 0 0 1rem;font-size:.78rem">{gate_lines}</ul>' if gate_lines else ""
-        fewer5_html = (
-            f'<div class="top5-warn">'
-            f'<strong>⚠ Only {n_shown} of 5 setup slots filled today.</strong>'
-            f' {n_missing} slot{"s" if n_missing != 1 else ""} empty — '
-            f'not enough names passed all filters simultaneously.'
-            f'{gate_detail}'
+        bo_body = f'<div class="setup-cards">{bo_cards}</div>'
+    else:
+        bo_body = (
+            f'<div class="no-setups-note">'
+            f'No breakout candidates qualify today. '
+            f'{n_bo_cands} symbol{"s" if n_bo_cands != 1 else ""} in breakout bucket '
+            f'(check freshness and eligibility filters).'
             f'</div>'
         )
+    breakout_section = (
+        f'<div class="bucket-section">'
+        f'{bo_header}'
+        f'{bo_body}'
+        f'</div>'
+    )
 
-    if packets:
-        cards_html = "\n".join(
-            _render_card(p, rank=i + 1) for i, p in enumerate(packets)
+    # ── Pullback section ──────────────────────────────────────────────────────
+    pb_header = (
+        f'<div class="bucket-header bh-pullback">'
+        f'<span class="bh-title">Top Pullback / Re-entry Longs</span>'
+        f'<span class="bh-count">{len(pullback_packets)} shown</span>'
+        f'<span class="bh-desc">'
+        f'Constructive pullbacks within confirmed uptrends. Secondary candidates.'
+        f'</span>'
+        f'</div>'
+    )
+    if pullback_packets:
+        pb_cards = "\n".join(
+            _render_card(p, rank=i + 1) for i, p in enumerate(pullback_packets)
         )
-        cards_section = (
-            f'<h2>Top 5 Decision-Ready Setups — {date_str}</h2>'
-            f'{summary_bar}'
-            f'{fewer5_html}'
-            f'<div class="setup-cards">{cards_html}</div>'
+        pb_body = f'<div class="setup-cards">{pb_cards}</div>'
+    else:
+        pb_body = (
+            '<div class="no-setups-note">'
+            'No pullback candidates qualify today.'
+            '</div>'
+        )
+    pullback_section = (
+        f'<div class="bucket-section">'
+        f'{pb_header}'
+        f'{pb_body}'
+        f'</div>'
+    )
+
+    # ── Extended Leaders compact section ─────────────────────────────────────
+    # Prefer packet list; fall back to DataFrame.
+    ext_rows_html = ""
+    if extended_pkts:
+        ext_rows_html = _compact_monitor_rows_from_packets(extended_pkts, max_rows=8)
+    elif not full_df.empty and "bucket" in full_df.columns:
+        ext_df = full_df[full_df["bucket"] == "extended_leader"].copy()
+        if not ext_df.empty:
+            if "composite_score" in ext_df.columns:
+                ext_df["_sc"] = ext_df["composite_score"].apply(
+                    lambda v: float(v) if isinstance(v, (int, float)) and math.isfinite(float(v) if not isinstance(v, str) else -1) else -1.0
+                )
+                ext_df = ext_df.sort_values("_sc", ascending=False).drop(columns=["_sc"])
+            sym_col = "user_symbol" if "user_symbol" in ext_df.columns else "symbol"
+            rows = []
+            for _, row in ext_df.head(8).iterrows():
+                sym = str(row.get(sym_col, "—"))
+                state = str(row.get("state", "—"))
+                score = row.get("composite_score", math.nan)
+                try:
+                    score_str = f"{float(score):.3f}"
+                except (TypeError, ValueError):
+                    score_str = "—"
+                dist = row.get("dist_to_pivot_atr", math.nan)
+                try:
+                    dist_str = f"+{float(dist):.1f} ATR extended" if math.isfinite(float(dist)) else ""
+                except (TypeError, ValueError):
+                    dist_str = ""
+                rows.append(
+                    f'<div class="monitor-row">'
+                    f'<span class="mr-sym">{sym}</span>'
+                    f'<span class="mr-state s-{state}">{state}</span>'
+                    f'<span class="mr-score">{score_str}</span>'
+                    f'<span class="mr-note">{dist_str} — do not chase; watch for pullback to add zone</span>'
+                    f'</div>'
+                )
+            ext_rows_html = f'<div class="monitor-list">{"".join(rows)}</div>'
+
+    ext_header = (
+        f'<div class="bucket-header bh-extended">'
+        f'<span class="bh-title">Extended Leaders</span>'
+        f'<span class="bh-count">{n_ext_cands} total</span>'
+        f'<span class="bh-desc">'
+        f'Healthy names too extended for fresh entry. Monitor for pullback add zones.'
+        f'</span>'
+        f'</div>'
+    )
+    if ext_rows_html:
+        extended_section = (
+            f'<div class="bucket-section">'
+            f'{ext_header}'
+            f'{ext_rows_html}'
+            f'</div>'
         )
     else:
-        cards_section = (
-            f'<h2>Top 5 Decision-Ready Setups — {date_str}</h2>'
-            f'{summary_bar}'
-            f'<div class="top5-warn">'
-            f'<strong>⚠ No setups qualify today.</strong> '
-            f'No symbols passed all eligibility gates with fresh, non-extended '
-            f'status in BASE / ARMED / TRIGGERED / ACCEPTED state. '
-            f'Check the excluded table below for details.'
+        extended_section = ""
+
+    # ── Speculative / Reversal Watch compact section ─────────────────────────
+    # Prefer packet list; fall back to DataFrame.
+    rev_rows_html = ""
+    if reversal_pkts:
+        rev_rows_html = _compact_reversal_rows_from_packets(reversal_pkts, max_rows=3)
+    elif not full_df.empty and "bucket" in full_df.columns:
+        rev_df = full_df[full_df["bucket"] == "reversal_speculative"].copy()
+        if not rev_df.empty:
+            if "composite_score" in rev_df.columns:
+                rev_df["_sc"] = rev_df["composite_score"].apply(
+                    lambda v: float(v) if isinstance(v, (int, float)) and math.isfinite(float(v) if not isinstance(v, str) else -1) else -1.0
+                )
+                rev_df = rev_df.sort_values("_sc", ascending=False).drop(columns=["_sc"])
+            sym_col = "user_symbol" if "user_symbol" in rev_df.columns else "symbol"
+            rows = []
+            for _, row in rev_df.head(3).iterrows():
+                sym = str(row.get(sym_col, "—"))
+                state = str(row.get("state", "—"))
+                score = row.get("composite_score", math.nan)
+                rejection = str(row.get("rejection_reasons", ""))
+                try:
+                    score_str = f"{float(score):.3f}"
+                except (TypeError, ValueError):
+                    score_str = "—"
+                rows.append(
+                    f'<div class="monitor-row">'
+                    f'<span class="mr-sym">{sym}</span>'
+                    f'<span class="mr-state s-{state}">{state}</span>'
+                    f'<span class="mr-score">{score_str}</span>'
+                    f'<span class="mr-warn">failed: {rejection[:60]}</span>'
+                    f'<span class="mr-note">speculative only — 25-50% size, strict stop</span>'
+                    f'</div>'
+                )
+            rev_rows_html = f'<div class="monitor-list">{"".join(rows)}</div>'
+
+    if rev_rows_html:
+        reversal_section = (
+            f'<div class="bucket-section">'
+            f'<div class="bucket-header bh-reversal">'
+            f'<span class="bh-title">Speculative / Reversal Watch</span>'
+            f'<span class="bh-count">{n_rev_cands} total</span>'
+            f'<span class="bh-desc">NOT in primary long list.</span>'
+            f'</div>'
+            f'<div class="reversal-banner">'
+            f'<strong>⚠ These names failed primary eligibility gates.</strong> '
+            f'They are shown for informational monitoring only. '
+            f'Do not treat these as equivalent to breakout or pullback candidates. '
+            f'If traded at all: smaller size, tighter stops, lower confidence.'
+            f'</div>'
+            f'{rev_rows_html}'
             f'</div>'
         )
+    else:
+        reversal_section = ""
+
+    # Combine into the main cards section
+    cards_section = (
+        f'<h2>Setups &mdash; {date_str}</h2>'
+        f'{universe_bar}'
+        f'{breakout_section}'
+        f'{pullback_section}'
+        f'{extended_section}'
+        f'{reversal_section}'
+    )
 
     # Excluded symbols section (compact, collapsible)
     excluded_section = ""
@@ -1461,12 +1759,21 @@ def write_dashboard(
     as_of: pd.Timestamp,
     output_dir: Path,
     *,
+    selections: dict | None = None,
     oos_metrics: dict | None = None,
 ) -> Path:
-    """Write dashboard.html to output_dir and return the path."""
+    """Write dashboard.html to output_dir and return the path.
+
+    Parameters
+    ----------
+    selections : optional PacketSelections dict from select_packets().  When
+                 provided, extended/reversal/portfolio sections are rendered
+                 entirely from pre-built packets (packet-first path).
+    """
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
-    html = render_dashboard(snapshot_df, packets, as_of, oos_metrics=oos_metrics)
+    html = render_dashboard(snapshot_df, packets, as_of,
+                            selections=selections, oos_metrics=oos_metrics)
     path = output_dir / "dashboard.html"
     path.write_text(html, encoding="utf-8")
     log.info("Dashboard written → %s", path)

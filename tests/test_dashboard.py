@@ -624,38 +624,54 @@ class TestTop5Enforcement:
         assert "BREAKOUT" in html or "PULLBACK" in html
 
 
-class TestFewerThan5Callout:
-    """When fewer than 5 setup slots are filled, dashboard must explain why."""
+class TestBucketSections:
+    """Bucket-separated sections replace the old unified Top-5 list."""
 
-    def test_fewer_than_5_warning_shown(self):
-        """Snapshot with only 2 fresh candidates → warning callout in HTML."""
-        df = _snapshot(5)   # only a few, mostly non-scored states
+    def test_empty_packet_list_shows_no_candidates_note(self):
+        """When no packets qualify, each bucket section shows a 'no candidates' note."""
+        df = _snapshot(5)
         df = add_freshness_columns(df)
         df = add_action_column(df)
         top = select_top_setups(df)
         pkts = build_packets(top)
         html = render_dashboard(df, pkts, pd.Timestamp("2026-01-15"))
-        # If fewer than 5 packets, the warning should appear
-        if len(pkts) < 5:
-            assert "Only" in html or "slot" in html or "⚠" in html
+        # Bucket sections always render; empty buckets show the no-candidates note
+        if len(pkts) == 0 or not any(p.get("bucket") == "breakout_long" for p in pkts):
+            assert "No breakout candidates" in html or "no-setups-note" in html
 
-    def test_no_warning_when_5_cards_shown(self):
-        """When exactly 5 packets provided, no fewer-than-5 warning appears."""
+    def test_breakout_section_header_present(self):
+        """Top Breakout Longs section header always appears."""
         df = _snapshot(5)
         df = add_freshness_columns(df)
         df = add_action_column(df)
-        # Manually build 5 packets
-        r = _row(state="ARMED", pivot=100.0, atr14=2.0)
-        r["action_label"] = "Actionable on breakout"
-        r["bucket"] = "breakout_long"
-        pkts = [build_packet(r) for _ in range(5)]
+        top = select_top_setups(df)
+        pkts = build_packets(top)
         html = render_dashboard(df, pkts, pd.Timestamp("2026-01-15"))
-        # 5 packets → no "Only N of 5" warning
-        assert "Only" not in html
+        assert "Top Breakout Longs" in html
 
-    def test_empty_snapshot_shows_no_setups_message(self):
+    def test_pullback_section_header_present(self):
+        """Top Pullback / Re-entry Longs section header always appears."""
+        df = _snapshot(5)
+        df = add_freshness_columns(df)
+        df = add_action_column(df)
+        top = select_top_setups(df)
+        pkts = build_packets(top)
+        html = render_dashboard(df, pkts, pd.Timestamp("2026-01-15"))
+        assert "Top Pullback" in html
+
+    def test_no_old_unified_top5_heading(self):
+        """The old 'Top 5 Decision-Ready Setups' heading is gone."""
+        df = _snapshot(5)
+        df = add_freshness_columns(df)
+        df = add_action_column(df)
+        top = select_top_setups(df)
+        pkts = build_packets(top)
+        html = render_dashboard(df, pkts, pd.Timestamp("2026-01-15"))
+        assert "Top 5 Decision-Ready Setups" not in html
+
+    def test_empty_snapshot_shows_no_candidates_note(self):
         html = render_dashboard(pd.DataFrame(), [], pd.Timestamp("2026-01-15"))
-        assert "No setups qualify" in html or "No actionable" in html or "⚠" in html
+        assert "No breakout candidates" in html
 
 
 class TestCardCoherence:
