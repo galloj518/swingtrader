@@ -5,10 +5,18 @@
     "as_of": "2026-04-19",
     "identity": {
       "state": "TRIGGERED",
+      "bucket": "breakout_long",
       "action_label": "Actionable now",
       "setup_classification": "Pullback entry",
       "freshness_label": "fresh",
-      "days_in_state": 1
+      "days_in_state": 1,
+      "eligible": true,
+      "rejection_reasons": null,
+      "eligibility_warnings": null,
+      "daily_trend_state": "strong_uptrend",
+      "weekly_trend_state": "weekly_uptrend",
+      "pullback_quality": "n/a",
+      "demotion_reason": null
     },
     "model_scores": {
       "composite_score": 0.75,
@@ -36,6 +44,38 @@
       "risk_reward_t1": "1.9x",
       "level_method": "ATR-pivot: entry=pivot+0.10*ATR, stop=pivot-1.0*ATR, T1=pivot+2.0*ATR"
     },
+    "trade_plan": {
+      "actionability": null,
+      "entry_style": null,
+      "entry_trigger": null,
+      "alt_entry": null,
+      "stop_price": null,
+      "stop_label": null,
+      "invalidation": null,
+      "t1": null,
+      "t2": null,
+      "t3": null,
+      "risk_reward_t1": "1.9:1",
+      "why_now": [
+        "Fresh breakout \u2014 only 1 day(s) since trigger",
+        "Above SMA50 (5.1%) \u2014 daily trend healthy",
+        "Outperforming SPY by 4% over 63 days",
+        "Volume dry-up score 0.43 \u2014 supply exhausted",
+        "Accepted 4.5 ATR above YTD AVWAP \u2014 healthy cost basis",
+        "5.8 ATR above swing low \u2014 buffer from base support",
+        "Low failure risk (1%) from model"
+      ],
+      "why_not_now": [
+        "No specific concerns flagged at this time"
+      ],
+      "setup_improves_if": [
+        "Follow-through close above $45.78 (T1) on heavy volume",
+        "Orderly pullback to pivot then reclaim \u2014 adds to position"
+      ],
+      "setup_weakens_if": [
+        "Close below stop $43.95 \u2014 invalidates trigger"
+      ]
+    },
     "context": {
       "ma_table": null,
       "avwap_table": null,
@@ -46,14 +86,14 @@
       "avwap_context": "Price is 4.5 ATR above YTD AVWAP \u2014 extended vs year-open cost basis."
     },
     "narrative": {
-      "setup": "XLRE has triggered above a 120-bar base (Day 1 in TRIGGERED state). Trigger pivot: $44.56. ATR compression is moderate (49th pct).",
-      "why": "XLRE is tracking SPY closely over 63 days. Score: 0.75, failure risk 0.01. Weekly: data unavailable. Market regime: SPY trend: 1.0. VIX: unavailable.",
-      "entry": "In trade. Original breakout zone: $44.56\u2013$44.62. Pullback entry: $44.50\u2013$44.56 zone. Avoid adding above $44.62.",
-      "risk": "Invalidation: close below $43.95 (pivot minus 0.61 ATR). Violates base structure. Daily stop loss: $43.65.",
-      "targets": "T1: $45.78 (+2.9%) (R/R 1.9x from entry mid). T2: $46.69 (+5.0%). T3: $47.60 (+7.0%). Partial at T1 recommended.",
-      "verdict": "Actionable now \u2014 break above $44.62 on volume. Set alert. Stop: $43.95. Market regime: SPY trend: 1.0. VIX: unavailable."
+      "setup": "XLRE triggered above a 120-bar base (Day 1). Pivot: $44.56. ATR compression is moderate (49th pct). Volume is drying up \u2014 institutional supply exhaustion signal.",
+      "why": "XLRE is tracking SPY closely over 63 days.  Failure risk: 0.01.  Market regime: SPY trend: 1.0. VIX: unavailable.",
+      "entry": "Breakout trigger: break above $44.62 on volume >= 1.5x average. Aggressive pivot buy: $44.56. Pullback entry zone: $44.56-$44.56. Do not chase more than 0.5 ATR above trigger.",
+      "risk": "Invalidation: close below $43.95 (pivot - 1 ATR). Base structure violated \u2014 full exit. Daily stop: $43.77.",
+      "targets": "T1: $45.78 (+2.9%) (R/R 1.9x from entry mid). T2: $46.69 (+5.0%). T3: $47.60 (+7.0%). Partial trim at T1 advised.",
+      "verdict": "Decision-ready breakout. Trigger: $44.62. Stop: $43.95. T1: $45.78 (R/R 1.9x)."
     },
-    "ai_note": "[XLRE \u2014 Rule-based note]\n\nSetup\nXLRE has triggered above a 120-bar base (Day 1 in TRIGGERED state). Trigger pivot: $44.56. ATR compression is moderate (49th pct).\n\nWhy It Matters Now\nXLRE is tracking SPY closely over 63 days. Score: 0.75, failure risk 0.01. Weekly: data unavailable. Market regime: SPY trend: 1.0. VIX: unavailable.\n\nEntry Idea\nIn trade. Original breakout zone: $44.56\u2013$44.62. Pullback entry: $44.50\u2013$44.56 zone. Avoid adding above $44.62.\n\nRisk/Invalidation\nInvalidation: close below $43.95 (pivot minus 0.61 ATR). Violates base structure. Daily stop loss: $43.65.\n\nTargets\nT1: $45.78 (+2.9%) (R/R 1.9x from entry mid). T2: $46.69 (+5.0%). T3: $47.60 (+7.0%). Partial at T1 recommended.\n\nVerdict\nActionable now \u2014 break above $44.62 on volume. Set alert. Stop: $43.95. Market regime: SPY trend: 1.0. VIX: unavailable.",
+    "ai_note": "[XLRE \u2014 Rule-based note]\n\nSetup\nXLRE triggered above a 120-bar base (Day 1). Pivot: $44.56. ATR compression is moderate (49th pct). Volume is drying up \u2014 institutional supply exhaustion signal.\n\nWhy It Matters Now\nXLRE is tracking SPY closely over 63 days.  Failure risk: 0.01.  Market regime: SPY trend: 1.0. VIX: unavailable.\n\nEntry Idea\nBreakout trigger: break above $44.62 on volume >= 1.5x average. Aggressive pivot buy: $44.56. Pullback entry zone: $44.56-$44.56. Do not chase more than 0.5 ATR above trigger.\n\nRisk/Invalidation\nInvalidation: close below $43.95 (pivot - 1 ATR). Base structure violated \u2014 full exit. Daily stop: $43.77.\n\nTargets\nT1: $45.78 (+2.9%) (R/R 1.9x from entry mid). T2: $46.69 (+5.0%). T3: $47.60 (+7.0%). Partial trim at T1 advised.\n\nVerdict\nDecision-ready breakout. Trigger: $44.62. Stop: $43.95. T1: $45.78 (R/R 1.9x).",
     "chart_paths": {
       "daily": "charts/XLRE_daily.png",
       "weekly": "charts/XLRE_weekly.png",

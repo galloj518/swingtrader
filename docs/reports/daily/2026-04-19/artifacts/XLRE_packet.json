@@ -5,13 +5,25 @@
   "groups": "sector_etfs",
   "is_portfolio": false,
   "is_watchlist": false,
-  "action_label": "Actionable now",
-  "setup_classification": "Pullback entry",
-  "portfolio_guidance": "Hold \u2014 active breakout. Add only on pullback to pivot zone.",
+  "is_non_equity": false,
+  "eligible": true,
+  "rejection_reasons": null,
+  "rejection_reasons_list": [],
+  "eligibility_warnings": null,
   "freshness_label": "fresh",
   "is_fresh": true,
   "is_extended": false,
   "is_stale_confirmed": false,
+  "extension_reasons": null,
+  "days_in_state": 1,
+  "bucket": "breakout_long",
+  "action_label": "Actionable now",
+  "setup_classification": "Pullback entry",
+  "portfolio_guidance": "Hold \u2014 active breakout. Add only on pullback to pivot zone.",
+  "daily_trend_state": "strong_uptrend",
+  "weekly_trend_state": "weekly_uptrend",
+  "pullback_quality": "n/a",
+  "demotion_reason": null,
   "composite_score": 0.75,
   "setup_score": null,
   "trade_score": 1.15,
@@ -22,7 +34,6 @@
   "atr14": 0.61,
   "dist_to_pivot_atr": -0.1,
   "base_length": 120,
-  "days_in_state": 1,
   "entry_lo": 44.56,
   "entry_hi": 44.62,
   "stop": 43.95,
@@ -36,6 +47,39 @@
   "r2": 46.69,
   "r3": 47.6,
   "risk_reward_t1": "1.9x",
+  "trade_plan": {
+    "actionability_code": "BUY_NOW",
+    "entry_condition": "Pulled back below $44.56. Re-entry on reclaim of pivot with volume.",
+    "entry_range": "$44.56-$44.62",
+    "stop": "$43.95",
+    "stop_basis": "1.0 ATR below pivot (1.0 ATR from entry). Daily close below stop = exit.",
+    "stop_risk_pct": "1.4%",
+    "target_1": "$45.78",
+    "target_2": "$46.69",
+    "risk_reward_t1": "1.9:1",
+    "time_stop": "If no follow-through within 7 trading days, reassess. Already 1 days in TRIGGERED.",
+    "key_risk": "Volume failure at pivot; Gap fill below stop",
+    "why_now": [
+      "Fresh breakout \u2014 only 1 day(s) since trigger",
+      "Above SMA50 (5.1%) \u2014 daily trend healthy",
+      "Outperforming SPY by 4% over 63 days",
+      "Volume dry-up score 0.43 \u2014 supply exhausted",
+      "Accepted 4.5 ATR above YTD AVWAP \u2014 healthy cost basis",
+      "5.8 ATR above swing low \u2014 buffer from base support",
+      "Low failure risk (1%) from model"
+    ],
+    "why_not_now": [
+      "No specific concerns flagged at this time"
+    ],
+    "setup_improves_if": [
+      "Follow-through close above $45.78 (T1) on heavy volume",
+      "Orderly pullback to pivot then reclaim \u2014 adds to position"
+    ],
+    "setup_weakens_if": [
+      "Close below stop $43.95 \u2014 invalidates trigger"
+    ]
+  },
+  "portfolio_health": {},
   "atr_compression_pct": 49.0,
   "volume_dryup": 0.4,
   "daily_rs_63": 0.043,
@@ -45,20 +89,16 @@
   "ytd_dist_atr": 4.5,
   "swing_low_dist_atr": 5.8,
   "regime_spy_trend": 1.0,
-  "eligible": true,
-  "rejection_reasons": null,
-  "eligibility_warnings": null,
-  "bucket": "breakout_long",
   "narrative": {
-    "setup": "XLRE has triggered above a 120-bar base (Day 1 in TRIGGERED state). Trigger pivot: $44.56. ATR compression is moderate (49th pct).",
-    "why": "XLRE is tracking SPY closely over 63 days. Score: 0.75, failure risk 0.01. Weekly: data unavailable. Market regime: SPY trend: 1.0. VIX: unavailable.",
-    "entry": "In trade. Original breakout zone: $44.56\u2013$44.62. Pullback entry: $44.50\u2013$44.56 zone. Avoid adding above $44.62.",
-    "risk": "Invalidation: close below $43.95 (pivot minus 0.61 ATR). Violates base structure. Daily stop loss: $43.65.",
-    "targets": "T1: $45.78 (+2.9%) (R/R 1.9x from entry mid). T2: $46.69 (+5.0%). T3: $47.60 (+7.0%). Partial at T1 recommended.",
+    "setup": "XLRE triggered above a 120-bar base (Day 1). Pivot: $44.56. ATR compression is moderate (49th pct). Volume is drying up \u2014 institutional supply exhaustion signal.",
+    "why": "XLRE is tracking SPY closely over 63 days.  Failure risk: 0.01.  Market regime: SPY trend: 1.0. VIX: unavailable.",
+    "entry": "Breakout trigger: break above $44.62 on volume >= 1.5x average. Aggressive pivot buy: $44.56. Pullback entry zone: $44.56-$44.56. Do not chase more than 0.5 ATR above trigger.",
+    "risk": "Invalidation: close below $43.95 (pivot - 1 ATR). Base structure violated \u2014 full exit. Daily stop: $43.77.",
+    "targets": "T1: $45.78 (+2.9%) (R/R 1.9x from entry mid). T2: $46.69 (+5.0%). T3: $47.60 (+7.0%). Partial trim at T1 advised.",
     "ma_context": "Close is above the 50-day MA (3.6 ATR above) \u2014 MA trend is rising.",
     "avwap_context": "Price is 4.5 ATR above YTD AVWAP \u2014 extended vs year-open cost basis.",
-    "verdict": "Actionable now \u2014 break above $44.62 on volume. Set alert. Stop: $43.95. Market regime: SPY trend: 1.0. VIX: unavailable.",
-    "trade_plan": "Entry trigger: close/break above $44.62 on volume. Pullback entry: $44.56\u2013$44.62. Stop/invalidation: $43.95. T1: $45.78 | T2: $46.69 | T3: $47.60. R/R to T1: 1.9x from entry mid."
+    "verdict": "Decision-ready breakout. Trigger: $44.62. Stop: $43.95. T1: $45.78 (R/R 1.9x).",
+    "trade_plan": "Trigger: break above $44.62 on volume. Stop: $43.95. T1: $45.78 | T2: $46.69 | T3: $47.60. R/R to T1: 1.9x."
   },
   "context": {
     "ma_table": [
@@ -67,80 +107,142 @@
         "value": 43.63,
         "pct_dist": 1.91,
         "slope": "rising",
-        "bias": "Stays rising if close > 43.02"
+        "bias": "Stays rising if close > 43.02",
+        "need_tomorrow": 43.02,
+        "tomorrow_bias": "tailwind"
       },
       {
         "name": "SMA10",
         "value": 42.96,
         "pct_dist": 3.41,
         "slope": "rising",
-        "bias": "Stays rising if close > 41.76"
+        "bias": "Stays rising if close > 41.76",
+        "need_tomorrow": 41.76,
+        "tomorrow_bias": "tailwind"
       },
       {
         "name": "SMA20",
         "value": 41.75,
         "pct_dist": 6.14,
         "slope": "rising",
-        "bias": "Stays rising if close > 40.32"
+        "bias": "Stays rising if close > 40.32",
+        "need_tomorrow": 40.32,
+        "tomorrow_bias": "tailwind"
       },
       {
         "name": "SMA50",
         "value": 42.31,
         "pct_dist": 4.87,
         "slope": "rising",
-        "bias": "Stays rising if close > 40.95"
+        "bias": "Stays rising if close > 40.95",
+        "need_tomorrow": 40.95,
+        "tomorrow_bias": "tailwind"
       },
       {
         "name": "SMA200",
         "value": 41.08,
         "pct_dist": 7.63,
         "slope": "rising",
-        "bias": "Stays rising if close > 40.74"
+        "bias": "Stays rising if close > 40.74",
+        "need_tomorrow": 40.74,
+        "tomorrow_bias": "tailwind"
       },
       {
         "name": "EMA20",
         "value": 42.49,
         "pct_dist": 4.48,
         "slope": "rising",
-        "bias": "Stays rising if close > 42.49"
+        "bias": "Stays rising if close > 42.49",
+        "need_tomorrow": 42.49,
+        "tomorrow_bias": "tailwind"
       }
     ],
     "avwap_table": [
       {
         "anchor": "YTD",
+        "priority": "primary",
         "avwap": 41.72,
         "pct_dist": 6.21,
         "dist_atr": 4.543,
         "role": "support",
         "status": "Accepted above",
-        "reclaim": true
+        "reclaim": true,
+        "stretch_atr": 4.543,
+        "slope_20": -0.3765,
+        "slope_label": "falling",
+        "closes_above_20": 0.6
       },
       {
         "anchor": "Swing Low",
+        "priority": "primary",
         "avwap": 40.96,
         "pct_dist": 7.91,
         "dist_atr": 5.787,
         "role": "support",
         "status": "Accepted above",
-        "reclaim": true
+        "reclaim": true,
+        "stretch_atr": 5.787,
+        "slope_20": 0.0655,
+        "slope_label": "rising",
+        "closes_above_20": 0.733
       },
       {
         "anchor": "Swing High",
+        "priority": "secondary",
         "avwap": 44.31,
         "pct_dist": 0.39,
         "dist_atr": 0.285,
         "role": "support",
         "status": "Accepted above",
-        "reclaim": null
+        "reclaim": true,
+        "stretch_atr": 0.285,
+        "slope_20": null,
+        "slope_label": null,
+        "closes_above_20": 0.033
       },
       {
         "anchor": "Breakout Day",
+        "priority": "secondary",
         "avwap": 44.31,
         "pct_dist": 0.39,
         "dist_atr": 0.285,
         "role": "support",
         "status": "Accepted above",
-        "reclaim": true
+        "reclaim": true,
+        "stretch_atr": 0.285,
+        "slope_20": null,
+        "slope_label": null,
+        "closes_above_20": 0.033
+      },
+      {
+        "anchor": "WTD",
+        "priority": "dynamic",
+        "anchor_date": "2026-04-13",
+        "avwap": 43.63,
+        "pct_dist": 1.92,
+        "dist_atr": 1.405,
+        "role": "support",
+        "status": "Accepted above",
+        "reclaim": null,
+        "stretch_atr": null,
+        "slope_20": null,
+        "slope_label": null,
+        "closes_above_20": null
+      },
+      {
+        "anchor": "MTD",
+        "priority": "dynamic",
+        "anchor_date": "2026-04-01",
+        "avwap": 42.39,
+        "pct_dist": 4.7,
+        "dist_atr": 3.441,
+        "role": "support",
+        "status": "Accepted above",
+        "reclaim": null,
+        "stretch_atr": null,
+        "slope_20": null,
+        "slope_label": null,
+        "closes_above_20": null
       }
     ],
     "volume_block": {
@@ -246,8 +348,8 @@
       },
       {
         "item": "R/R acceptable",
-        "result": "pass",
-        "reason": "Risk/reward to T1: 1.86:1"
+        "result": "neutral",
+        "reason": "R/R not computable (missing levels)"
       },
       {
         "item": "Base freshness",
@@ -258,6 +360,21 @@
         "item": "Score quality",
         "result": "pass",
         "reason": "Composite score: 0.75"
+      },
+      {
+        "item": "Base quality",
+        "result": "pass",
+        "reason": "Grade B: Tight closes (2.8% std)"
+      },
+      {
+        "item": "Continuation pattern",
+        "result": "neutral",
+        "reason": "No tight continuation pattern detected (NR7/3WT/tight5d)"
+      },
+      {
+        "item": "Clean air above pivot",
+        "result": "fail",
+        "reason": "Resistance close: only 0.1 ATR to Pivot"
       }
     ],
     "score_drivers": {
@@ -283,10 +400,169 @@
         "portfolio_guidance",
         "state"
       ],
-      "why_selected": "Selected because: composite_score=0.75; rank=100th pct within TRIGGERED; action=Actionable now; Price 5.1% above SMA50; Volume dry-up score 0.43 - demand absorbed."
+      "why_selected": "Selected because: composite_score=0.75; rank=100th pct within TRIGGERED; Price 5.1% above SMA50; Volume dry-up score 0.43 - demand absorbed."
+    },
+    "assessments": {
+      "base_quality": {
+        "grade": "B",
+        "score": 0.679,
+        "label": "Base quality: B (0.68)",
+        "notes": [
+          "Tight closes (2.8% std)",
+          "ATR expanding \u2014 base still volatile",
+          "5 NR days in last 15 \u2014 coiling"
+        ],
+        "components": {
+          "tightness_score": 0.722,
+          "atr_score": 0.088,
+          "nr_score": 1.0,
+          "down_score": 0.933,
+          "age_score": 1.0,
+          "close_std_pct": 2.83,
+          "nr_days": 5,
+          "down_ratio": 0.367
+        }
+      },
+      "continuation": {
+        "grade": "D",
+        "score": 0.0,
+        "strongest_pattern": "none",
+        "patterns": [],
+        "notes": []
+      },
+      "overhead_supply": {
+        "grade": "A",
+        "score": 0.0,
+        "supply_pct": 0.0,
+        "supply_zone": "clear air",
+        "notes": [
+          "Only 0% of prior year closed above \u2014 clear air above"
+        ]
+      },
+      "breakout_integrity": {
+        "grade": "C",
+        "score": 0.45,
+        "volume_ratio": 0.42,
+        "close_location": 0.882,
+        "close_location_score": 1.0,
+        "volume_label": "Below avg (0.4x)",
+        "notes": [
+          "Weak volume on breakout bar \u2014 low conviction",
+          "Closed in top 12% of range"
+        ]
+      },
+      "clean_air": {
+        "grade": "D",
+        "score": 0.0,
+        "clean_air_atrs": 0.13,
+        "nearest_resistance_atrs": 0.13,
+        "nearest_resistance_label": "Pivot",
+        "notes": [
+          "Resistance close: only 0.1 ATR to Pivot"
+        ]
+      },
+      "chart_quality": {
+        "grade": "C",
+        "score": 0.492,
+        "ter": 0.204,
+        "up_close_pct": 1.0,
+        "notes": [
+          "100% up-closes in last 10 days"
+        ]
+      }
+    },
+    "trend_state": {
+      "daily_trend_state": "above_sma50_flat",
+      "weekly_trend_state": "weekly_uptrend",
+      "daily_detail": {
+        "close_vs_sma50": 0.0512,
+        "close_vs_sma200": 0.0827,
+        "slope_50": -0.00034,
+        "ema20_note": "Above EMA20 (+4.7%)"
+      },
+      "weekly_detail": {
+        "weekly_dist_wma10": 0.0495,
+        "weekly_trend_slope_26": 0.00242,
+        "weekly_rs_26": 0.0017,
+        "wma40_note": "Above 40-week WMA (+8.0%)"
+      },
+      "trend_summary": [
+        "SMA50 dist: +5.1%",
+        "SMA200 dist: +8.3%",
+        "WMA10 wk dist: +4.9%"
+      ]
     }
   },
-  "ai_note": "[XLRE \u2014 Rule-based note]\n\nSetup\nXLRE has triggered above a 120-bar base (Day 1 in TRIGGERED state). Trigger pivot: $44.56. ATR compression is moderate (49th pct).\n\nWhy It Matters Now\nXLRE is tracking SPY closely over 63 days. Score: 0.75, failure risk 0.01. Weekly: data unavailable. Market regime: SPY trend: 1.0. VIX: unavailable.\n\nEntry Idea\nIn trade. Original breakout zone: $44.56\u2013$44.62. Pullback entry: $44.50\u2013$44.56 zone. Avoid adding above $44.62.\n\nRisk/Invalidation\nInvalidation: close below $43.95 (pivot minus 0.61 ATR). Violates base structure. Daily stop loss: $43.65.\n\nTargets\nT1: $45.78 (+2.9%) (R/R 1.9x from entry mid). T2: $46.69 (+5.0%). T3: $47.60 (+7.0%). Partial at T1 recommended.\n\nVerdict\nActionable now \u2014 break above $44.62 on volume. Set alert. Stop: $43.95. Market regime: SPY trend: 1.0. VIX: unavailable.",
+  "assessments": {
+    "base_quality": {
+      "grade": "B",
+      "score": 0.679,
+      "label": "Base quality: B (0.68)",
+      "notes": [
+        "Tight closes (2.8% std)",
+        "ATR expanding \u2014 base still volatile",
+        "5 NR days in last 15 \u2014 coiling"
+      ],
+      "components": {
+        "tightness_score": 0.722,
+        "atr_score": 0.088,
+        "nr_score": 1.0,
+        "down_score": 0.933,
+        "age_score": 1.0,
+        "close_std_pct": 2.83,
+        "nr_days": 5,
+        "down_ratio": 0.367
+      }
+    },
+    "continuation": {
+      "grade": "D",
+      "score": 0.0,
+      "strongest_pattern": "none",
+      "patterns": [],
+      "notes": []
+    },
+    "overhead_supply": {
+      "grade": "A",
+      "score": 0.0,
+      "supply_pct": 0.0,
+      "supply_zone": "clear air",
+      "notes": [
+        "Only 0% of prior year closed above \u2014 clear air above"
+      ]
+    },
+    "breakout_integrity": {
+      "grade": "C",
+      "score": 0.45,
+      "volume_ratio": 0.42,
+      "close_location": 0.882,
+      "close_location_score": 1.0,
+      "volume_label": "Below avg (0.4x)",
+      "notes": [
+        "Weak volume on breakout bar \u2014 low conviction",
+        "Closed in top 12% of range"
+      ]
+    },
+    "clean_air": {
+      "grade": "D",
+      "score": 0.0,
+      "clean_air_atrs": 0.13,
+      "nearest_resistance_atrs": 0.13,
+      "nearest_resistance_label": "Pivot",
+      "notes": [
+        "Resistance close: only 0.1 ATR to Pivot"
+      ]
+    },
+    "chart_quality": {
+      "grade": "C",
+      "score": 0.492,
+      "ter": 0.204,
+      "up_close_pct": 1.0,
+      "notes": [
+        "100% up-closes in last 10 days"
+      ]
+    }
+  },
+  "ai_note": "[XLRE \u2014 Rule-based note]\n\nSetup\nXLRE triggered above a 120-bar base (Day 1). Pivot: $44.56. ATR compression is moderate (49th pct). Volume is drying up \u2014 institutional supply exhaustion signal.\n\nWhy It Matters Now\nXLRE is tracking SPY closely over 63 days.  Failure risk: 0.01.  Market regime: SPY trend: 1.0. VIX: unavailable.\n\nEntry Idea\nBreakout trigger: break above $44.62 on volume >= 1.5x average. Aggressive pivot buy: $44.56. Pullback entry zone: $44.56-$44.56. Do not chase more than 0.5 ATR above trigger.\n\nRisk/Invalidation\nInvalidation: close below $43.95 (pivot - 1 ATR). Base structure violated \u2014 full exit. Daily stop: $43.77.\n\nTargets\nT1: $45.78 (+2.9%) (R/R 1.9x from entry mid). T2: $46.69 (+5.0%). T3: $47.60 (+7.0%). Partial trim at T1 advised.\n\nVerdict\nDecision-ready breakout. Trigger: $44.62. Stop: $43.95. T1: $45.78 (R/R 1.9x).",
   "chart_weekly": "charts/XLRE_weekly.png",
   "chart_daily": "charts/XLRE_daily.png",
   "chart_intraday": null,
