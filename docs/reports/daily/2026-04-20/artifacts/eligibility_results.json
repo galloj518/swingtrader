@@ -331,7 +331,7 @@
     ],
     "intraday_policy": "daily_only",
     "intraday_available": false,
-    "composite_score": 0.82,
+    "composite_score": 0.83,
     "failure_risk": 0.01,
     "regime_spy_trend": 1.0
   },
@@ -1517,7 +1517,7 @@
     "bucket": "reversal_speculative",
     "eligible": false,
     "rejection_reasons": "poor_rs",
-    "eligibility_warnings": "below_sma50, elevated_failure_risk",
+    "eligibility_warnings": "elevated_failure_risk",
     "promotion_reason": null,
     "demotion_reason": "kept out of primary long list due to failed core eligibility",
     "coherence_ok": true,
@@ -2128,7 +2128,7 @@
     "rejection_reasons": null,
     "eligibility_warnings": "elevated_failure_risk",
     "promotion_reason": "Trend remains constructive while price works through a pullback",
-    "demotion_reason": "far_from_pivot (4.7 ATR from trigger zone)",
+    "demotion_reason": "far_from_pivot (4.8 ATR from trigger zone)",
     "coherence_ok": true,
     "coherence_issues": [],
     "packet_complete_for_surface": true,
@@ -2136,7 +2136,7 @@
     "intraday_policy": "daily_only",
     "intraday_available": false,
     "composite_score": null,
-    "failure_risk": 0.51,
+    "failure_risk": 0.63,
     "regime_spy_trend": 1.0
   },
   {
@@ -2708,10 +2708,10 @@
   },
   {
     "symbol": "PYPL",
-    "state": "ACCEPTED",
+    "state": "CONFIRMED",
     "bucket": "excluded",
     "eligible": false,
-    "rejection_reasons": "poor_rs, failed eligibility gates",
+    "rejection_reasons": "invalid_state, failed eligibility gates",
     "eligibility_warnings": null,
     "promotion_reason": null,
     "demotion_reason": null,
@@ -2723,8 +2723,8 @@
     ],
     "intraday_policy": "daily_only",
     "intraday_available": false,
-    "composite_score": 0.5,
-    "failure_risk": 0.43,
+    "composite_score": null,
+    "failure_risk": null,
     "regime_spy_trend": 1.0
   },
   {
@@ -2819,7 +2819,7 @@
     "rejection_reasons": null,
     "eligibility_warnings": "aging_base, elevated_failure_risk",
     "promotion_reason": "Trend remains constructive while price works through a pullback",
-    "demotion_reason": "far_from_pivot (4.4 ATR from trigger zone)",
+    "demotion_reason": "far_from_pivot (4.0 ATR from trigger zone)",
     "coherence_ok": true,
     "coherence_issues": [],
     "packet_complete_for_surface": true,
@@ -2827,7 +2827,7 @@
     "intraday_policy": "daily_only",
     "intraday_available": false,
     "composite_score": null,
-    "failure_risk": 0.52,
+    "failure_risk": 0.51,
     "regime_spy_trend": 1.0
   },
   {
