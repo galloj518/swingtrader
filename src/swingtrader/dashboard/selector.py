@@ -645,6 +645,162 @@ def select_packets(
     }
 
 
+def _pkt_trade_plan(pkt: dict) -> dict:
+    tp = pkt.get("trade_plan", {})
+    return tp if isinstance(tp, dict) else {}
+
+
+def _surface_blockers(pkt: dict, bucket: str) -> list[str]:
+    blockers: list[str] = []
+    if not bool(pkt.get("coherence_ok", False)):
+        blockers.extend([str(issue) for issue in pkt.get("coherence_issues", []) if str(issue)])
+    if not bool(pkt.get("packet_complete_for_surface", False)):
+        blockers.extend([str(issue) for issue in pkt.get("packet_completeness_issues", []) if str(issue)])
+
+    tp = _pkt_trade_plan(pkt)
+    entry_style = str(tp.get("entry_style", ""))
+    actionable_now = bool(tp.get("actionable_now", False))
+    action_label = str(pkt.get("action_label", ""))
+    setup_key = str(pkt.get("setup_key", ""))
+
+    if bucket == BUCKET_BREAKOUT:
+        if setup_key not in {"fresh_breakout", "breakout_watch"}:
+            blockers.append("not_a_true_breakout_packet")
+        if entry_style != "breakout":
+            blockers.append("breakout_bucket_requires_breakout_entry_style")
+        if action_label == ACTION_NOW and not actionable_now:
+            blockers.append("actionable_now_without_live_entry")
+        if bool(pkt.get("is_extended", False)):
+            blockers.append("extended_name_cannot_surface_as_breakout")
+    elif bucket == BUCKET_PULLBACK:
+        if setup_key not in {"reclaim_pullback", "constructive_pullback", "aged_breakout_pullback"}:
+            blockers.append("not_a_true_pullback_packet")
+        if entry_style not in {"pullback", "reclaim"}:
+            blockers.append("pullback_bucket_requires_pullback_or_reclaim_entry_style")
+    return blockers
+
+
+def _mark_surface_status(pkt: dict, *, section: str | None, surfaced: bool, reason: str = "", blockers: list[str] | None = None) -> None:
+    pkt["surfaced_in_top"] = surfaced
+    pkt["surface_section"] = section
+    pkt["not_surfaced_reason"] = "" if surfaced else reason
+    pkt["selector_blockers"] = blockers or []
+
+
+def _select_packets_canonical(
+    all_packets: list[dict],
+    n_breakout: int = TOP_N_BREAKOUT,
+    n_pullback: int = TOP_N_PULLBACK,
+    n_extended: int = 8,
+    n_reversal: int = 3,
+) -> PacketSelections:
+    by_bucket: dict[str, list[dict]] = {
+        BUCKET_BREAKOUT: [],
+        BUCKET_PULLBACK: [],
+        BUCKET_EXTENDED: [],
+        BUCKET_REVERSAL: [],
+        BUCKET_PORTFOLIO: [],
+        BUCKET_EXCLUDED: [],
+        BUCKET_NON_EQUITY: [],
+    }
+    for pkt in all_packets:
+        pkt["surfaced_in_top"] = False
+        pkt["surface_section"] = None
+        pkt["not_surfaced_reason"] = ""
+        pkt["selector_blockers"] = []
+        by_bucket.setdefault(str(pkt.get("bucket", BUCKET_EXCLUDED)), []).append(pkt)
+
+    breakout_pool: list[dict] = []
+    for pkt in by_bucket[BUCKET_BREAKOUT]:
+        blockers = _surface_blockers(pkt, BUCKET_BREAKOUT)
+        if blockers:
+            _mark_surface_status(pkt, section=None, surfaced=False, reason="; ".join(blockers), blockers=blockers)
+            continue
+        breakout_pool.append(pkt)
+
+    breakout_selected = _pkt_sort_and_cap(
+        breakout_pool,
+        n_breakout,
+        score_fn=_pkt_breakout_score,
+        diversity=True,
+        use_structural_tiebreaker=True,
+    )
+    breakout_syms = {pkt.get("symbol") for pkt in breakout_selected}
+    for pkt in breakout_selected:
+        _mark_surface_status(pkt, section="breakout", surfaced=True)
+    for pkt in breakout_pool:
+        if pkt.get("symbol") not in breakout_syms:
+            _mark_surface_status(
+                pkt,
+                section=None,
+                surfaced=False,
+                reason="ranked_below_breakout_cutoff",
+                blockers=[],
+            )
+
+    pullback_pool: list[dict] = []
+    for pkt in by_bucket[BUCKET_PULLBACK]:
+        if pkt.get("symbol") in breakout_syms:
+            _mark_surface_status(pkt, section=None, surfaced=False, reason="already_selected_in_breakout", blockers=[])
+            continue
+        blockers = _surface_blockers(pkt, BUCKET_PULLBACK)
+        if blockers:
+            _mark_surface_status(pkt, section=None, surfaced=False, reason="; ".join(blockers), blockers=blockers)
+            continue
+        pullback_pool.append(pkt)
+
+    pullback_selected = _pkt_sort_and_cap(pullback_pool, n_pullback, diversity=True)
+    pullback_syms = {pkt.get("symbol") for pkt in pullback_selected}
+    for pkt in pullback_selected:
+        _mark_surface_status(pkt, section="pullback", surfaced=True)
+    for pkt in pullback_pool:
+        if pkt.get("symbol") not in pullback_syms:
+            _mark_surface_status(
+                pkt,
+                section=None,
+                surfaced=False,
+                reason="ranked_below_pullback_cutoff",
+                blockers=[],
+            )
+
+    ext_sorted = sorted(by_bucket[BUCKET_EXTENDED], key=_pkt_score, reverse=True)
+    extended_selected = ext_sorted[:n_extended]
+    rev_sorted = sorted(by_bucket[BUCKET_REVERSAL], key=_pkt_score, reverse=True)
+    reversal_selected = rev_sorted[:n_reversal]
+
+    _state_pri = {"TRIGGERED": 1, "ACCEPTED": 2, "CONFIRMED": 3, "ARMED": 4, "BASE": 5}
+    portfolio_sorted = sorted(
+        by_bucket[BUCKET_PORTFOLIO],
+        key=lambda p: (_state_pri.get(str(p.get("state", "")), 9), -_pkt_score(p)),
+    )
+
+    for pkt in by_bucket[BUCKET_EXCLUDED]:
+        if not pkt.get("not_surfaced_reason"):
+            pkt["not_surfaced_reason"] = str(pkt.get("rejection_reasons", "")) or "failed_eligibility"
+
+    top = breakout_selected + pullback_selected
+    unselected = [
+        pkt for pkt in all_packets
+        if not bool(pkt.get("surfaced_in_top", False))
+        and str(pkt.get("bucket")) in {BUCKET_BREAKOUT, BUCKET_PULLBACK}
+    ]
+
+    return {
+        "breakout": breakout_selected,
+        "pullback": pullback_selected,
+        "extended": extended_selected,
+        "reversal": reversal_selected,
+        "portfolio": portfolio_sorted,
+        "excluded": by_bucket[BUCKET_EXCLUDED],
+        "top": top,
+        "all": list(all_packets),
+        "unselected": unselected,
+    }
+
+
+select_packets = _select_packets_canonical
+
+
 # ── Legacy fallback ───────────────────────────────────────────────────────────
 
 def _legacy_select(df: pd.DataFrame, n: int = TOP_N) -> pd.DataFrame:

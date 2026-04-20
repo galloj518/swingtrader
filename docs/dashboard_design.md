@@ -28,16 +28,20 @@ The following steps run inside `score_run.ScoreRun.run()` after the model
 scoring step:
 
 ```
-1–5  Fetch data → compute features → label states → score → rank
-6    add_freshness_columns(ranked_snapshot)   # freshness.py
-     add_action_column(ranked_snapshot)       # action.py
-7    write_daily_reports(snapshot.html / .md) # existing
-8    select_top_setups(ranked_snapshot)       # selector.py
-     build_packets(top_df)                    # packet.py
-     generate_charts_for_packet(pkt, dir)    # charts.py (per symbol)
-     write_dashboard(...)                     # reports/dashboard.py
-9    build_index()                            # pages_build.py
+1-5  Fetch data -> compute features -> label states -> score -> rank
+6    build_all_lightweight_packets(ranked_snapshot)   # packet.py
+7    select_packets(all_packets)                      # selector.py
+8    enrich selected packets with context             # packet.py/context.py
+9    generate_charts_for_packet(pkt, dir)             # charts.py
+10   write_daily_reports(snapshot.html / .md)         # existing
+11   write_dashboard(..., selections=...)             # reports/dashboard.py
+12   build_index()                                    # pages_build.py
 ```
+
+As of 2026-04-19, the packet is the source of truth. The dashboard no longer
+reconstructs setup meaning late in rendering; it presents the packet produced by
+`build_lightweight_packet()` and the selector only surfaces packets that are
+coherent and complete enough for a trader-facing card.
 
 ---
 
@@ -217,13 +221,13 @@ Three PNG charts are generated per symbol, saved to
 
 | Chart | Source data | Indicators | Trade levels |
 |---|---|---|---|
-| `{SYM}_daily.png` | `data/raw/daily/{SYM}.parquet` | EMA20, SMA50 | Pivot, entry zone, stop, T1, T2 |
+| `{SYM}_daily.png` | `data/raw/daily/{SYM}.parquet` | EMA20, SMA50, packet AVWAP overlays | Pivot, entry zone, stop, T1, T2 |
 | `{SYM}_weekly.png` | `data/raw/weekly/` or daily resampled | EMA10w, EMA30w | Pivot, T1, T2 |
-| `{SYM}_intraday.png` | `data/raw/intraday/{SYM}.parquet` | VWAP (session) | Pivot |
 
-If the source parquet file does not exist, the chart is silently skipped and
-the packet's `chart_*` field is set to `None` (the `<img>` tag is omitted
-from the dashboard card).
+Intraday is no longer a primary dashboard chart in v1. The packet now carries
+`intraday_policy = "daily_only"` and `intraday_used_in_qualification = false`,
+so cards show a compact policy note instead of implying that an intraday
+confirmation chart participated in qualification.
 
 ### Design choices
 

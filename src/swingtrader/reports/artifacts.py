@@ -204,7 +204,10 @@ def _section_packet(pkt: dict, as_of_str: str) -> dict:
         "daily_trend_state": _clean_value(pkt.get("daily_trend_state")),
         "weekly_trend_state": _clean_value(pkt.get("weekly_trend_state")),
         "pullback_quality": _clean_value(pkt.get("pullback_quality")),
+        "promotion_reason": _clean_value(pkt.get("promotion_reason")),
         "demotion_reason": _clean_value(pkt.get("demotion_reason")),
+        "route_reason": _clean_value(pkt.get("route_reason")),
+        "operational_readiness": _clean_value(pkt.get("operational_readiness")),
     }
 
     # ── model scores ─────────────────────────────────────────────────────────
@@ -243,11 +246,11 @@ def _section_packet(pkt: dict, as_of_str: str) -> dict:
         narrative_raw = {}
 
     context = {
-        "ma_table": _clean_value(pkt.get("ma_table")),
-        "avwap_table": _clean_value(pkt.get("avwap_table")),
-        "volume_block": _clean_value(pkt.get("volume_block")),
-        "checklist": _clean_value(pkt.get("checklist")),
-        "confluence": _clean_value(pkt.get("confluence")),
+        "ma_table": _clean_list(pkt.get("ma_table", []) or []),
+        "avwap_table": _clean_list(pkt.get("avwap_table", []) or []),
+        "volume_block": _clean_dict(pkt.get("volume_block", {}) or {}),
+        "checklist": _clean_list(pkt.get("checklist", []) or []),
+        "confluence": _clean_dict(pkt.get("confluence", {}) or {}),
         # Convenience duplicates from narrative for AI consumption
         "ma_context": _clean_value(narrative_raw.get("ma_context")),
         "avwap_context": _clean_value(narrative_raw.get("avwap_context")),
@@ -257,6 +260,7 @@ def _section_packet(pkt: dict, as_of_str: str) -> dict:
     narrative = {
         "setup": _clean_value(narrative_raw.get("setup")),
         "why": _clean_value(narrative_raw.get("why")),
+        "why_not_now": _clean_value(narrative_raw.get("why_not_now")),
         "entry": _clean_value(narrative_raw.get("entry")),
         "risk": _clean_value(narrative_raw.get("risk")),
         "targets": _clean_value(narrative_raw.get("targets")),
@@ -267,23 +271,7 @@ def _section_packet(pkt: dict, as_of_str: str) -> dict:
     tp_raw = pkt.get("trade_plan", {})
     if not isinstance(tp_raw, dict):
         tp_raw = {}
-    trade_plan = {
-        "actionability":       _clean_value(tp_raw.get("actionability")),
-        "entry_style":         _clean_value(tp_raw.get("entry_style")),
-        "entry_trigger":       _clean_value(tp_raw.get("entry_trigger")),
-        "alt_entry":           _clean_value(tp_raw.get("alt_entry")),
-        "stop_price":          _clean_value(tp_raw.get("stop_price")),
-        "stop_label":          _clean_value(tp_raw.get("stop_label")),
-        "invalidation":        _clean_value(tp_raw.get("invalidation")),
-        "t1":                  _clean_value(tp_raw.get("t1")),
-        "t2":                  _clean_value(tp_raw.get("t2")),
-        "t3":                  _clean_value(tp_raw.get("t3")),
-        "risk_reward_t1":      _clean_value(tp_raw.get("risk_reward_t1")),
-        "why_now":             _clean_list(tp_raw.get("why_now", []) or []),
-        "why_not_now":         _clean_list(tp_raw.get("why_not_now", []) or []),
-        "setup_improves_if":   _clean_list(tp_raw.get("setup_improves_if", []) or []),
-        "setup_weakens_if":    _clean_list(tp_raw.get("setup_weakens_if", []) or []),
-    }
+    trade_plan = _clean_dict(tp_raw)
 
     # ── chart paths ───────────────────────────────────────────────────────────
     chart_paths = {
@@ -302,6 +290,27 @@ def _section_packet(pkt: dict, as_of_str: str) -> dict:
         "last_actionable_check": as_of_str,
     }
 
+    coherence = {
+        "coherence_ok": _clean_value(pkt.get("coherence_ok")),
+        "coherence_issues": _clean_list(pkt.get("coherence_issues", []) or []),
+        "packet_complete_for_surface": _clean_value(pkt.get("packet_complete_for_surface")),
+        "packet_completeness_issues": _clean_list(pkt.get("packet_completeness_issues", []) or []),
+    }
+
+    surfacing = {
+        "surfaced_in_top": _clean_value(pkt.get("surfaced_in_top")),
+        "surface_section": _clean_value(pkt.get("surface_section")),
+        "not_surfaced_reason": _clean_value(pkt.get("not_surfaced_reason")),
+        "selector_blockers": _clean_list(pkt.get("selector_blockers", []) or []),
+    }
+
+    intraday = {
+        "policy": _clean_value(pkt.get("intraday_policy")),
+        "available": _clean_value(pkt.get("intraday_available")),
+        "used_in_qualification": _clean_value(pkt.get("intraday_used_in_qualification")),
+        "note": _clean_value(pkt.get("intraday_note")),
+    }
+
     return {
         "symbol": _clean_value(sym),
         "provider_symbol": _clean_value(provider),
@@ -312,6 +321,9 @@ def _section_packet(pkt: dict, as_of_str: str) -> dict:
         "trade_plan": trade_plan,
         "context": context,
         "narrative": narrative,
+        "coherence": coherence,
+        "surfacing": surfacing,
+        "intraday": intraday,
         "ai_note": _clean_value(pkt.get("ai_note")),
         "chart_paths": chart_paths,
         "freshness_metadata": freshness_metadata,
@@ -380,6 +392,7 @@ def write_artifacts(
         extended_pkts  = selections.get("extended", [])
         reversal_pkts  = selections.get("reversal", [])
         excluded_pkts  = selections.get("excluded", [])
+        all_pkts       = selections.get("all", [])
     else:
         # Legacy call: (packets, portfolio_df, snapshot_df, as_of, output_dir)
         packets         = selections_or_packets
@@ -393,6 +406,7 @@ def write_artifacts(
         extended_pkts  = []
         reversal_pkts  = []
         excluded_pkts  = []
+        all_pkts       = list(packets)
     output_dir = Path(output_dir)
     artifacts_dir = output_dir / "artifacts"
     artifacts_dir.mkdir(parents=True, exist_ok=True)
@@ -407,7 +421,7 @@ def write_artifacts(
         json.dumps(top_setups_list, indent=2, default=str),
         encoding="utf-8",
     )
-    log.info("Artifact written → %s (%d setups)", top_setups_path, len(top_setups_list))
+    log.info("Artifact written -> %s (%d setups)", top_setups_path, len(top_setups_list))
 
     # ── 2. Per-symbol full packets ────────────────────────────────────────────
     per_symbol_paths: dict[str, str] = {}
@@ -447,7 +461,7 @@ def write_artifacts(
             "failure_risk":        _clean_value(pkt.get("failure_risk")),
             "is_non_equity":       bool(pkt.get("is_non_equity", False)),
             "rejection_reasons":   _clean_value(pkt.get("rejection_reasons")),
-            "trade_plan":          _clean_value(pkt.get("trade_plan")),
+            "trade_plan":          _clean_dict(pkt.get("trade_plan", {}) or {}),
         }
         portfolio_records.append(record)
 
@@ -456,7 +470,7 @@ def write_artifacts(
         json.dumps(portfolio_records, indent=2, default=str),
         encoding="utf-8",
     )
-    log.info("Artifact written → %s (%d holdings)", portfolio_path, len(portfolio_records))
+    log.info("Artifact written -> %s (%d holdings)", portfolio_path, len(portfolio_records))
 
     # ── 4. Dashboard summary ──────────────────────────────────────────────────
     n_scored = 0
@@ -482,7 +496,7 @@ def write_artifacts(
         json.dumps(breakout_list, indent=2, default=str),
         encoding="utf-8",
     )
-    log.info("Artifact written → %s (%d setups)", breakout_path, len(breakout_list))
+    log.info("Artifact written -> %s (%d setups)", breakout_path, len(breakout_list))
 
     # ── 6. Pullback top setups (from packet list) ─────────────────────────────
     pullback_path = artifacts_dir / "pullback_top_setups.json"
@@ -491,7 +505,7 @@ def write_artifacts(
         json.dumps(pullback_list, indent=2, default=str),
         encoding="utf-8",
     )
-    log.info("Artifact written → %s (%d setups)", pullback_path, len(pullback_list))
+    log.info("Artifact written -> %s (%d setups)", pullback_path, len(pullback_list))
 
     # ── 7. Extended leaders (from packet list) ────────────────────────────────
     extended_path = artifacts_dir / "extended_leaders.json"
@@ -516,12 +530,12 @@ def write_artifacts(
         json.dumps(extended_records, indent=2, default=str),
         encoding="utf-8",
     )
-    log.info("Artifact written → %s (%d leaders)", extended_path, len(extended_records))
+    log.info("Artifact written -> %s (%d leaders)", extended_path, len(extended_records))
 
     # ── 8. Eligibility results (from ALL packets — canonical truth) ───────────
     # Merge with snapshot_df to get full feature set for excluded symbols too.
     # Packets are the source of truth for eligible/rejection_reasons/bucket.
-    all_pkts_for_elig: list[dict] = (
+    all_pkts_for_elig: list[dict] = all_pkts or (
         breakout_pkts + pullback_pkts + extended_pkts + reversal_pkts
         + portfolio_pkts + excluded_pkts
         + [p for p in packets if p.get("symbol") not in
@@ -537,6 +551,14 @@ def write_artifacts(
             "eligible":             bool(p.get("eligible", False)),
             "rejection_reasons":    _clean_value(p.get("rejection_reasons")),
             "eligibility_warnings": _clean_value(p.get("eligibility_warnings")),
+            "promotion_reason":     _clean_value(p.get("promotion_reason")),
+            "demotion_reason":      _clean_value(p.get("demotion_reason")),
+            "coherence_ok":         _clean_value(p.get("coherence_ok")),
+            "coherence_issues":     _clean_list(p.get("coherence_issues", []) or []),
+            "packet_complete_for_surface": _clean_value(p.get("packet_complete_for_surface")),
+            "packet_completeness_issues": _clean_list(p.get("packet_completeness_issues", []) or []),
+            "intraday_policy":      _clean_value(p.get("intraday_policy")),
+            "intraday_available":   _clean_value(p.get("intraday_available")),
             "composite_score":      _clean_value(p.get("composite_score")),
             "failure_risk":         _clean_value(p.get("failure_risk")),
             "regime_spy_trend":     _clean_value(p.get("regime_spy_trend")),
@@ -547,7 +569,7 @@ def write_artifacts(
         json.dumps(elig_records, indent=2, default=str),
         encoding="utf-8",
     )
-    log.info("Artifact written → %s (%d symbols)", elig_path, len(elig_records))
+    log.info("Artifact written -> %s (%d symbols)", elig_path, len(elig_records))
 
     # ── 9. Bucket assignments (from ALL packets) ──────────────────────────────
     bucket_path = artifacts_dir / "bucket_assignments.json"
@@ -564,7 +586,19 @@ def write_artifacts(
             "percentile_rank":    _clean_value(p.get("percentile_rank")),
             "daily_trend_state":  _clean_value(p.get("daily_trend_state")),
             "pullback_quality":   _clean_value(p.get("pullback_quality")),
+            "promotion_reason":   _clean_value(p.get("promotion_reason")),
             "demotion_reason":    _clean_value(p.get("demotion_reason")),
+            "rejection_reasons":  _clean_value(p.get("rejection_reasons")),
+            "coherence_ok":       _clean_value(p.get("coherence_ok")),
+            "coherence_issues":   _clean_list(p.get("coherence_issues", []) or []),
+            "packet_complete_for_surface": _clean_value(p.get("packet_complete_for_surface")),
+            "packet_completeness_issues": _clean_list(p.get("packet_completeness_issues", []) or []),
+            "surfaced_in_top":    _clean_value(p.get("surfaced_in_top")),
+            "surface_section":    _clean_value(p.get("surface_section")),
+            "not_surfaced_reason": _clean_value(p.get("not_surfaced_reason")),
+            "selector_blockers":  _clean_list(p.get("selector_blockers", []) or []),
+            "intraday_policy":    _clean_value(p.get("intraday_policy")),
+            "intraday_available": _clean_value(p.get("intraday_available")),
             "dist_to_pivot_atr":  _clean_value(p.get("dist_to_pivot_atr")),
         }
         for p in all_pkts_for_elig
@@ -573,7 +607,7 @@ def write_artifacts(
         json.dumps(bucket_records, indent=2, default=str),
         encoding="utf-8",
     )
-    log.info("Artifact written → %s (%d symbols)", bucket_path, len(bucket_records))
+    log.info("Artifact written -> %s (%d symbols)", bucket_path, len(bucket_records))
 
     # ── 10. Dashboard summary ─────────────────────────────────────────────────
     # Counts from packets (canonical) + regime from snapshot_df.
@@ -611,7 +645,7 @@ def write_artifacts(
         json.dumps(summary_obj, indent=2, default=str),
         encoding="utf-8",
     )
-    log.info("Artifact written → %s", summary_path)
+    log.info("Artifact written -> %s", summary_path)
 
     return {
         "summary": str(summary_path),

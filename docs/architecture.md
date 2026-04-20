@@ -133,8 +133,9 @@ decomposition shows signed feature contributions `β_i · (x_i − x̄_i)`.
 
 ## 9. Known limitations
 
-- Intraday-conditioned model training is not feasible in v1. Intraday is a
-  forward-only confirmation overlay.
+- Intraday-conditioned model training is not feasible in v1. Current packet and
+  dashboard flows therefore use an explicit `daily_only` intraday policy:
+  intraday is not part of primary qualification or surfaced-card truth.
 - Earnings calendar via yfinance is unreliable; v1 uses it as a soft blackout,
   not as a feature.
 - Universe membership is monthly-snapshot point-in-time — not perfect.

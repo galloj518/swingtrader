@@ -290,6 +290,7 @@ def _overlay_avwap_curves(
     display_start: int,
     pivot: float = math.nan,
     days_in_state: int = 0,
+    avwap_rows: list[dict] | None = None,
 ) -> None:
     """Draw anchored VWAP *curves* (not horizontal lines) on the price axis.
 
@@ -309,6 +310,59 @@ def _overlay_avwap_curves(
     n_full = len(df_full)
     n_disp = n_full - display_start   # number of bars in the display window
     if n_disp <= 0:
+        return
+
+    supported_rows = []
+    if avwap_rows:
+        supported_rows = [
+            row for row in avwap_rows
+            if bool(row.get("supported")) and row.get("anchor_date")
+        ]
+
+    if supported_rows:
+        palette = [BLUE, GREEN, RED, AMBER, PURPLE, ORANGE, TEXT]
+        linestyles = ["--", "-.", ":", "-", "--", "-.", ":"]
+        for idx, row in enumerate(supported_rows[:6]):
+            try:
+                anchor_date = pd.Timestamp(str(row.get("anchor_date")))
+                valid_idx = df_full.index[df_full.index >= anchor_date]
+                if valid_idx.empty:
+                    continue
+                anchor_pos = int(df_full.index.get_loc(valid_idx[0]))
+                avwap_full = _compute_avwap_series(df_full, anchor_pos)
+                avwap_disp = avwap_full[display_start:]
+                xs_plot = [i for i, v in enumerate(avwap_disp) if math.isfinite(v)]
+                ys_plot = [avwap_disp[i] for i in xs_plot]
+                if len(xs_plot) < 2:
+                    continue
+
+                color = palette[idx % len(palette)]
+                linestyle = linestyles[idx % len(linestyles)]
+                label = str(row.get("anchor", f"AVWAP {idx + 1}"))
+
+                ax.plot(
+                    xs_plot,
+                    ys_plot,
+                    color=color,
+                    linewidth=0.9,
+                    linestyle=linestyle,
+                    alpha=0.80,
+                    label=label,
+                    zorder=4,
+                )
+                last_x, last_y = xs_plot[-1], ys_plot[-1]
+                ax.text(
+                    last_x + 0.5,
+                    last_y,
+                    f" {label} {last_y:.2f}",
+                    color=color,
+                    fontsize=7,
+                    va="center",
+                    alpha=0.85,
+                    zorder=5,
+                )
+            except Exception as exc:
+                log.debug("packet AVWAP overlay error for %s: %s", row.get("anchor"), exc)
         return
 
     avwap_specs = [
@@ -384,6 +438,7 @@ def generate_daily_chart(
     score: float = math.nan,
     failure: float = math.nan,
     days_in_state: int = 0,
+    avwap_rows: list[dict] | None = None,
 ) -> Path | None:
     """Generate a daily OHLC candlestick chart with trade levels.
 
@@ -453,7 +508,14 @@ def generate_daily_chart(
     ax.plot(xs, df["sma200"], color=PURPLE, linewidth=1.1, alpha=0.90, label="SMA200")
 
     # AVWAP curves (anchored running VWAP from each anchor date forward)
-    _overlay_avwap_curves(ax, df_full, display_start, pivot=pivot, days_in_state=days_in_state)
+    _overlay_avwap_curves(
+        ax,
+        df_full,
+        display_start,
+        pivot=pivot,
+        days_in_state=days_in_state,
+        avwap_rows=avwap_rows,
+    )
 
     # Trade level annotations
     _annotate_hline(ax, pivot,    "Pivot",    PURPLE, "--")
@@ -572,6 +634,7 @@ def generate_weekly_chart(
     t2: float = math.nan,
     s1: float = math.nan,
     stop: float = math.nan,
+    avwap_rows: list[dict] | None = None,
 ) -> Path | None:
     """Generate a weekly OHLC candlestick chart.
 
@@ -651,7 +714,13 @@ def generate_weekly_chart(
     ax.plot(xs, df["wma30"], color=AMBER, linewidth=1.0, alpha=0.85, label="WMA30")
 
     # AVWAP curves: YTD + swing_low on weekly chart
-    _overlay_avwap_curves(ax, df_wk_full, wk_display_start, pivot=pivot)
+    _overlay_avwap_curves(
+        ax,
+        df_wk_full,
+        wk_display_start,
+        pivot=pivot,
+        avwap_rows=avwap_rows,
+    )
 
     # Trade levels
     _annotate_hline(ax, pivot, "Pivot", PURPLE, "--")
@@ -805,7 +874,7 @@ def generate_intraday_chart(
 # ── Packet-level entry point ──────────────────────────────────────────────────
 
 def generate_charts_for_packet(packet: dict, output_dir: Path) -> dict:
-    """Generate all charts for a setup packet; return updated packet with chart paths.
+    """Generate daily and weekly charts for a packet.
 
     Parameters
     ----------
@@ -814,8 +883,12 @@ def generate_charts_for_packet(packet: dict, output_dir: Path) -> dict:
 
     Returns
     -------
-    Updated packet dict with chart_daily, chart_weekly, chart_intraday set to
-    POSIX-relative paths from output_dir (suitable for <img src="...">), or None.
+    Updated packet dict with chart_daily and chart_weekly set to POSIX-relative
+    paths from output_dir (suitable for <img src="...">), or None.
+
+    Intraday is intentionally not generated in the packet-first v1 workflow.
+    Surfaced cards use a compact policy note instead of implying live intraday
+    confirmation.
     """
     sym = packet.get("provider_symbol") or packet.get("symbol", "")
     if not sym or sym == "—":
@@ -864,6 +937,7 @@ def generate_charts_for_packet(packet: dict, output_dir: Path) -> dict:
                 score=_lvl("composite_score"),
                 failure=_lvl("failure_risk"),
                 days_in_state=int(packet.get("days_in_state", 0) or 0),
+                avwap_rows=packet.get("avwap_table"),
             )
         )
 
@@ -876,16 +950,17 @@ def generate_charts_for_packet(packet: dict, output_dir: Path) -> dict:
                 t2=_lvl("t2"),
                 s1=_lvl("s1"),
                 stop=_lvl("stop"),
+                avwap_rows=packet.get("avwap_table"),
             )
         )
 
-    intraday_path: Path | None = None
-    with contextlib.suppress(Exception):
-        intraday_path = generate_intraday_chart(sym, output_dir, pivot=_lvl("pivot"))
-
-    # Always record whether intraday data actually exists so the dashboard
-    # can suppress the dead section cleanly rather than showing an empty box.
-    result["chart_intraday"] = _rel(intraday_path)
-    result["intraday_available"] = intraday_path is not None
+    result["chart_intraday"] = None
+    result["intraday_policy"] = "daily_only"
+    result["intraday_available"] = False
+    result["intraday_used_in_qualification"] = False
+    result["intraday_note"] = (
+        packet.get("intraday_note")
+        or "Intraday confirmation is not part of v1 qualification; surfaced setup truth is daily/weekly only."
+    )
 
     return result

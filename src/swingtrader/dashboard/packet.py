@@ -62,18 +62,28 @@ from typing import Any
 
 import pandas as pd
 
-from swingtrader.dashboard.action import assign_action, classify_setup, portfolio_guidance
+from swingtrader.dashboard.action import (
+    ACTION_AVOID,
+    ACTION_BREAKOUT,
+    ACTION_EXTENDED,
+    ACTION_NOW,
+    ACTION_PORTFOLIO,
+    ACTION_PULLBACK,
+)
 from swingtrader.dashboard.buckets import (
-    BREAKOUT_DIST_ATR,
     BREAKOUT_TRIGGER_DAYS,
+    BUCKET_BREAKOUT,
+    BUCKET_EXCLUDED,
+    BUCKET_EXTENDED,
+    BUCKET_NON_EQUITY,
+    BUCKET_PORTFOLIO,
     BUCKET_PULLBACK,
-    assign_bucket,
+    BUCKET_REVERSAL,
 )
 from swingtrader.dashboard.context import build_context
 from swingtrader.dashboard.eligibility import assess_eligibility
-from swingtrader.dashboard.freshness import FRESH_MAX_DAYS, classify_row
+from swingtrader.dashboard.freshness import FRESH_MAX_DAYS, SCORED_STATES, classify_row
 from swingtrader.dashboard.levels import TradeLevels, compute_levels
-from swingtrader.dashboard.narrative import build_narrative
 
 __all__ = [
     "build_all_lightweight_packets",
@@ -118,6 +128,42 @@ def _pct(row: pd.Series | dict, col: str) -> str:
 # ---------------------------------------------------------------------------
 # Structural analysis helpers (Tier 1 — snapshot fields only, no file I/O)
 # ---------------------------------------------------------------------------
+
+def _num_from_value(v: Any, d: int = 2) -> str:
+    fv = _f(v)
+    return f"{fv:.{d}f}" if math.isfinite(fv) else "â€”"
+
+
+def _price(v: Any) -> str:
+    fv = _f(v)
+    return f"${fv:.2f}" if math.isfinite(fv) else "â€”"
+
+
+def _rr(v: Any) -> str:
+    fv = _f(v)
+    return f"{fv:.1f}:1" if math.isfinite(fv) else "â€”"
+
+
+def _is_missing(v: Any) -> bool:
+    if v is None:
+        return True
+    if isinstance(v, str):
+        return v.strip() in ("", "â€”", "nan", "None")
+    if isinstance(v, list):
+        return len(v) == 0
+    if isinstance(v, dict):
+        return len(v) == 0
+    if isinstance(v, (int, float)):
+        return not math.isfinite(_f(v))
+    return False
+
+
+def _as_reason_list(raw: str) -> list[str]:
+    text = str(raw or "").strip()
+    if not text or text == "â€”":
+        return []
+    return [part.strip() for part in text.split(";") if part.strip()]
+
 
 def _compute_daily_trend_state(row: pd.Series) -> str:
     """Classify daily trend from snapshot row fields only.
@@ -228,8 +274,8 @@ def _compute_demotion_reason(
         return ""
 
     if state in {"BASE", "ARMED"}:
-        if math.isfinite(dist_f) and abs(dist_f) > BREAKOUT_DIST_ATR:
-            return f"far_from_pivot ({abs(dist_f):.1f} ATR vs {BREAKOUT_DIST_ATR} threshold)"
+        if math.isfinite(dist_f) and abs(dist_f) > 1.0:
+            return f"far_from_pivot ({abs(dist_f):.1f} ATR from trigger zone)"
 
         cvs50 = _f(row.get("close_vs_sma50", math.nan))
         if math.isfinite(cvs50) and cvs50 < -0.03:
@@ -247,6 +293,247 @@ def _compute_demotion_reason(
 # ---------------------------------------------------------------------------
 # Trade plan builder (adapted from swing_engine/checklist.py)
 # ---------------------------------------------------------------------------
+
+def _is_reversal_candidate(row: pd.Series, rejection_reasons: list[str]) -> bool:
+    rejection_blob = " ".join(rejection_reasons).lower()
+    for hard_gate in ("non_equity", "invalid_state", "high_failure_risk"):
+        if hard_gate in rejection_blob:
+            return False
+
+    composite = _f(row.get("composite_score", math.nan))
+    if math.isfinite(composite) and composite < 0.22:
+        return False
+
+    base_length = int(row.get("base_length", 0) or 0)
+    if base_length < 10:
+        return False
+
+    state = str(row.get("state", "NONE"))
+    if state not in SCORED_STATES:
+        return False
+
+    ytd_dist = _f(row.get("ytd_dist_atr", math.nan))
+    return math.isfinite(ytd_dist) and -4.0 <= ytd_dist <= -0.5
+
+
+def _collect_extension_truth(row: pd.Series, fresh: dict) -> tuple[bool, str, str]:
+    reasons: list[str] = []
+    for item in _as_reason_list(str(fresh.get("extension_reasons", ""))):
+        if item not in reasons:
+            reasons.append(item)
+
+    dist_pivot = _f(row.get("dist_to_pivot_atr", math.nan))
+    close_vs_sma50 = _f(row.get("close_vs_sma50", math.nan))
+    ytd_dist = _f(row.get("ytd_dist_atr", math.nan))
+    swing_low_dist = _f(row.get("swing_low_dist_atr", math.nan))
+    state = str(row.get("state", "NONE"))
+
+    if state in {"LATE", "EXHAUSTED"}:
+        reasons.append(f"{state.lower()} lifecycle state")
+    if math.isfinite(dist_pivot) and dist_pivot >= 3.0:
+        reasons.append(f"{dist_pivot:.1f} ATR above pivot")
+    if math.isfinite(close_vs_sma50) and close_vs_sma50 >= 0.12:
+        reasons.append(f"{close_vs_sma50 * 100:.1f}% above SMA50")
+    if math.isfinite(ytd_dist) and ytd_dist >= 4.0:
+        reasons.append(f"{ytd_dist:.1f} ATR above YTD AVWAP")
+    if math.isfinite(swing_low_dist) and swing_low_dist >= 5.0:
+        reasons.append(f"{swing_low_dist:.1f} ATR above swing-low AVWAP")
+
+    unique_reasons: list[str] = []
+    for reason in reasons:
+        if reason not in unique_reasons:
+            unique_reasons.append(reason)
+
+    is_extended = bool(fresh.get("is_extended", False)) or bool(unique_reasons)
+    if not is_extended:
+        return False, "not_extended", ""
+
+    extension_state = "mature_trend" if state in {"LATE", "EXHAUSTED"} else "extended_chase_risk"
+    return True, extension_state, "; ".join(unique_reasons)
+
+
+def _is_constructive_trend(daily_trend_state: str, row: pd.Series) -> bool:
+    if daily_trend_state in {"strong_uptrend", "uptrend", "neutral"}:
+        return True
+    close_vs_sma50 = _f(row.get("close_vs_sma50", math.nan))
+    daily_rs_63 = _f(row.get("daily_rs_63", math.nan))
+    return bool(
+        math.isfinite(close_vs_sma50)
+        and close_vs_sma50 >= -0.02
+        and math.isfinite(daily_rs_63)
+        and daily_rs_63 >= 0
+    )
+
+
+def _route_packet(
+    row: pd.Series,
+    *,
+    eligible: bool,
+    rejection_reasons: list[str],
+    is_fresh: bool,
+    is_extended: bool,
+    extension_state: str,
+    daily_trend_state: str,
+) -> dict:
+    state = str(row.get("state", "NONE"))
+    dist = _f(row.get("dist_to_pivot_atr", math.nan))
+    days = int(row.get("days_in_state", 0) or 0)
+    close_vs_sma50 = _f(row.get("close_vs_sma50", math.nan))
+    constructive_trend = _is_constructive_trend(daily_trend_state, row)
+    near_pivot = math.isfinite(dist) and abs(dist) <= 1.0
+
+    if bool(row.get("is_non_equity", False)):
+        return {
+            "bucket": BUCKET_NON_EQUITY,
+            "setup_key": "non_equity",
+            "setup_classification": "Informational only",
+            "action_label": ACTION_AVOID,
+            "promotion_reason": "",
+            "demotion_reason": "",
+            "route_reason": "non-equity informational symbol",
+            "operational_readiness": "not_actionable",
+        }
+
+    if bool(row.get("is_portfolio", False)):
+        return {
+            "bucket": BUCKET_PORTFOLIO,
+            "setup_key": "portfolio_hold",
+            "setup_classification": "Portfolio management",
+            "action_label": ACTION_PORTFOLIO,
+            "promotion_reason": "Existing holding managed separately from fresh-entry lists",
+            "demotion_reason": "",
+            "route_reason": "portfolio holdings stay outside fresh-entry sections",
+            "operational_readiness": "manage_existing",
+        }
+
+    if not eligible:
+        if _is_reversal_candidate(row, rejection_reasons):
+            return {
+                "bucket": BUCKET_REVERSAL,
+                "setup_key": "speculative_reversal",
+                "setup_classification": "Speculative reversal watch",
+                "action_label": ACTION_AVOID,
+                "promotion_reason": "",
+                "demotion_reason": "kept out of primary long list due to failed core eligibility",
+                "route_reason": "speculative reversal only",
+                "operational_readiness": "speculative_only",
+            }
+        return {
+            "bucket": BUCKET_EXCLUDED,
+            "setup_key": "excluded",
+            "setup_classification": "Rejected setup",
+            "action_label": ACTION_AVOID,
+            "promotion_reason": "",
+            "demotion_reason": "",
+            "route_reason": "failed eligibility gates",
+            "operational_readiness": "rejected",
+        }
+
+    if is_extended:
+        return {
+            "bucket": BUCKET_EXTENDED,
+            "setup_key": "extended_leader",
+            "setup_classification": "Extended leader",
+            "action_label": ACTION_EXTENDED,
+            "promotion_reason": "",
+            "demotion_reason": f"too_extended_for_fresh_entry ({extension_state})",
+            "route_reason": "healthy but too late for a fresh entry",
+            "operational_readiness": "too_extended",
+        }
+
+    if state not in SCORED_STATES:
+        return {
+            "bucket": BUCKET_EXCLUDED,
+            "setup_key": "excluded",
+            "setup_classification": "Rejected setup",
+            "action_label": ACTION_AVOID,
+            "promotion_reason": "",
+            "demotion_reason": "",
+            "route_reason": "state not eligible for scored setup routing",
+            "operational_readiness": "rejected",
+        }
+
+    if state in {"TRIGGERED", "ACCEPTED"}:
+        if math.isfinite(dist) and dist < 0:
+            return {
+                "bucket": BUCKET_PULLBACK,
+                "setup_key": "reclaim_pullback",
+                "setup_classification": "Pullback reclaim",
+                "action_label": ACTION_PULLBACK,
+                "promotion_reason": "Constructive pullback into prior breakout pivot",
+                "demotion_reason": _compute_demotion_reason(row, BUCKET_PULLBACK, state, days, dist),
+                "route_reason": "below pivot; requires reclaim rather than immediate breakout entry",
+                "operational_readiness": "needs_reclaim",
+            }
+        if days <= BREAKOUT_TRIGGER_DAYS and constructive_trend and is_fresh:
+            return {
+                "bucket": BUCKET_BREAKOUT,
+                "setup_key": "fresh_breakout",
+                "setup_classification": "Fresh breakout",
+                "action_label": ACTION_NOW,
+                "promotion_reason": "Fresh breakout above pivot with entry risk still defined",
+                "demotion_reason": "",
+                "route_reason": "fresh trigger remains operationally actionable",
+                "operational_readiness": "ready_now",
+            }
+        return {
+            "bucket": BUCKET_PULLBACK,
+            "setup_key": "aged_breakout_pullback",
+            "setup_classification": "Aged breakout retest",
+            "action_label": ACTION_PULLBACK,
+            "promotion_reason": "Trend intact, but the initial breakout window has aged",
+            "demotion_reason": _compute_demotion_reason(row, BUCKET_PULLBACK, state, days, dist),
+            "route_reason": "better handled as a pullback or reclaim, not a fresh breakout",
+            "operational_readiness": "watch_pullback_zone",
+        }
+
+    if state in {"ARMED", "BASE"}:
+        if near_pivot and constructive_trend and (not math.isfinite(close_vs_sma50) or close_vs_sma50 >= -0.03):
+            return {
+                "bucket": BUCKET_BREAKOUT,
+                "setup_key": "breakout_watch",
+                "setup_classification": "Near breakout setup",
+                "action_label": ACTION_BREAKOUT,
+                "promotion_reason": "Tight constructive base close to the pivot",
+                "demotion_reason": "",
+                "route_reason": "close enough to treat as an operational breakout watch",
+                "operational_readiness": "needs_breakout_trigger",
+            }
+        if constructive_trend:
+            return {
+                "bucket": BUCKET_PULLBACK,
+                "setup_key": "constructive_pullback",
+                "setup_classification": "Constructive pullback",
+                "action_label": ACTION_PULLBACK,
+                "promotion_reason": "Trend remains constructive while price works through a pullback",
+                "demotion_reason": _compute_demotion_reason(row, BUCKET_PULLBACK, state, days, dist),
+                "route_reason": "not in a clean breakout trigger zone today",
+                "operational_readiness": "watch_pullback_zone",
+            }
+
+    if state == "CONFIRMED" and constructive_trend:
+        return {
+            "bucket": BUCKET_EXTENDED,
+            "setup_key": "extended_leader",
+            "setup_classification": "Mature trend leader",
+            "action_label": ACTION_EXTENDED,
+            "promotion_reason": "",
+            "demotion_reason": "confirmed trend is no longer a fresh entry setup",
+            "route_reason": "mature trend monitored separately from fresh entries",
+            "operational_readiness": "too_extended",
+        }
+
+    return {
+        "bucket": BUCKET_EXCLUDED,
+        "setup_key": "excluded",
+        "setup_classification": "Rejected setup",
+        "action_label": ACTION_AVOID,
+        "promotion_reason": "",
+        "demotion_reason": "",
+        "route_reason": "trend or structure is not constructive enough for primary long routing",
+        "operational_readiness": "rejected",
+    }
+
 
 def _build_trade_plan(
     row: pd.Series,
@@ -451,6 +738,301 @@ def _build_trade_plan(
 
 
 # ---------------------------------------------------------------------------
+# Canonical packet helpers
+# ---------------------------------------------------------------------------
+
+def _build_trade_plan_canonical(
+    row: pd.Series,
+    levels: TradeLevels,
+    route: dict,
+) -> dict:
+    state = str(row.get("state", "NONE"))
+    days = int(row.get("days_in_state", 0) or 0)
+    dist = _f(row.get("dist_to_pivot_atr", math.nan))
+    failure = _f(row.get("failure_risk", math.nan))
+    close_vs_sma50 = _f(row.get("close_vs_sma50", math.nan))
+    daily_rs_63 = _f(row.get("daily_rs_63", math.nan))
+    atr_pct = _f(row.get("atr_compression_pct", math.nan))
+    volume_dryup = _f(row.get("volume_dryup", math.nan))
+    ytd_dist = _f(row.get("ytd_dist_atr", math.nan))
+    swing_low_dist = _f(row.get("swing_low_dist_atr", math.nan))
+
+    setup_key = route["setup_key"]
+    pivot_s = _price(row.get("pivot", math.nan))
+    entry_lo_s = _price(levels.entry_lo)
+    entry_hi_s = _price(levels.entry_hi)
+    stop_s = _price(levels.stop)
+    t1_s = _price(levels.t1)
+    t2_s = _price(levels.t2)
+    t3_s = _price(levels.t3)
+    alt_pullback = _price(levels.s1 if math.isfinite(levels.s1) else levels.entry_lo)
+    rr_s = _rr(levels.risk_reward_t1)
+
+    stop_risk_pct = "â€”"
+    if math.isfinite(levels.entry_lo) and math.isfinite(levels.stop) and levels.entry_lo > 0:
+        mid_entry = (levels.entry_lo + levels.entry_hi) / 2 if math.isfinite(levels.entry_hi) else levels.entry_lo
+        stop_risk_pct = f"{abs(mid_entry - levels.stop) / mid_entry * 100:.1f}%"
+
+    why_now: list[str] = []
+    why_not_now: list[str] = []
+
+    if math.isfinite(close_vs_sma50):
+        if close_vs_sma50 > 0.02:
+            why_now.append(f"Above SMA50 by {close_vs_sma50 * 100:.1f}%")
+        elif close_vs_sma50 < -0.02:
+            why_not_now.append(f"Below SMA50 by {abs(close_vs_sma50) * 100:.1f}%")
+
+    if math.isfinite(daily_rs_63):
+        if daily_rs_63 > 0.03:
+            why_now.append(f"RS-63 is +{daily_rs_63 * 100:.0f}% vs SPY")
+        elif daily_rs_63 < -0.02:
+            why_not_now.append(f"RS-63 is weak at {daily_rs_63 * 100:.0f}% vs SPY")
+
+    if math.isfinite(atr_pct):
+        if atr_pct <= 35:
+            why_now.append(f"ATR compression is supportive at the {atr_pct:.0f}th percentile")
+        elif atr_pct >= 65:
+            why_not_now.append(f"ATR is elevated at the {atr_pct:.0f}th percentile")
+
+    if math.isfinite(volume_dryup):
+        if volume_dryup >= 0.40:
+            why_now.append(f"Volume dry-up score {volume_dryup:.2f} supports absorption")
+        elif volume_dryup <= 0.10:
+            why_not_now.append("Volume is still too active for a clean setup")
+
+    if math.isfinite(ytd_dist):
+        if ytd_dist > 0.50:
+            why_now.append(f"Accepted above YTD AVWAP by {ytd_dist:.1f} ATR")
+        elif ytd_dist < -0.50:
+            why_not_now.append(f"Still {abs(ytd_dist):.1f} ATR below YTD AVWAP")
+
+    if math.isfinite(swing_low_dist) and swing_low_dist > 1.0:
+        why_now.append(f"{swing_low_dist:.1f} ATR above swing-low AVWAP support")
+
+    if math.isfinite(failure):
+        if failure <= 0.30:
+            why_now.append(f"Failure risk remains contained at {failure:.0%}")
+        elif failure >= 0.55:
+            why_not_now.append(f"Failure risk is elevated at {failure:.0%}")
+
+    entry_style = "avoid"
+    actionable_now = False
+    entry_condition = "Do not treat this as a new long setup."
+    entry_trigger = "â€”"
+    invalidation = f"Daily close below {stop_s} invalidates the idea."
+    time_stop = "No active time stop."
+    setup_improves_if: list[str] = []
+    setup_weakens_if: list[str] = []
+    key_risk = "Model and structure do not currently justify a fresh entry."
+
+    if setup_key == "fresh_breakout":
+        entry_style = "breakout"
+        actionable_now = True
+        entry_trigger = pivot_s
+        entry_condition = f"Fresh breakout above {pivot_s}; use {entry_lo_s}-{entry_hi_s} while the trigger remains intact."
+        time_stop = f"If follow-through stalls for 3-5 sessions, reassess. Current trigger age: {days} day(s)."
+        setup_improves_if = [
+            f"Closes through T1 at {t1_s} with expanding volume",
+            f"Holds the pivot at {pivot_s} on any shallow retest",
+        ]
+        setup_weakens_if = [
+            f"Falls back below {pivot_s} and cannot reclaim it quickly",
+            f"Closes below stop {stop_s}",
+        ]
+        key_risk = "Failed follow-through after the breakout is the main risk."
+        why_now.insert(0, f"Fresh trigger still within the {BREAKOUT_TRIGGER_DAYS} day breakout window")
+    elif setup_key == "breakout_watch":
+        entry_style = "breakout"
+        entry_trigger = pivot_s
+        entry_condition = f"Buy only on a decisive break above {pivot_s} with volume support. Current watch zone: {entry_lo_s}-{entry_hi_s}."
+        time_stop = f"Watch for a real trigger while the base remains valid. Current age: {days} day(s) in {state}."
+        setup_improves_if = [
+            f"Breaks above {pivot_s} with demand expansion",
+            "Keeps tightening near the pivot rather than slipping away from it",
+        ]
+        setup_weakens_if = [
+            f"Closes below support at {alt_pullback}",
+            "Base broadens and loses tightness near the pivot",
+        ]
+        key_risk = "Premature entry before the actual breakout trigger."
+        why_not_now.insert(0, f"Still needs a clean breakout through {pivot_s}")
+    elif setup_key == "reclaim_pullback":
+        entry_style = "reclaim"
+        entry_trigger = pivot_s
+        entry_condition = f"Wait for a reclaim of {pivot_s} before treating this as a fresh entry. Current pullback support watch: {alt_pullback}."
+        time_stop = f"Reassess if the reclaim does not occur within 5-10 sessions. Current trigger age: {days} day(s)."
+        setup_improves_if = [
+            f"Reclaims {pivot_s} on volume and then holds above it",
+            "Finds support cleanly at the alternate pullback area",
+        ]
+        setup_weakens_if = [
+            f"Breaks below support at {alt_pullback}",
+            f"Closes below stop {stop_s}",
+        ]
+        key_risk = "Below-pivot pullback can become a failed breakout if reclaim does not happen."
+        if math.isfinite(dist):
+            why_not_now.insert(0, f"Below pivot by {abs(dist):.1f} ATR and needs a reclaim")
+    elif setup_key in {"constructive_pullback", "aged_breakout_pullback"}:
+        entry_style = "pullback"
+        entry_trigger = alt_pullback
+        entry_condition = f"Treat as a pullback setup, not a breakout chase. Preferred add zone is near {alt_pullback}; confirm support before entry."
+        time_stop = "Let support prove itself; no fresh-entry time stop until the pullback resolves."
+        setup_improves_if = [
+            f"Holds support around {alt_pullback} and turns back toward {pivot_s}",
+            "Shows lighter downside volume on the pullback",
+        ]
+        setup_weakens_if = [
+            f"Loses support near {alt_pullback}",
+            f"Closes below stop {stop_s}",
+        ]
+        key_risk = "Pullback can deepen if support does not hold on the first test."
+        if setup_key == "aged_breakout_pullback":
+            why_not_now.insert(0, "Initial breakout window has aged; prefer a cleaner reset")
+        else:
+            why_not_now.insert(0, "Not in a clean breakout trigger zone today")
+    elif setup_key == "extended_leader":
+        entry_style = "wait"
+        entry_trigger = alt_pullback
+        entry_condition = f"Do not chase here. Wait for a more attractive reset toward {alt_pullback} or a fresh base."
+        time_stop = "No fresh-entry timer while the name remains extended."
+        setup_improves_if = [
+            "Builds a new base or digests the extension without material damage",
+            f"Offers a lower-risk reset closer to {alt_pullback}",
+        ]
+        setup_weakens_if = [
+            "Keeps extending without offering a reset",
+            f"Breaks below stop {stop_s}",
+        ]
+        key_risk = "Chasing an extended leader destroys reward-to-risk."
+        why_not_now.insert(0, "Too extended for a trustworthy fresh entry")
+    elif setup_key == "portfolio_hold":
+        entry_style = "hold"
+        entry_trigger = stop_s
+        entry_condition = f"Manage the existing position rather than treating this as a new entry. Keep the key level at {stop_s} in view."
+        time_stop = "Manage against the existing thesis and stop discipline."
+        setup_improves_if = [
+            f"Holds above pivot {pivot_s} or support {alt_pullback}",
+            f"Extends toward T1 at {t1_s} without violating support",
+        ]
+        setup_weakens_if = [
+            f"Closes below stop {stop_s}",
+            "Loses trend support and fails to recover promptly",
+        ]
+        key_risk = "Portfolio management is about protecting the open thesis, not forcing a new entry."
+        why_not_now.insert(0, "Already a holding; separate from fresh-entry routing")
+    elif setup_key == "speculative_reversal":
+        entry_style = "avoid"
+        entry_trigger = pivot_s
+        entry_condition = "Speculative reversal only. Keep isolated from primary long routing until core trend and eligibility improve."
+        time_stop = "No action until the setup graduates out of reversal status."
+        setup_improves_if = [
+            "Repairs trend damage and re-passes the primary eligibility gates",
+            f"Moves back above pivot {pivot_s} with real sponsorship",
+        ]
+        setup_weakens_if = [
+            "Breaks fresh lows or keeps failing at resistance",
+            f"Stays below support at {alt_pullback}",
+        ]
+        key_risk = "Speculative reversals fail often and should not contaminate the primary list."
+        why_not_now.insert(0, "Speculative-only status keeps this out of decision-ready long setups")
+    else:
+        entry_style = "avoid"
+        entry_condition = "Rejected setup. Do not surface this as an actionable idea."
+        time_stop = "No action while hard blockers remain."
+        setup_improves_if = [
+            "Re-passes the hard eligibility gates",
+            "Repairs trend and setup integrity enough to re-enter a valid bucket",
+        ]
+        setup_weakens_if = ["Accumulates more eligibility or structure failures"]
+        key_risk = "Hard blockers still dominate the setup."
+        why_not_now.insert(0, "Hard blockers still prevent a decision-ready setup")
+
+    if not why_now:
+        why_now = ["No bullish edge is strong enough to override the setup classification."]
+    if not why_not_now:
+        why_not_now = ["No immediate blocker beyond normal execution discipline."]
+
+    code_map = {
+        "breakout": "BUY_NOW" if actionable_now else "WATCH_BREAKOUT",
+        "reclaim": "WAIT_PULLBACK",
+        "pullback": "WAIT_PULLBACK",
+        "wait": "WAIT_ZONE",
+        "hold": "WAIT_ZONE",
+        "avoid": "BLOCK",
+    }
+
+    return {
+        "actionability_code": code_map.get(entry_style, "BLOCK"),
+        "actionable_now": actionable_now,
+        "entry_style": entry_style,
+        "best_entry_style": entry_style,
+        "entry_condition": entry_condition,
+        "entry_trigger": entry_trigger,
+        "entry_range": f"{entry_lo_s}-{entry_hi_s}",
+        "alternate_pullback_entry": alt_pullback,
+        "stop": stop_s,
+        "stop_basis": f"Daily close below {stop_s} invalidates the setup.",
+        "stop_risk_pct": stop_risk_pct,
+        "target_1": t1_s,
+        "target_2": t2_s,
+        "target_3": t3_s,
+        "risk_reward_t1": rr_s,
+        "time_stop": time_stop,
+        "key_risk": key_risk,
+        "invalidation": invalidation,
+        "why_now": why_now,
+        "why_not_now": why_not_now,
+        "setup_improves_if": setup_improves_if,
+        "setup_weakens_if": setup_weakens_if,
+        "what_improves_tomorrow": list(setup_improves_if),
+        "what_weakens_tomorrow": list(setup_weakens_if),
+    }
+
+
+def _build_final_verdict(route: dict, trade_plan: dict) -> str:
+    setup_key = route["setup_key"]
+    entry_condition = str(trade_plan.get("entry_condition", ""))
+    invalidation = str(trade_plan.get("invalidation", ""))
+
+    if setup_key == "fresh_breakout":
+        return f"Fresh breakout. Actionable now while the trigger holds. {invalidation}"
+    if setup_key == "breakout_watch":
+        return f"Valid breakout watch, but not actionable until price clears the trigger. {entry_condition}"
+    if setup_key == "reclaim_pullback":
+        return f"Constructive pullback, but not actionable now because it still needs a reclaim. {entry_condition}"
+    if setup_key in {"constructive_pullback", "aged_breakout_pullback"}:
+        return f"Constructive pullback watch. Treat this as a pullback plan, not a breakout card. {entry_condition}"
+    if setup_key == "extended_leader":
+        return f"Healthy leader, but too extended for a fresh entry. {entry_condition}"
+    if setup_key == "portfolio_hold":
+        return f"Portfolio management only. {entry_condition}"
+    if setup_key == "speculative_reversal":
+        return "Speculative reversal only. Keep isolated from primary long selection."
+    if setup_key == "non_equity":
+        return "Informational symbol only. Not part of primary setup selection."
+    return "Excluded from surfaced setup lists."
+
+
+def _build_narrative(route: dict, trade_plan: dict, final_verdict: str) -> dict:
+    why_now = trade_plan.get("why_now", [])
+    why_not_now = trade_plan.get("why_not_now", [])
+    targets = [trade_plan.get("target_1"), trade_plan.get("target_2"), trade_plan.get("target_3")]
+    targets = [str(target) for target in targets if not _is_missing(target)]
+
+    return {
+        "setup": route.get("promotion_reason") or route.get("setup_classification", ""),
+        "why": "; ".join(why_now[:3]),
+        "entry": trade_plan.get("entry_condition", ""),
+        "risk": trade_plan.get("key_risk", ""),
+        "targets": " | ".join(targets),
+        "verdict": final_verdict,
+        "why_not_now": "; ".join(why_not_now[:3]),
+        "ma_context": "",
+        "avwap_context": "",
+    }
+
+
+# ---------------------------------------------------------------------------
 # Portfolio position health (adapted from swing_engine/packets.py)
 # ---------------------------------------------------------------------------
 
@@ -524,6 +1106,154 @@ def _build_portfolio_health(
         "key_level":          key_level,
         "notes":              notes,
     }
+
+
+def _coherence_issues(
+    *,
+    bucket: str,
+    route: dict,
+    trade_plan: dict,
+    extension_state: str,
+) -> list[str]:
+    issues: list[str] = []
+    setup_key = route["setup_key"]
+    entry_style = str(trade_plan.get("entry_style", ""))
+    action_label = str(route.get("action_label", ""))
+    setup_classification = str(route.get("setup_classification", ""))
+    entry_condition = str(trade_plan.get("entry_condition", "")).lower()
+    actionable_now = bool(trade_plan.get("actionable_now", False))
+
+    if bucket == BUCKET_BREAKOUT and setup_key not in {"fresh_breakout", "breakout_watch"}:
+        issues.append("breakout_bucket_with_non_breakout_setup")
+    if bucket == BUCKET_BREAKOUT and entry_style != "breakout":
+        issues.append("breakout_bucket_with_non_breakout_entry_style")
+    if bucket == BUCKET_BREAKOUT and "pullback" in setup_classification.lower():
+        issues.append("breakout_bucket_with_pullback_classification")
+
+    if bucket == BUCKET_PULLBACK and setup_key not in {"reclaim_pullback", "constructive_pullback", "aged_breakout_pullback"}:
+        issues.append("pullback_bucket_with_non_pullback_setup")
+    if bucket == BUCKET_PULLBACK and entry_style not in {"pullback", "reclaim"}:
+        issues.append("pullback_bucket_with_wrong_entry_style")
+
+    if action_label == ACTION_NOW and not actionable_now:
+        issues.append("actionable_now_label_without_actionable_now_trade_plan")
+    if action_label == ACTION_NOW and any(token in entry_condition for token in ("break above", "reclaim")):
+        issues.append("actionable_now_label_with_future_condition")
+    if action_label == ACTION_BREAKOUT and actionable_now:
+        issues.append("breakout_watch_label_with_actionable_now_trade_plan")
+    if action_label == ACTION_PULLBACK and entry_style == "breakout":
+        issues.append("pullback_label_with_breakout_entry_style")
+
+    if extension_state != "not_extended" and bucket in {BUCKET_BREAKOUT, BUCKET_PULLBACK}:
+        issues.append("extended_name_in_fresh_entry_bucket")
+
+    if bucket == BUCKET_PORTFOLIO and entry_style != "hold":
+        issues.append("portfolio_bucket_without_hold_trade_plan")
+    if bucket == BUCKET_EXCLUDED and action_label != ACTION_AVOID:
+        issues.append("excluded_bucket_without_avoid_label")
+    if bucket == BUCKET_EXTENDED and action_label != ACTION_EXTENDED:
+        issues.append("extended_bucket_without_extended_label")
+
+    return issues
+
+
+def _packet_completeness_issues(
+    *,
+    bucket: str,
+    route: dict,
+    trade_plan: dict,
+    final_verdict: str,
+    levels: TradeLevels,
+) -> list[str]:
+    if bucket not in {BUCKET_BREAKOUT, BUCKET_PULLBACK}:
+        return ["bucket_not_surface_eligible"]
+
+    issues: list[str] = []
+    top_level_required = {
+        "setup_classification": route.get("setup_classification"),
+        "action_label": route.get("action_label"),
+        "promotion_reason": route.get("promotion_reason"),
+        "final_verdict": final_verdict,
+    }
+    for field, value in top_level_required.items():
+        if _is_missing(value):
+            issues.append(f"missing_{field}")
+
+    trade_required = {
+        "entry_style": trade_plan.get("entry_style"),
+        "entry_condition": trade_plan.get("entry_condition"),
+        "entry_trigger": trade_plan.get("entry_trigger"),
+        "alternate_pullback_entry": trade_plan.get("alternate_pullback_entry"),
+        "invalidation": trade_plan.get("invalidation"),
+        "why_now": trade_plan.get("why_now"),
+        "why_not_now": trade_plan.get("why_not_now"),
+        "what_improves_tomorrow": trade_plan.get("what_improves_tomorrow"),
+        "what_weakens_tomorrow": trade_plan.get("what_weakens_tomorrow"),
+        "target_1": trade_plan.get("target_1"),
+        "target_2": trade_plan.get("target_2"),
+        "target_3": trade_plan.get("target_3"),
+    }
+    for field, value in trade_required.items():
+        if _is_missing(value):
+            issues.append(f"missing_trade_plan_{field}")
+
+    level_required = {
+        "pivot": levels.pivot,
+        "entry_lo": levels.entry_lo,
+        "entry_hi": levels.entry_hi,
+        "stop": levels.stop,
+        "t1": levels.t1,
+        "t2": levels.t2,
+        "t3": levels.t3,
+        "s1": levels.s1,
+        "s2": levels.s2,
+        "s3": levels.s3,
+        "r1": levels.r1,
+        "r2": levels.r2,
+        "r3": levels.r3,
+    }
+    for field, value in level_required.items():
+        if not math.isfinite(_f(value)):
+            issues.append(f"missing_level_{field}")
+
+    return issues
+
+
+def _summarize_ma_context(ma_table: list[dict]) -> str:
+    if not ma_table:
+        return ""
+    parts: list[str] = []
+    for row in ma_table:
+        name = str(row.get("name", ""))
+        if name not in {"SMA10", "SMA20", "EMA20", "SMA50"}:
+            continue
+        slope = str(row.get("slope", ""))
+        bias = str(row.get("tomorrow_bias") or row.get("bias") or "")
+        bit = f"{name} {slope}".strip()
+        if bias:
+            bit = f"{bit} ({bias})"
+        if bit:
+            parts.append(bit)
+    return "; ".join(parts[:3])
+
+
+def _summarize_avwap_context(avwap_table: list[dict]) -> str:
+    if not avwap_table:
+        return ""
+    parts: list[str] = []
+    for row in avwap_table[:3]:
+        if not row.get("supported", True):
+            continue
+        anchor = str(row.get("anchor", ""))
+        status = str(row.get("status", ""))
+        try:
+            dist_f = float(row.get("dist_atr", math.nan))
+            dist_str = f" ({dist_f:+.1f} ATR)" if math.isfinite(dist_f) else ""
+        except (TypeError, ValueError):
+            dist_str = ""
+        if anchor or status:
+            parts.append(f"{anchor}: {status}{dist_str}")
+    return "; ".join(parts)
 
 
 # ---------------------------------------------------------------------------
@@ -728,6 +1458,186 @@ def build_lightweight_packet(row: pd.Series) -> dict:
 # Context enrichment (file I/O — called only for top-N selected packets)
 # ---------------------------------------------------------------------------
 
+def _build_lightweight_packet_canonical(row: pd.Series) -> dict:
+    elig = assess_eligibility(row)
+    eligible: bool = bool(elig.get("eligible", False))
+    rejection_reasons: list[str] = list(elig.get("rejection_reasons", []))
+    eligibility_warnings: list[str] = list(elig.get("warnings", []))
+
+    fresh = classify_row(row)
+    is_fresh = bool(fresh.get("is_fresh", False))
+    is_stale_confirmed = bool(fresh.get("is_stale_confirmed", False))
+    freshness_label = str(fresh.get("freshness_label", "â€”"))
+    is_extended, extension_state, extension_reasons = _collect_extension_truth(row, fresh)
+    daily_trend_state = _compute_daily_trend_state(row)
+
+    route = _route_packet(
+        row,
+        eligible=eligible,
+        rejection_reasons=rejection_reasons,
+        is_fresh=is_fresh,
+        is_extended=is_extended,
+        extension_state=extension_state,
+        daily_trend_state=daily_trend_state,
+    )
+    if route["bucket"] == BUCKET_EXCLUDED and route["route_reason"] not in rejection_reasons:
+        rejection_reasons = rejection_reasons + [route["route_reason"]]
+
+    dist_f_raw = _f(row.get("dist_to_pivot_atr", math.nan))
+    days_raw = int(row.get("days_in_state", 0) or 0)
+    state_raw = str(row.get("state", "NONE"))
+    pullback_quality = _compute_pullback_quality(row, route["bucket"], state_raw, days_raw, dist_f_raw)
+    demotion_reason = route.get("demotion_reason") or _compute_demotion_reason(
+        row,
+        route["bucket"],
+        state_raw,
+        days_raw,
+        dist_f_raw,
+    )
+
+    levels: TradeLevels = compute_levels(row)
+    trade_plan = _build_trade_plan_canonical(row, levels, route)
+    portfolio_health = _build_portfolio_health(row, levels, route["action_label"])
+    final_verdict = _build_final_verdict(route, trade_plan)
+    narrative = _build_narrative(route, trade_plan, final_verdict)
+    coherence_issues = _coherence_issues(
+        bucket=route["bucket"],
+        route=route,
+        trade_plan=trade_plan,
+        extension_state=extension_state,
+    )
+    completeness_issues = _packet_completeness_issues(
+        bucket=route["bucket"],
+        route=route,
+        trade_plan=trade_plan,
+        final_verdict=final_verdict,
+        levels=levels,
+    )
+
+    provider_sym = _s(row.get("provider_symbol", row.get("symbol")))
+    rs_f = _f(row.get("daily_rs_63", math.nan))
+    cvs50_f = _f(row.get("close_vs_sma50", math.nan))
+    rs_class = (
+        "outperforming" if rs_f > 0.05
+        else "underperforming" if rs_f < -0.05
+        else "neutral"
+    ) if math.isfinite(rs_f) else "unknown"
+    ma_slope_direction = (
+        "rising" if cvs50_f > 0.005
+        else "falling" if cvs50_f < -0.005
+        else "flat"
+    ) if math.isfinite(cvs50_f) else "unknown"
+    portfolio_guidance = portfolio_health.get("recommended_action", "") if portfolio_health else ""
+    if route["bucket"] == BUCKET_NON_EQUITY and not portfolio_guidance:
+        portfolio_guidance = "Non-equity informational symbol; treat as cash/informational only."
+
+    return {
+        "symbol": _s(row.get("user_symbol", row.get("symbol"))),
+        "provider_symbol": provider_sym,
+        "state": _s(row.get("state"), "NONE"),
+        "groups": _s(row.get("groups")),
+        "is_portfolio": bool(row.get("is_portfolio", False)),
+        "is_watchlist": bool(row.get("is_watchlist", True)),
+        "is_non_equity": bool(row.get("is_non_equity", False)),
+        "eligible": eligible,
+        "rejection_reasons": ", ".join(rejection_reasons),
+        "rejection_reasons_list": rejection_reasons,
+        "eligibility_warnings": ", ".join(eligibility_warnings),
+        "eligibility_warnings_list": eligibility_warnings,
+        "freshness_label": freshness_label,
+        "is_fresh": is_fresh,
+        "is_extended": is_extended,
+        "is_stale_confirmed": is_stale_confirmed,
+        "extension_state": extension_state,
+        "extension_reasons": extension_reasons,
+        "days_in_state": days_raw,
+        "bucket": route["bucket"],
+        "action_label": route["action_label"],
+        "setup_classification": route["setup_classification"],
+        "setup_key": route["setup_key"],
+        "promotion_reason": route["promotion_reason"],
+        "demotion_reason": demotion_reason,
+        "route_reason": route["route_reason"],
+        "operational_readiness": route["operational_readiness"],
+        "daily_trend_state": daily_trend_state,
+        "weekly_trend_state": None,
+        "trend_health": "constructive" if _is_constructive_trend(daily_trend_state, row) else "fragile",
+        "freshness_maturity": (
+            "extended" if is_extended
+            else "fresh_trigger" if state_raw in {"TRIGGERED", "ACCEPTED"} and days_raw <= BREAKOUT_TRIGGER_DAYS
+            else "primed" if state_raw in {"BASE", "ARMED"} and is_fresh
+            else "aging"
+        ),
+        "pullback_quality": pullback_quality,
+        "composite_score": _num(row, "composite_score"),
+        "setup_score": _num(row, "setup_score"),
+        "trade_score": _num(row, "trade_score"),
+        "failure_risk": _num(row, "failure_risk"),
+        "percentile_rank": _num(row, "percentile_rank", 0),
+        "close": _num(row, "close"),
+        "pivot": _num(row, "pivot"),
+        "atr14": _num(row, "atr14"),
+        "dist_to_pivot_atr": _num(row, "dist_to_pivot_atr", 1),
+        "base_length": int(row.get("base_length", 0) or 0),
+        "entry_lo": _num_from_value(levels.entry_lo),
+        "entry_hi": _num_from_value(levels.entry_hi),
+        "stop": _num_from_value(levels.stop),
+        "t1": _num_from_value(levels.t1),
+        "t2": _num_from_value(levels.t2),
+        "t3": _num_from_value(levels.t3),
+        "s1": _num_from_value(levels.s1),
+        "s2": _num_from_value(levels.s2),
+        "s3": _num_from_value(levels.s3),
+        "r1": _num_from_value(levels.r1),
+        "r2": _num_from_value(levels.r2),
+        "r3": _num_from_value(levels.r3),
+        "risk_reward_t1": f"{_f(levels.risk_reward_t1):.1f}x" if math.isfinite(_f(levels.risk_reward_t1)) else "â€”",
+        "trade_plan": trade_plan,
+        "portfolio_health": portfolio_health,
+        "portfolio_guidance": portfolio_guidance,
+        "atr_compression_pct": _num(row, "atr_compression_pct", 0),
+        "volume_dryup": _num(row, "volume_dryup", 2),
+        "daily_rs_63": _num(row, "daily_rs_63", 3),
+        "rs_class": rs_class,
+        "close_vs_sma50": _num(row, "close_vs_sma50", 3),
+        "ma_slope_direction": ma_slope_direction,
+        "ytd_dist_atr": _num(row, "ytd_dist_atr", 1),
+        "swing_low_dist_atr": _num(row, "swing_low_dist_atr", 1),
+        "regime_spy_trend": _num(row, "regime_spy_trend", 0),
+        "operational_fresh_entry": route["bucket"] in {BUCKET_BREAKOUT, BUCKET_PULLBACK},
+        "final_verdict": final_verdict,
+        "coherence_ok": len(coherence_issues) == 0,
+        "coherence_issues": coherence_issues,
+        "packet_complete_for_surface": len(completeness_issues) == 0,
+        "packet_completeness_issues": completeness_issues,
+        "narrative": narrative,
+        "context": None,
+        "assessments": None,
+        "ma_table": None,
+        "avwap_table": None,
+        "volume_block": None,
+        "confluence": None,
+        "checklist": None,
+        "score_drivers": None,
+        "trend_state": None,
+        "ai_note": None,
+        "chart_weekly": None,
+        "chart_daily": None,
+        "chart_intraday": None,
+        "intraday_policy": "daily_only",
+        "intraday_available": False,
+        "intraday_used_in_qualification": False,
+        "intraday_note": "Intraday confirmation is not part of v1 qualification; surfaced setup truth is daily/weekly only.",
+        "surfaced_in_top": False,
+        "surface_section": None,
+        "not_surfaced_reason": "",
+        "selector_blockers": [],
+    }
+
+
+build_lightweight_packet = _build_lightweight_packet_canonical
+
+
 def enrich_with_context(pkt: dict, row: pd.Series) -> dict:
     """Add expensive context block to a lightweight packet.
 
@@ -763,11 +1673,25 @@ def enrich_with_context(pkt: dict, row: pd.Series) -> dict:
     context = build_context(provider_sym, row, levels_dict)
     pkt["context"]     = context
     pkt["assessments"] = context.get("assessments", {})
+    pkt["ma_table"] = context.get("ma_table", [])
+    pkt["avwap_table"] = context.get("avwap_table", [])
+    pkt["volume_block"] = context.get("volume_block", {})
+    pkt["confluence"] = context.get("confluence", {})
+    pkt["checklist"] = context.get("checklist", [])
+    pkt["score_drivers"] = context.get("score_drivers", {})
+    pkt["trend_state"] = context.get("trend_state", {})
 
     # Populate Tier-2 structural fields from context
     trend_state = context.get("trend_state", {})
     if isinstance(trend_state, dict):
+        pkt["daily_trend_state"] = trend_state.get("daily_trend_state", pkt.get("daily_trend_state"))
         pkt["weekly_trend_state"] = trend_state.get("weekly_trend_state")
+
+    narrative = pkt.get("narrative", {})
+    if isinstance(narrative, dict):
+        narrative["ma_context"] = _summarize_ma_context(pkt.get("ma_table") or [])
+        narrative["avwap_context"] = _summarize_avwap_context(pkt.get("avwap_table") or [])
+        pkt["narrative"] = narrative
 
     return pkt
 

@@ -8,7 +8,8 @@ Layer 1  — Dashboard summary
   portfolio-attention callouts, run timestamp.
 
 Layer 2  — Top setup cards (5-7 symbols)
-  Per-symbol: action label, charts (weekly + daily + intraday),
+  Per-symbol: action label, charts (weekly + daily, with intraday policy note
+  when intraday confirmation is not part of qualification),
   trade levels (entry / stop / T1 / T2 / T3 / S-R ladder),
   narrative (setup / why / entry / risk / targets / verdict),
   AI-review-ready data panel.
@@ -23,7 +24,6 @@ so it renders correctly when viewed locally or via GitHub Pages.
 """
 from __future__ import annotations
 
-import itertools
 import json
 import math
 from datetime import UTC, datetime
@@ -370,6 +370,7 @@ def _badge(label: str) -> str:
         "Actionable now": "badge-now",
         "Actionable on breakout": "badge-breakout",
         "Actionable on pullback": "badge-pullback",
+        "Portfolio hold": "badge-breakout",
         "Extended, wait": "badge-extended",
         "Avoid / low quality": "badge-avoid",
     }
@@ -471,34 +472,48 @@ def _avwap_table_html(avwap_table: list[dict]) -> str:
         return ""
     rows = ""
     for av in avwap_table:
-        role = av.get("role", "")
-        role_cls = f"avwap-{role}"
-        pct = av.get("pct_dist", math.nan)
-        try:
-            pct_str = f"{float(pct):+.2f}%" if math.isfinite(float(pct)) else "—"
-        except (TypeError, ValueError):
-            pct_str = "—"
-        dist_atr = av.get("dist_atr", math.nan)
-        try:
-            dist_str = f"{float(dist_atr):+.2f}" if math.isfinite(float(dist_atr)) else "—"
-        except (TypeError, ValueError):
-            dist_str = "—"
-        reclaim = av.get("reclaim")
-        reclaim_str = "✓" if reclaim is True else ("✗" if reclaim is False else "—")
-        rows += (
-            f"<tr>"
-            f"<td><strong>{av.get('anchor', '')}</strong></td>"
-            f"<td style='font-family:monospace'>{_e(av.get('avwap'), 2)}</td>"
-            f"<td>{pct_str}</td>"
-            f"<td style='font-family:monospace'>{dist_str} ATR</td>"
-            f"<td class='{role_cls}'>{av.get('status', '')}</td>"
-            f"<td style='color:var(--fg2)'>{reclaim_str}</td>"
-            f"</tr>"
-        )
+        supported = bool(av.get("supported", True))
+        anchor_date = av.get("anchor_date") or "—"
+        priority = av.get("priority") or "—"
+        if supported:
+            role = av.get("role", "")
+            role_cls = f"avwap-{role}"
+            pct = av.get("pct_dist", math.nan)
+            try:
+                pct_str = f"{float(pct):+.2f}%" if math.isfinite(float(pct)) else "—"
+            except (TypeError, ValueError):
+                pct_str = "—"
+            dist_atr = av.get("dist_atr", math.nan)
+            try:
+                dist_str = f"{float(dist_atr):+.2f}" if math.isfinite(float(dist_atr)) else "—"
+            except (TypeError, ValueError):
+                dist_str = "—"
+            rows += (
+                f"<tr>"
+                f"<td><strong>{av.get('anchor', '')}</strong></td>"
+                f"<td style='font-family:monospace'>{anchor_date}</td>"
+                f"<td style='font-family:monospace'>{_e(av.get('avwap'), 2)}</td>"
+                f"<td>{pct_str}</td>"
+                f"<td style='font-family:monospace'>{dist_str} ATR</td>"
+                f"<td class='{role_cls}'>{av.get('role', '')}</td>"
+                f"<td>{av.get('status', '')}</td>"
+                f"<td style='color:var(--fg2)'>{priority}</td>"
+                f"</tr>"
+            )
+        else:
+            rows += (
+                f"<tr>"
+                f"<td><strong>{av.get('anchor', '')}</strong></td>"
+                f"<td style='font-family:monospace'>{anchor_date}</td>"
+                f"<td colspan='6' style='color:var(--fg3)'>"
+                f"Unavailable: {av.get('unavailable_reason', 'Unavailable')}"
+                f"</td>"
+                f"</tr>"
+            )
     return (
         f'<table><tr>'
-        f'<th>Anchor</th><th>AVWAP</th><th>Dist%</th><th>ATR Dist</th>'
-        f'<th>Status</th><th>Reclaim</th>'
+        f'<th>Anchor</th><th>Date</th><th>AVWAP</th><th>Dist%</th><th>ATR Dist</th>'
+        f'<th>Role</th><th>Status</th><th>Priority</th>'
         f'</tr>{rows}</table>'
     )
 
@@ -622,10 +637,53 @@ def _ai_note_html(ai_note: str | None) -> str:
     )
 
 
-def _trade_plan_html(trade_plan: str | None) -> str:
+def _trade_plan_html(trade_plan: dict | str | None) -> str:
     """Render the trade plan block."""
     if not trade_plan:
         return ""
+    if isinstance(trade_plan, dict):
+        def _line(label: str, value: Any) -> str:
+            if value in (None, "", "—", [], {}):
+                return ""
+            if isinstance(value, list):
+                value = "; ".join(str(v) for v in value if str(v).strip())
+            return f'<div><strong>{label}:</strong> {value}</div>'
+
+        body = "".join([
+            _line("Actionability", trade_plan.get("actionability_code")),
+            _line("Best entry", trade_plan.get("best_entry_style") or trade_plan.get("entry_style")),
+            _line("Entry condition", trade_plan.get("entry_condition")),
+            _line("Entry trigger", trade_plan.get("entry_trigger")),
+            _line("Entry range", trade_plan.get("entry_range")),
+            _line("Alternate pullback entry", trade_plan.get("alternate_pullback_entry") or trade_plan.get("alt_entry")),
+            _line("Stop", trade_plan.get("stop")),
+            _line("Invalidation", trade_plan.get("invalidation")),
+            _line(
+                "Targets",
+                " | ".join(
+                    str(v)
+                    for v in (
+                        trade_plan.get("target_1"),
+                        trade_plan.get("target_2"),
+                        trade_plan.get("target_3"),
+                    )
+                    if v not in (None, "", "—")
+                ),
+            ),
+            _line("R/R to T1", trade_plan.get("risk_reward_t1")),
+            _line("Why now", trade_plan.get("why_now")),
+            _line("Why not now", trade_plan.get("why_not_now")),
+            _line("Improves tomorrow", trade_plan.get("what_improves_tomorrow") or trade_plan.get("setup_improves_if")),
+            _line("Weakens tomorrow", trade_plan.get("what_weakens_tomorrow") or trade_plan.get("setup_weakens_if")),
+        ])
+        if not body:
+            return ""
+        return (
+            f'<div class="trade-plan">'
+            f'<div class="tp-label">Trade Plan</div>'
+            f'{body}'
+            f'</div>'
+        )
     return (
         f'<div class="trade-plan">'
         f'<div class="tp-label">Trade Plan</div>'
@@ -807,6 +865,7 @@ def _render_card(packet: dict, rank: int = 0) -> str:
     ai_note = packet.get("ai_note")
     is_portfolio = packet.get("is_portfolio", False)
     portfolio_tag = ' <small style="color:var(--purple)">[Portfolio]</small>' if is_portfolio else ""
+    promotion_reason = str(packet.get("promotion_reason", "") or packet.get("route_reason", ""))
 
     # Setup classification badge
     sc_badge = _setup_class_badge(setup_cls_label) if setup_cls_label else ""
@@ -857,9 +916,16 @@ def _render_card(packet: dict, rank: int = 0) -> str:
         f'</div>'
     )
 
-    # Charts: intraday shown only when data actually exists
+    # Charts: intraday is intentionally a compact policy note in v1.
+    intraday_policy = packet.get("intraday_policy", "")
     intraday_available = packet.get("intraday_available", packet.get("chart_intraday") is not None)
-    if intraday_available and packet.get("chart_intraday"):
+    intraday_note = str(
+        packet.get(
+            "intraday_note",
+            "Intraday confirmation is not part of v1 qualification; surfaced setup truth is daily/weekly only.",
+        )
+    )
+    if intraday_policy != "daily_only" and intraday_available and packet.get("chart_intraday"):
         intraday_section = (
             f'<div style="font-size:.75rem;color:var(--fg3);margin:.4rem 0 .3rem">Intraday (5m)</div>'
             f'{_chart_img(packet.get("chart_intraday"), f"{sym} Intraday")}'
@@ -867,7 +933,7 @@ def _render_card(packet: dict, rank: int = 0) -> str:
     else:
         intraday_section = (
             '<div class="chart-na-inline">'
-            '\u2139 Intraday confirmation unavailable today'
+            f'{intraday_note}'
             '</div>'
         )
 
@@ -912,6 +978,15 @@ def _render_card(packet: dict, rank: int = 0) -> str:
         f'</div>'
     )
 
+    qualification_html = ""
+    if promotion_reason and promotion_reason not in ("—", ""):
+        qualification_html = (
+            f'<div class="trade-plan">'
+            f'<div class="tp-label">Why Qualified</div>'
+            f'<div>{promotion_reason}</div>'
+            f'</div>'
+        )
+
     # Confluence (brief, shown inline before narrative)
     confluence_html = _confluence_html(context.get("confluence", {}))
 
@@ -940,6 +1015,7 @@ def _render_card(packet: dict, rank: int = 0) -> str:
         f'<dl class="narrative">'
         f'<dt>Setup</dt><dd>{n.get("setup", "—")}</dd>'
         f'<dt>Why now</dt><dd>{n.get("why", "—")}</dd>'
+        f'<dt>Why not now</dt><dd>{n.get("why_not_now", "—")}</dd>'
         f'<dt>Entry</dt><dd>{n.get("entry", "—")}</dd>'
         f'<dt>Risk / invalidation</dt><dd>{n.get("risk", "—")}</dd>'
         f'<dt>Targets</dt><dd>{n.get("targets", "—")}</dd>'
@@ -950,7 +1026,7 @@ def _render_card(packet: dict, rank: int = 0) -> str:
     )
 
     # Trade plan
-    trade_plan_section = _trade_plan_html(n.get("trade_plan"))
+    trade_plan_section = _trade_plan_html(packet.get("trade_plan"))
 
     # AI analysis note
     ai_note_section = _ai_note_html(ai_note)
@@ -1004,6 +1080,7 @@ def _render_card(packet: dict, rank: int = 0) -> str:
 
     detail = (
         f'<div class="card-detail">'
+        f'{qualification_html}'
         f'{levels_section}'
         f'{confluence_html}'
         f'{drivers_html}'
@@ -1322,7 +1399,7 @@ def _compact_reversal_rows_from_packets(pkts: list[dict], max_rows: int = 3) -> 
             f'<span class="mr-state s-{state}">{state}</span>'
             f'<span class="mr-score">{score_str}</span>'
             f'<span class="mr-warn">failed: {rejection[:60]}</span>'
-            f'<span class="mr-note">speculative only — 25-50% size, strict stop</span>'
+            f'<span class="mr-note">speculative only; failed primary long eligibility</span>'
             f'</div>'
         )
     return f'<div class="monitor-list">{"".join(rows)}</div>' if rows else ""
@@ -1395,19 +1472,29 @@ def render_dashboard(
 
     # Counts: from selections when available, else from snapshot_df
     if selections is not None:
-        all_pkts = list(itertools.chain.from_iterable(selections.values()))
+        all_pkts = selections.get("all", packets)
         n_total    = len(all_pkts)
         n_eligible = sum(1 for p in all_pkts if bool(p.get("eligible", False)))
         n_fresh    = sum(1 for p in all_pkts if bool(p.get("is_fresh", False)))
-        n_bo_cands   = len(selections.get("breakout", []))
-        n_pb_cands   = len(selections.get("pullback", []))
-        n_ext_cands  = len(selections.get("extended", []))
-        n_rev_cands  = len(selections.get("reversal", []))
-        n_excl_cands = len(selections.get("excluded", []))
+        n_bo_cands = sum(1 for p in all_pkts if p.get("bucket") == "breakout_long")
+        n_pb_cands = sum(1 for p in all_pkts if p.get("bucket") == "pullback_long")
+        n_ext_cands = sum(1 for p in all_pkts if p.get("bucket") == "extended_leader")
+        n_rev_cands = sum(1 for p in all_pkts if p.get("bucket") == "reversal_speculative")
+        n_excl_cands = sum(1 for p in all_pkts if p.get("bucket") == "excluded")
+        n_bo_blocked = sum(
+            1 for p in all_pkts
+            if p.get("bucket") == "breakout_long" and p.get("selector_blockers")
+        )
+        n_pb_blocked = sum(
+            1 for p in all_pkts
+            if p.get("bucket") == "pullback_long" and p.get("selector_blockers")
+        )
     else:
         n_total = len(full_df) if not full_df.empty else 0
         n_eligible = 0
         n_fresh = 0
+        n_bo_blocked = 0
+        n_pb_blocked = 0
         snapshot_bucket_counts: dict[str, int] = {}
         if not full_df.empty:
             if "eligible" in full_df.columns:
@@ -1456,8 +1543,8 @@ def render_dashboard(
         bo_body = (
             f'<div class="no-setups-note">'
             f'No breakout candidates qualify today. '
-            f'{n_bo_cands} symbol{"s" if n_bo_cands != 1 else ""} in breakout bucket '
-            f'(check freshness and eligibility filters).'
+            f'{n_bo_cands} name{"s" if n_bo_cands != 1 else ""} landed in the breakout bucket, '
+            f'but {n_bo_blocked} were blocked for packet coherence or completeness.'
             f'</div>'
         )
     breakout_section = (
@@ -1485,7 +1572,8 @@ def render_dashboard(
     else:
         pb_body = (
             '<div class="no-setups-note">'
-            'No pullback candidates qualify today.'
+            f'No pullback candidates qualify today. {n_pb_cands} name{"s" if n_pb_cands != 1 else ""} '
+            f'landed in the pullback bucket, but {n_pb_blocked} were blocked for packet coherence or completeness.'
             '</div>'
         )
     pullback_section = (
@@ -1582,7 +1670,7 @@ def render_dashboard(
                     f'<span class="mr-state s-{state}">{state}</span>'
                     f'<span class="mr-score">{score_str}</span>'
                     f'<span class="mr-warn">failed: {rejection[:60]}</span>'
-                    f'<span class="mr-note">speculative only — 25-50% size, strict stop</span>'
+                    f'<span class="mr-note">speculative only; failed primary long eligibility</span>'
                     f'</div>'
                 )
             rev_rows_html = f'<div class="monitor-list">{"".join(rows)}</div>'
@@ -1599,7 +1687,7 @@ def render_dashboard(
             f'<strong>⚠ These names failed primary eligibility gates.</strong> '
             f'They are shown for informational monitoring only. '
             f'Do not treat these as equivalent to breakout or pullback candidates. '
-            f'If traded at all: smaller size, tighter stops, lower confidence.'
+            f'They require separate discretionary judgment and should not be read as primary long ideas.'
             f'</div>'
             f'{rev_rows_html}'
             f'</div>'
@@ -1776,5 +1864,5 @@ def write_dashboard(
                             selections=selections, oos_metrics=oos_metrics)
     path = output_dir / "dashboard.html"
     path.write_text(html, encoding="utf-8")
-    log.info("Dashboard written → %s", path)
+    log.info("Dashboard written -> %s", path)
     return path

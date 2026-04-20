@@ -12,13 +12,21 @@ safe defaults. Callers receive plain Python scalars, strings, lists, or dicts.
 """
 from __future__ import annotations
 
+from functools import lru_cache
 import math
 from typing import Any
 
 import pandas as pd
 
+from swingtrader.avwap.anchors import (
+    breakout_day_anchor,
+    swing_high_anchor,
+    swing_low_anchor,
+    ytd_anchor,
+)
+from swingtrader.avwap.calc import compute_avwap
 from swingtrader.dashboard.assessments import run_all_assessments
-from swingtrader.utils.config import REPO_ROOT
+from swingtrader.utils.config import REPO_ROOT, load_config
 from swingtrader.utils.logging import get_logger
 
 _log = get_logger(__name__)
@@ -36,37 +44,18 @@ FRESH_MAX_DAYS: dict[str, int] = {
     "BASE": 60,
 }
 
-_AVWAP_ANCHORS: list[tuple[str, str, str, str | None, str]] = [
-    # (label, avwap_key, dist_key, reclaim_key, priority)
-    ("YTD",          "ytd_avwap",          "ytd_dist_atr",          "ytd_reclaim_flag",          "primary"),
-    ("Swing Low",    "swing_low_avwap",    "swing_low_dist_atr",    "swing_low_reclaim_flag",    "primary"),
-    ("Swing High",   "swing_high_avwap",   "swing_high_dist_atr",   "swing_high_reclaim_flag",   "secondary"),
-    ("Breakout Day", "breakout_day_avwap", "breakout_day_dist_atr", "breakout_day_reclaim_flag", "secondary"),
-]
-
-# Per-anchor enrichment columns available in features parquet
-_AVWAP_EXTRAS: dict[str, dict[str, str]] = {
-    "YTD": {
-        "stretch_atr":     "ytd_stretch_atr",
-        "slope_20":        "ytd_slope_20",
-        "closes_above_20": "ytd_closes_above_20",
-    },
-    "Swing Low": {
-        "stretch_atr":     "swing_low_stretch_atr",
-        "slope_20":        "swing_low_slope_20",
-        "closes_above_20": "swing_low_closes_above_20",
-    },
-    "Swing High": {
-        "stretch_atr":     "swing_high_stretch_atr",
-        "slope_20":        "swing_high_slope_20",
-        "closes_above_20": "swing_high_closes_above_20",
-    },
-    "Breakout Day": {
-        "stretch_atr":     "breakout_day_stretch_atr",
-        "slope_20":        "breakout_day_slope_20",
-        "closes_above_20": "breakout_day_closes_above_20",
-    },
+_ANCHOR_PRIORITY_RANK: dict[str, int] = {
+    "primary": 0,
+    "secondary": 1,
+    "event": 2,
+    "macro": 3,
+    "symbol_event": 4,
+    "dynamic": 5,
 }
+
+# Backward-compatible anchor registry view used by older tests and helpers.
+# Tuple shape: (label, anchor_key, kind, significance, priority)
+_AVWAP_ANCHORS: tuple[tuple[str, str, str, str, str], ...] = ()
 
 # State sets
 _CONSTRUCTIVE_STATES = frozenset({"BASE", "ARMED", "TRIGGERED", "ACCEPTED"})
@@ -126,6 +115,278 @@ def _load_raw_daily(provider_symbol: str) -> pd.DataFrame | None:
     except Exception as exc:
         _log.warning("cannot load raw daily for %s: %s", provider_symbol, exc)
         return None
+
+
+def _load_state_history(provider_symbol: str) -> pd.Series | None:
+    """Load ``data/states/{sym}.parquet`` and return the state series."""
+    path = REPO_ROOT / "data" / "states" / f"{provider_symbol}.parquet"
+    try:
+        df = pd.read_parquet(path)
+        if df.empty or "state" not in df.columns:
+            return None
+        if not isinstance(df.index, pd.DatetimeIndex):
+            df.index = pd.to_datetime(df.index)
+        return df.sort_index()["state"]
+    except Exception as exc:
+        _log.debug("cannot load state history for %s: %s", provider_symbol, exc)
+        return None
+
+
+@lru_cache(maxsize=1)
+def _load_avwap_config() -> dict[str, Any]:
+    """Load ``config/avwap_anchors.yaml`` once per process."""
+    try:
+        cfg = load_config("avwap_anchors")
+        if isinstance(cfg, dict):
+            return cfg
+        data = getattr(cfg, "data", None)
+        return data if isinstance(data, dict) else {}
+    except Exception as exc:
+        _log.warning("cannot load avwap_anchors config: %s", exc)
+        return {}
+
+
+def _build_avwap_anchor_compat() -> tuple[tuple[str, str, str, str, str], ...]:
+    """Build the legacy tuple view of configured anchors.
+
+    Older tests referenced `_AVWAP_ANCHORS` directly. Keep that surface as a
+    read-only compatibility shim so the config file remains the real source of
+    truth while the rest of the codebase migrates to the richer config-driven
+    representation.
+    """
+    cfg = _load_avwap_config()
+    anchors_cfg = cfg.get("anchors", {}) if isinstance(cfg, dict) else {}
+    rows: list[tuple[str, str, str, str, str]] = []
+    for anchor_key, spec_raw in anchors_cfg.items():
+        spec = spec_raw if isinstance(spec_raw, dict) else {}
+        if not spec.get("enabled", True):
+            continue
+        rows.append(
+            (
+                str(spec.get("label", anchor_key)),
+                str(anchor_key),
+                str(spec.get("kind", anchor_key)),
+                str(spec.get("significance", "context")),
+                str(spec.get("priority", "dynamic")),
+            )
+        )
+    return tuple(rows)
+
+
+_AVWAP_ANCHORS = _build_avwap_anchor_compat()
+
+
+def _anchor_date_string(anchor_date: pd.Timestamp | None) -> str | None:
+    if anchor_date is None:
+        return None
+    try:
+        return pd.Timestamp(anchor_date).date().isoformat()
+    except Exception:
+        return None
+
+
+def _anchor_role_status(close: float, avwap: float, atr: float) -> tuple[str, str, float | None, float | None]:
+    pct_dist: float | None = None
+    if math.isfinite(close) and close > 0:
+        pct_dist = (close - avwap) / close * 100.0
+
+    dist_atr: float | None = None
+    if math.isfinite(close) and math.isfinite(atr) and atr > 0:
+        dist_atr = (close - avwap) / atr
+
+    if dist_atr is not None and math.isfinite(dist_atr):
+        if abs(dist_atr) < 0.25:
+            return "testing", "Testing", pct_dist, dist_atr
+        if dist_atr > 0:
+            return "support", "Accepted above", pct_dist, dist_atr
+        return "resistance", "Accepted below", pct_dist, dist_atr
+
+    if math.isfinite(close) and close >= avwap:
+        return "support", "Accepted above", pct_dist, dist_atr
+    return "resistance", "Accepted below", pct_dist, dist_atr
+
+
+def _unsupported_anchor_row(
+    *,
+    anchor_key: str,
+    label: str,
+    priority: str,
+    significance: str,
+    reason: str,
+    family: str,
+    anchor_date: pd.Timestamp | None = None,
+) -> dict[str, Any]:
+    return {
+        "anchor": label,
+        "anchor_key": anchor_key,
+        "family": family,
+        "anchor_date": _anchor_date_string(anchor_date),
+        "avwap": None,
+        "pct_dist": None,
+        "distance_from_price_pct": None,
+        "dist_atr": None,
+        "distance_from_price_atr": None,
+        "role": "unavailable",
+        "status": "Unavailable",
+        "priority": priority,
+        "significance": significance,
+        "supported": False,
+        "unavailable_reason": reason,
+        "reclaim": None,
+        "stretch_atr": None,
+        "slope_20": None,
+        "slope_label": None,
+        "closes_above_20": None,
+    }
+
+
+def _anchor_metrics(
+    raw_df: pd.DataFrame,
+    anchor_date: pd.Timestamp,
+    close: float,
+    atr: float,
+) -> dict[str, Any] | None:
+    if raw_df.empty:
+        return None
+
+    avwap_series = compute_avwap(raw_df, anchor_date).dropna()
+    if avwap_series.empty:
+        return None
+
+    avwap = float(avwap_series.iloc[-1])
+    if not math.isfinite(avwap) or avwap <= 0:
+        return None
+
+    role, status, pct_dist, dist_atr = _anchor_role_status(close, avwap, atr)
+
+    stretch_atr: float | None = None
+    if dist_atr is not None and math.isfinite(dist_atr):
+        stretch_atr = abs(dist_atr)
+
+    slope_20: float | None = None
+    slope_label: str | None = None
+    closes_above_20: float | None = None
+    reclaim: bool | None = None
+
+    tail = avwap_series.tail(20)
+    if len(tail) >= 2:
+        anchor_base = float(tail.iloc[0])
+        anchor_last = float(tail.iloc[-1])
+        anchor_mean = float(tail.mean())
+        if math.isfinite(anchor_mean) and anchor_mean != 0:
+            slope_20 = ((anchor_last - anchor_base) / anchor_mean) * 100.0
+            if slope_20 > 0.20:
+                slope_label = "rising"
+            elif slope_20 < -0.20:
+                slope_label = "falling"
+            else:
+                slope_label = "flat"
+
+    aligned_close = raw_df["close"].reindex(avwap_series.index)
+    if len(aligned_close) >= 20:
+        recent_close = aligned_close.tail(20)
+        recent_avwap = avwap_series.tail(20)
+        valid_mask = recent_close.notna() & recent_avwap.notna()
+        if valid_mask.any():
+            closes_above_20 = float((recent_close[valid_mask] > recent_avwap[valid_mask]).mean())
+
+    if len(aligned_close) >= 6:
+        close_now = aligned_close.iloc[-1]
+        close_5ago = aligned_close.iloc[-6]
+        avwap_now = avwap_series.iloc[-1]
+        avwap_5ago = avwap_series.iloc[-6]
+        if all(math.isfinite(float(v)) for v in (close_now, close_5ago, avwap_now, avwap_5ago)):
+            reclaim = bool(float(close_now) >= float(avwap_now) and float(close_5ago) < float(avwap_5ago))
+
+    return {
+        "avwap": round(avwap, 2),
+        "pct_dist": round(pct_dist, 2) if pct_dist is not None and math.isfinite(pct_dist) else None,
+        "distance_from_price_pct": round(pct_dist, 2) if pct_dist is not None and math.isfinite(pct_dist) else None,
+        "dist_atr": round(dist_atr, 3) if dist_atr is not None and math.isfinite(dist_atr) else None,
+        "distance_from_price_atr": round(dist_atr, 3) if dist_atr is not None and math.isfinite(dist_atr) else None,
+        "role": role,
+        "status": status,
+        "reclaim": reclaim,
+        "stretch_atr": round(stretch_atr, 3) if stretch_atr is not None and math.isfinite(stretch_atr) else None,
+        "slope_20": round(slope_20, 4) if slope_20 is not None and math.isfinite(slope_20) else None,
+        "slope_label": slope_label,
+        "closes_above_20": round(closes_above_20, 3) if closes_above_20 is not None and math.isfinite(closes_above_20) else None,
+    }
+
+
+def _resolve_anchor_date(
+    *,
+    anchor_key: str,
+    spec: dict[str, Any],
+    raw_df: pd.DataFrame,
+    state_history: pd.Series | None,
+) -> tuple[pd.Timestamp | None, str | None]:
+    kind = str(spec.get("kind", anchor_key))
+
+    if kind == "ytd":
+        anchor_date = ytd_anchor(raw_df)
+        return anchor_date, None if anchor_date is not None else "year-to-date anchor unavailable"
+
+    if kind == "mtd":
+        latest = raw_df.index.max()
+        month_start = pd.Timestamp(latest.year, latest.month, 1)
+        candidates = raw_df.index[raw_df.index >= month_start]
+        anchor_date = pd.Timestamp(candidates[0]) if len(candidates) > 0 else None
+        return anchor_date, None if anchor_date is not None else "month-to-date anchor unavailable"
+
+    if kind == "wtd":
+        latest = raw_df.index.max()
+        week_start = latest - pd.Timedelta(days=int(latest.dayofweek))
+        candidates = raw_df.index[raw_df.index >= week_start]
+        anchor_date = pd.Timestamp(candidates[0]) if len(candidates) > 0 else None
+        return anchor_date, None if anchor_date is not None else "week-to-date anchor unavailable"
+
+    if kind == "swing_low":
+        anchor_date = swing_low_anchor(
+            raw_df,
+            lookback=int(spec.get("lookback_days", 252)),
+            min_prominence_atr=float(spec.get("min_swing_prominence_atr", 1.5)),
+        )
+        return anchor_date, None if anchor_date is not None else "swing low anchor unavailable"
+
+    if kind == "swing_high":
+        anchor_date = swing_high_anchor(
+            raw_df,
+            lookback=int(spec.get("lookback_days", 252)),
+            min_prominence_atr=float(spec.get("min_swing_prominence_atr", 1.5)),
+        )
+        return anchor_date, None if anchor_date is not None else "swing high anchor unavailable"
+
+    if kind == "breakout_day":
+        anchor_date = breakout_day_anchor(state_history)
+        return anchor_date, None if anchor_date is not None else "breakout lifecycle anchor unavailable"
+
+    if kind == "earnings":
+        return None, "earnings event data is not available in v1"
+
+    if kind == "per_symbol_event":
+        return None, "no per-symbol event anchor configured for this symbol"
+
+    date_raw = spec.get("date")
+    if date_raw:
+        try:
+            return pd.Timestamp(str(date_raw)), None
+        except Exception:
+            return None, f"invalid configured date: {date_raw}"
+
+    return None, f"unsupported anchor kind: {kind}"
+
+
+def _anchor_sort_key(row: dict[str, Any]) -> tuple[int, int, float, str]:
+    supported_rank = 0 if bool(row.get("supported")) else 1
+    priority = str(row.get("priority", "dynamic"))
+    priority_rank = _ANCHOR_PRIORITY_RANK.get(priority, 99)
+    dist = row.get("dist_atr")
+    try:
+        dist_rank = abs(float(dist))
+    except (TypeError, ValueError):
+        dist_rank = 999.0
+    return (supported_rank, priority_rank, dist_rank, str(row.get("anchor", "")))
 
 
 # ---------------------------------------------------------------------------
@@ -296,167 +557,218 @@ def build_ma_table(provider_symbol: str, close: float) -> list[dict]:
 
 
 def build_avwap_table(provider_symbol: str, close: float, atr: float) -> list[dict]:
-    """Build AVWAP map from feature values.
+    """Build a config-driven AVWAP map with explicit support/unavailable rows."""
+    cfg = _load_avwap_config()
+    dashboard_cfg = cfg.get("dashboard", {}) if isinstance(cfg, dict) else {}
+    include_unavailable = bool(dashboard_cfg.get("include_unavailable_rows", True))
+    max_supported_rows = int(dashboard_cfg.get("max_supported_rows", 8))
 
-    Returns a list of dicts, one per anchor where the AVWAP value is finite:
-      - anchor    : str
-      - avwap     : float
-      - pct_dist  : float  ((close - avwap) / close * 100)
-      - dist_atr  : float  (signed ATR distance from feature)
-      - role      : str    ("support" | "resistance" | "testing")
-      - status    : str    ("Accepted above" | "Accepted below" | "Testing")
-      - reclaim   : bool | None
+    raw_df = _load_raw_daily(provider_symbol)
+    if raw_df is None or raw_df.empty or not math.isfinite(close):
+        if not include_unavailable:
+            return []
+        reason = "raw daily history unavailable"
+        anchors_cfg = cfg.get("anchors", {}) if isinstance(cfg, dict) else {}
+        rows = []
+        for anchor_key, spec_raw in anchors_cfg.items():
+            spec = spec_raw if isinstance(spec_raw, dict) else {}
+            if not spec.get("enabled", True):
+                continue
+            anchor_date = None
+            date_raw = spec.get("date")
+            if date_raw:
+                try:
+                    anchor_date = pd.Timestamp(str(date_raw))
+                except Exception:
+                    anchor_date = None
+            rows.append(
+                _unsupported_anchor_row(
+                    anchor_key=anchor_key,
+                    label=str(spec.get("label", anchor_key)),
+                    priority=str(spec.get("priority", "dynamic")),
+                    significance=str(spec.get("significance", "context")),
+                    reason=reason,
+                    family=str(spec.get("kind", anchor_key)),
+                    anchor_date=anchor_date,
+                )
+            )
+        for anchor_key, spec_raw in (cfg.get("global_event_anchors", {}) if isinstance(cfg, dict) else {}).items():
+            spec = spec_raw if isinstance(spec_raw, dict) else {}
+            if not spec.get("enabled", True):
+                continue
+            anchor_date = None
+            date_raw = spec.get("date")
+            if date_raw:
+                try:
+                    anchor_date = pd.Timestamp(str(date_raw))
+                except Exception:
+                    anchor_date = None
+            rows.append(
+                _unsupported_anchor_row(
+                    anchor_key=str(anchor_key),
+                    label=str(spec.get("label", anchor_key)),
+                    priority=str(spec.get("priority", "macro")),
+                    significance=str(spec.get("significance", "event")),
+                    reason=reason,
+                    family="global_event",
+                    anchor_date=anchor_date,
+                )
+            )
+        symbol_specs = (
+            cfg.get("per_symbol_event_anchors", {}).get(provider_symbol, {})
+            if isinstance(cfg.get("per_symbol_event_anchors", {}), dict)
+            else {}
+        )
+        if symbol_specs:
+            for anchor_key, spec_raw in symbol_specs.items():
+                spec = spec_raw if isinstance(spec_raw, dict) else {}
+                if not spec.get("enabled", True):
+                    continue
+                anchor_date = None
+                date_raw = spec.get("date")
+                if date_raw:
+                    try:
+                        anchor_date = pd.Timestamp(str(date_raw))
+                    except Exception:
+                        anchor_date = None
+                rows.append(
+                    _unsupported_anchor_row(
+                        anchor_key=str(anchor_key),
+                        label=str(spec.get("label", anchor_key)),
+                        priority=str(spec.get("priority", "symbol_event")),
+                        significance=str(spec.get("significance", "symbol_event")),
+                        reason=reason,
+                        family="per_symbol_event",
+                        anchor_date=anchor_date,
+                    )
+                )
+        return rows
 
-    Returns [] if features unavailable or close is not finite.
-    """
-    if not math.isfinite(close):
-        return []
+    state_history = _load_state_history(provider_symbol)
+    anchor_specs: list[tuple[str, dict[str, Any], str]] = []
 
-    feat = _load_features(provider_symbol)
-    if feat is None:
-        return []
+    for anchor_key, spec_raw in (cfg.get("anchors", {}) if isinstance(cfg, dict) else {}).items():
+        spec = spec_raw if isinstance(spec_raw, dict) else {}
+        if not spec.get("enabled", True):
+            continue
+        kind = str(spec.get("kind", anchor_key))
+        if kind == "per_symbol_event":
+            symbol_specs = (
+                cfg.get("per_symbol_event_anchors", {}).get(provider_symbol, {})
+                if isinstance(cfg.get("per_symbol_event_anchors", {}), dict)
+                else {}
+            )
+            if symbol_specs:
+                for symbol_key, symbol_spec_raw in symbol_specs.items():
+                    symbol_spec = symbol_spec_raw if isinstance(symbol_spec_raw, dict) else {}
+                    if symbol_spec.get("enabled", True):
+                        anchor_specs.append((str(symbol_key), symbol_spec, "per_symbol_event"))
+            elif include_unavailable:
+                anchor_specs.append((anchor_key, spec, "per_symbol_event"))
+            continue
+        anchor_specs.append((anchor_key, spec, kind))
+
+    for anchor_key, spec_raw in (cfg.get("global_event_anchors", {}) if isinstance(cfg, dict) else {}).items():
+        spec = spec_raw if isinstance(spec_raw, dict) else {}
+        if spec.get("enabled", True):
+            anchor_specs.append((str(anchor_key), spec, "global_event"))
 
     rows: list[dict] = []
-    for anchor, avwap_key, dist_key, reclaim_key, priority in _AVWAP_ANCHORS:
+    for anchor_key, spec, family in anchor_specs:
+        label = str(spec.get("label", anchor_key))
+        priority = str(spec.get("priority", "dynamic"))
+        significance = str(spec.get("significance", family))
+
         try:
-            avwap = _sf(feat, avwap_key)
-            if not math.isfinite(avwap) or avwap <= 0:
-                continue
-
-            dist_atr = _sf(feat, dist_key)  # may be nan
-            pct_dist = (close - avwap) / close * 100
-
-            # Role / status — tighter threshold for "testing" zone (0.25 ATR)
-            if math.isfinite(dist_atr) and abs(dist_atr) < 0.25:
-                role = "testing"
-                status = "Testing"
-            elif math.isfinite(dist_atr) and dist_atr > 0:
-                role = "support"
-                status = "Accepted above"
-            elif math.isfinite(dist_atr) and dist_atr < 0:
-                role = "resistance"
-                status = "Accepted below"
-            else:
-                # Fall back to raw price comparison if dist_atr missing
-                if close > avwap:
-                    role = "support"
-                    status = "Accepted above"
-                else:
-                    role = "resistance"
-                    status = "Accepted below"
-
-            # Reclaim flag
-            reclaim: bool | None = None
-            if reclaim_key is not None:
-                rv = _sf(feat, reclaim_key)
-                if math.isfinite(rv):
-                    reclaim = bool(rv >= 0.5)
-
-            # Extra enrichment columns: stretch_atr, slope_20, closes_above_20
-            extras = _AVWAP_EXTRAS.get(anchor, {})
-            stretch_atr     = _sf(feat, extras.get("stretch_atr", ""))
-            slope_20        = _sf(feat, extras.get("slope_20", ""))
-            closes_above_20 = _sf(feat, extras.get("closes_above_20", ""))
-
-            # Slope label for the AVWAP anchor
-            if math.isfinite(slope_20):
-                if slope_20 > 0.002:
-                    slope_label = "rising"
-                elif slope_20 < -0.002:
-                    slope_label = "falling"
-                else:
-                    slope_label = "flat"
-            else:
-                slope_label = None
-
-            rows.append({
-                "anchor":           anchor,
-                "priority":         priority,
-                "avwap":            round(avwap, 2),
-                "pct_dist":         round(pct_dist, 2),
-                "dist_atr":         round(dist_atr, 3) if math.isfinite(dist_atr) else _NAN,
-                "role":             role,
-                "status":           status,
-                "reclaim":          reclaim,
-                # Enrichment
-                "stretch_atr":     round(stretch_atr, 3)     if math.isfinite(stretch_atr)     else None,
-                "slope_20":        round(slope_20, 4)        if math.isfinite(slope_20)        else None,
-                "slope_label":     slope_label,
-                "closes_above_20": round(closes_above_20, 3) if math.isfinite(closes_above_20) else None,
-            })
-
+            anchor_date, unavailable_reason = _resolve_anchor_date(
+                anchor_key=anchor_key,
+                spec=spec,
+                raw_df=raw_df,
+                state_history=state_history,
+            )
         except Exception as exc:
-            _log.warning("AVWAP table - error on %s/%s: %s", provider_symbol, anchor, exc)
+            anchor_date = None
+            unavailable_reason = f"anchor resolution error: {exc}"
+
+        if anchor_date is None:
+            if include_unavailable:
+                rows.append(
+                    _unsupported_anchor_row(
+                        anchor_key=anchor_key,
+                        label=label,
+                        priority=priority,
+                        significance=significance,
+                        reason=unavailable_reason or "anchor unavailable",
+                        family=family,
+                    )
+                )
             continue
 
-    # ── Dynamic anchors (WTD, MTD) computed from raw daily ────────────────────
-    # These are not stored in features parquet; compute on-the-fly from raw OHLCV.
-    try:
-        raw_df = _load_raw_daily(provider_symbol)
-        if raw_df is not None and not raw_df.empty and math.isfinite(atr) and atr > 0:
-            _dynamic_anchors: list[tuple[str, pd.Timestamp | None]] = []
+        min_date = pd.Timestamp(raw_df.index.min())
+        max_date = pd.Timestamp(raw_df.index.max())
+        if anchor_date < min_date:
+            if include_unavailable:
+                rows.append(
+                    _unsupported_anchor_row(
+                        anchor_key=anchor_key,
+                        label=label,
+                        priority=priority,
+                        significance=significance,
+                        reason=f"anchor predates available history ({min_date.date().isoformat()})",
+                        family=family,
+                        anchor_date=anchor_date,
+                    )
+                )
+            continue
+        if anchor_date > max_date:
+            if include_unavailable:
+                rows.append(
+                    _unsupported_anchor_row(
+                        anchor_key=anchor_key,
+                        label=label,
+                        priority=priority,
+                        significance=significance,
+                        reason=f"anchor is after latest bar ({max_date.date().isoformat()})",
+                        family=family,
+                        anchor_date=anchor_date,
+                    )
+                )
+            continue
 
-            latest_date = raw_df.index.max()
+        metrics = _anchor_metrics(raw_df, anchor_date, close, atr)
+        if metrics is None:
+            if include_unavailable:
+                rows.append(
+                    _unsupported_anchor_row(
+                        anchor_key=anchor_key,
+                        label=label,
+                        priority=priority,
+                        significance=significance,
+                        reason="AVWAP could not be computed from available data",
+                        family=family,
+                        anchor_date=anchor_date,
+                    )
+                )
+            continue
 
-            # WTD: first trading day of the current ISO week
-            week_start = latest_date - pd.Timedelta(days=latest_date.dayofweek)
-            wtd_dates = raw_df.index[raw_df.index >= week_start]
-            wtd_anchor: pd.Timestamp | None = pd.Timestamp(wtd_dates[0]) if len(wtd_dates) > 1 else None
-            if wtd_anchor is not None:
-                _dynamic_anchors.append(("WTD", wtd_anchor))
+        rows.append({
+            "anchor": label,
+            "anchor_key": anchor_key,
+            "family": family,
+            "anchor_date": _anchor_date_string(anchor_date),
+            "priority": priority,
+            "significance": significance,
+            "supported": True,
+            "unavailable_reason": None,
+            **metrics,
+        })
 
-            # MTD: first trading day of the current calendar month
-            month_start = latest_date.replace(day=1)
-            mtd_dates = raw_df.index[raw_df.index >= month_start]
-            mtd_anchor: pd.Timestamp | None = pd.Timestamp(mtd_dates[0]) if len(mtd_dates) > 1 else None
-            if mtd_anchor is not None:
-                _dynamic_anchors.append(("MTD", mtd_anchor))
-
-            for dyn_label, anchor_date in _dynamic_anchors:
-                try:
-                    # Compute AVWAP from anchor_date to latest using close x volume / cumvol
-                    since = raw_df.loc[anchor_date:]
-                    if len(since) < 1:
-                        continue
-                    vp = (since["close"] * since["volume"]).cumsum()
-                    cv = since["volume"].cumsum()
-                    avwap_dyn = float(vp.iloc[-1] / cv.iloc[-1]) if float(cv.iloc[-1]) > 0 else math.nan
-                    if not math.isfinite(avwap_dyn) or avwap_dyn <= 0:
-                        continue
-
-                    dist_atr_dyn = (close - avwap_dyn) / atr
-                    pct_dist_dyn = (close - avwap_dyn) / close * 100
-
-                    if abs(dist_atr_dyn) < 0.25:
-                        dyn_role, dyn_status = "testing", "Testing"
-                    elif dist_atr_dyn > 0:
-                        dyn_role, dyn_status = "support", "Accepted above"
-                    else:
-                        dyn_role, dyn_status = "resistance", "Accepted below"
-
-                    rows.append({
-                        "anchor":           dyn_label,
-                        "priority":         "dynamic",
-                        "anchor_date":      str(anchor_date.date()),
-                        "avwap":            round(avwap_dyn, 2),
-                        "pct_dist":         round(pct_dist_dyn, 2),
-                        "dist_atr":         round(dist_atr_dyn, 3),
-                        "role":             dyn_role,
-                        "status":           dyn_status,
-                        "reclaim":          None,
-                        "stretch_atr":      None,
-                        "slope_20":         None,
-                        "slope_label":      None,
-                        "closes_above_20":  None,
-                    })
-                except Exception as exc:
-                    _log.debug("AVWAP dynamic anchor %s/%s: %s", provider_symbol, dyn_label, exc)
-                    continue
-
-    except Exception as exc:
-        _log.debug("AVWAP dynamic anchors error for %s: %s", provider_symbol, exc)
-
-    return rows
+    rows.sort(key=_anchor_sort_key)
+    supported_rows = [row for row in rows if bool(row.get("supported"))]
+    unavailable_rows = [row for row in rows if not bool(row.get("supported"))]
+    if max_supported_rows > 0:
+        supported_rows = supported_rows[:max_supported_rows]
+    return supported_rows + unavailable_rows
 
 
 # ---------------------------------------------------------------------------

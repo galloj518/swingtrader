@@ -755,10 +755,11 @@ class TestMADirectionBrief:
         pkt["chart_intraday"] = None
         html = _render_card(pkt, rank=1)
         assert "chart-na-inline" in html
-        assert "Intraday confirmation unavailable" in html
+        assert "not part of v1 qualification" in html
+        assert "daily/weekly only" in html
 
     def test_intraday_available_does_not_show_na_note(self):
-        """When a real intraday path is set, the inline note must not appear."""
+        """Daily-only policy still shows the inline note even if a chart path exists."""
         from swingtrader.reports.dashboard import _render_card  # type: ignore[attr-defined]
         r = _row(state="ARMED")
         r["action_label"] = ACTION_BREAKOUT
@@ -766,4 +767,5 @@ class TestMADirectionBrief:
         pkt["intraday_available"] = True
         pkt["chart_intraday"] = "path/to/intraday.png"
         html = _render_card(pkt, rank=1)
-        assert "Intraday confirmation unavailable" not in html
+        assert "chart-na-inline" in html
+        assert "not part of v1 qualification" in html

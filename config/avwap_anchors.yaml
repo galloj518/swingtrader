@@ -1,26 +1,114 @@
-# Anchored VWAP configuration. AVWAP is a first-class feature family, not a magic line:
-# anchors produce features that are tested for incremental value in the model fit.
+# Anchored VWAP configuration.
+#
+# This file is the source of truth for discretionary AVWAP context shown in
+# packets, artifacts, and the dashboard. Model-facing AVWAP features remain
+# backward compatible, but packet rendering should not hardcode anchor families
+# outside this file.
+#
+# Dates below are configurable defaults for trader-facing context, not a claim
+# that every symbol currently has enough history to support them. When an anchor
+# predates available history or the necessary event data is absent, the packet
+# must record that honestly as unavailable.
 
 anchors:
+  ytd:
+    enabled: true
+    kind: ytd
+    label: YTD
+    priority: primary
+    significance: calendar
+
+  mtd:
+    enabled: true
+    kind: mtd
+    label: MTD
+    priority: secondary
+    significance: calendar
+
+  wtd:
+    enabled: true
+    kind: wtd
+    label: WTD
+    priority: secondary
+    significance: calendar
+
   swing_low:
     enabled: true
+    kind: swing_low
+    label: Swing Low
+    priority: primary
+    significance: structural
     lookback_days: 252
     min_swing_prominence_atr: 1.5
+
   swing_high:
     enabled: true
+    kind: swing_high
+    label: Swing High
+    priority: secondary
+    significance: structural
     lookback_days: 252
     min_swing_prominence_atr: 1.5
-  year_to_date:
-    enabled: true
+
   breakout_day:
     enabled: true
-    # Anchored on the first TRIGGERED state in current lifecycle (see states/machine.py)
-  earnings_gap:
+    kind: breakout_day
+    label: Breakout Day
+    priority: secondary
+    significance: lifecycle
+
+  earnings:
     enabled: true
-    min_gap_atr: 1.0
-  custom_event:
-    enabled: false
-    # Optional manual overrides: {symbol: [ISO dates]}
+    kind: earnings
+    label: Earnings Anchor
+    priority: event
+    significance: earnings
+    lookback_days: 120
+
+  per_symbol_event:
+    enabled: true
+    kind: per_symbol_event
+    label: Per-Symbol Event
+    priority: event
+    significance: symbol_event
+
+global_event_anchors:
+  war_start:
+    enabled: true
+    label: War Start
+    date: "2026-03-10"
+    priority: macro
+    significance: event
+
+  ceasefire:
+    enabled: true
+    label: Ceasefire
+    date: "2026-03-18"
+    priority: macro
+    significance: event
+
+  covid_low:
+    enabled: true
+    label: COVID Low
+    date: "2020-03-23"
+    priority: macro
+    significance: secular
+
+  covid_high:
+    enabled: true
+    label: COVID High
+    date: "2020-09-02"
+    priority: macro
+    significance: secular
+
+per_symbol_event_anchors:
+  NVDA:
+    earnings_gap_may25:
+      enabled: true
+      label: Earnings Gap May 2025
+      date: "2025-05-29"
+      priority: symbol_event
+      significance: earnings
 
 features:
   distance_atr:
@@ -30,13 +118,17 @@ features:
     window: 20
   closes_above_ratio:
     enabled: true
-    lookback_days: 30
+    lookback_days: 20
   reclaim_event:
     enabled: true
-    lookback_days: 30
+    lookback_days: 5
   stretch_atr:
     enabled: true
   confluence:
     enabled: true
     tolerance_atr: 0.5
     min_anchors: 2
+
+dashboard:
+  include_unavailable_rows: true
+  max_supported_rows: 0

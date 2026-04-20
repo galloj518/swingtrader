@@ -167,6 +167,7 @@ class ScoreRunner:
             summary["n_top_setups"] = len(top_packets)
             summary["n_breakout"] = len(selections["breakout"])
             summary["n_pullback"] = len(selections["pullback"])
+            summary["intraday_policy"] = "daily_only"
 
             # Build row lookup for enrich_with_context (needs raw snapshot row for file paths)
             sym_col = "user_symbol" if "user_symbol" in ranked_snapshot.columns else "symbol"

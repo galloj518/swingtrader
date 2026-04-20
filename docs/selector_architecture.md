@@ -24,6 +24,11 @@ Universe (all scored symbols)
 
 The old pipeline had a single flat ranked list with soft action labels. The redesign enforces hard gates before any ranking occurs, then keeps fresh-entry candidates and portfolio holdings in completely separate code paths.
 
+For the 2026-04-19 packet-coherence refactor, including the old-repo mapping,
+anchor framework, promotion/demotion rules, and the explicit intraday decision,
+see [packet_first_refactor.md](./packet_first_refactor.md). That document
+supersedes any older DataFrame-first descriptions when they conflict.
+
 ---
 
 ## Stage 1 — Hard Eligibility Gates
