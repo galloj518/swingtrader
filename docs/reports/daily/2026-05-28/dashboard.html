@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Swingtrader — 2026-05-28</title>
+<style>
+:root {
+  --bg: #0d1117; --bg2: #161b22; --bg3: #21262d;
+  --fg: #c9d1d9; --fg2: #8b949e; --fg3: #6e7681;
+  --blue: #58a6ff; --green: #3fb950; --red: #f78166;
+  --amber: #d29922; --purple: #bc8cff; --orange: #fb8f44;
+  --border: #30363d;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: system-ui, -apple-system, sans-serif;
+       background: var(--bg); color: var(--fg);
+       padding: 1rem 1.5rem; font-size: 14px; }
+a { color: var(--blue); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+/* ── Typography ────────────────────────────────────────────────────────────── */
+h1 { color: var(--blue); font-size: 1.4rem; border-bottom: 1px solid var(--border);
+     padding-bottom: .4rem; margin-bottom: .8rem; }
+h2 { color: var(--fg); font-size: 1.1rem; margin: 1.6rem 0 .6rem; }
+h3 { color: var(--fg2); font-size: .95rem; margin: .8rem 0 .4rem; }
+
+/* ── Regime / summary bar ─────────────────────────────────────────────────── */
+.summary-bar { display: flex; gap: 1rem; flex-wrap: wrap;
+               background: var(--bg2); border: 1px solid var(--border);
+               border-radius: 6px; padding: .6rem 1rem; margin-bottom: 1.2rem; }
+.summary-pill { display: flex; flex-direction: column; align-items: center;
+                min-width: 80px; }
+.pill-label { font-size: .72rem; color: var(--fg3); text-transform: uppercase;
+              letter-spacing: .05em; }
+.pill-value { font-size: 1rem; font-weight: 600; color: var(--fg); }
+.pill-value.up { color: var(--green); }
+.pill-value.down { color: var(--red); }
+.pill-value.neutral { color: var(--amber); }
+
+/* ── Action label badges ──────────────────────────────────────────────────── */
+.badge { display: inline-block; padding: .18rem .55rem; border-radius: 20px;
+         font-size: .75rem; font-weight: 600; letter-spacing: .03em;
+         white-space: nowrap; }
+.badge-now      { background: #1a4f2a; color: var(--green); border: 1px solid var(--green); }
+.badge-breakout { background: #0f2d4f; color: var(--blue);  border: 1px solid var(--blue); }
+.badge-pullback { background: #3d2f0a; color: var(--amber); border: 1px solid var(--amber); }
+.badge-extended { background: #2a2a2a; color: var(--fg3);   border: 1px solid var(--fg3); }
+.badge-avoid    { background: #3d1212; color: var(--red);   border: 1px solid var(--red); }
+
+/* ── Setup cards ──────────────────────────────────────────────────────────── */
+.setup-cards { display: flex; flex-direction: column; gap: 1.4rem; }
+.card { background: var(--bg2); border: 1px solid var(--border);
+        border-radius: 8px; overflow: hidden; }
+.card-header { display: flex; align-items: center; gap: .8rem;
+               padding: .7rem 1rem; border-bottom: 1px solid var(--border);
+               background: var(--bg3); flex-wrap: wrap; }
+.card-symbol { font-size: 1.2rem; font-weight: 700; color: var(--fg); }
+.card-state  { font-size: .85rem; font-weight: 600; }
+.card-score  { margin-left: auto; font-size: .85rem; color: var(--fg2); }
+.score-hi { color: var(--green); font-weight: 700; }
+.score-md { color: var(--amber); font-weight: 700; }
+.score-lo { color: var(--red); }
+
+.card-body { display: grid; grid-template-columns: 1fr 1fr; gap: 0;
+             padding: 0; }
+@media (max-width: 900px) {
+  .card-body { grid-template-columns: 1fr; }
+}
+.card-charts { padding: .8rem; border-right: 1px solid var(--border);
+               display: flex; flex-direction: column; gap: .5rem; }
+.card-charts img { width: 100%; border-radius: 4px;
+                   border: 1px solid var(--border); }
+.chart-na { background: var(--bg3); border: 1px solid var(--border);
+            border-radius: 4px; padding: .5rem; text-align: center;
+            color: var(--fg3); font-size: .78rem; }
+.card-detail { padding: .8rem 1rem; display: flex; flex-direction: column; gap: .8rem; }
+
+/* ── Levels table ─────────────────────────────────────────────────────────── */
+.levels-grid { display: grid; grid-template-columns: 1fr 1fr; gap: .3rem .8rem; }
+.lvl-row { display: flex; justify-content: space-between; align-items: baseline;
+           font-size: .82rem; border-bottom: 1px solid var(--bg3); padding: .15rem 0; }
+.lvl-label { color: var(--fg2); }
+.lvl-value { font-family: monospace; font-size: .82rem; font-weight: 600; }
+.lvl-pivot   { color: var(--purple); }
+.lvl-entry   { color: var(--green); }
+.lvl-stop    { color: var(--red); }
+.lvl-target  { color: var(--orange); }
+.lvl-rs      { color: var(--fg2); }
+.lvl-sp      { color: var(--amber); }
+
+/* ── Narrative ────────────────────────────────────────────────────────────── */
+.narrative { font-size: .83rem; line-height: 1.55; }
+.narrative dt { color: var(--fg2); font-weight: 600; font-size: .78rem;
+                text-transform: uppercase; letter-spacing: .04em;
+                margin-top: .5rem; }
+.narrative dd { color: var(--fg); margin: .15rem 0 0 0; }
+.verdict-box { background: var(--bg3); border-left: 3px solid var(--blue);
+               padding: .4rem .7rem; border-radius: 0 4px 4px 0;
+               font-size: .83rem; margin-top: .4rem; }
+
+/* ── State colours ────────────────────────────────────────────────────────── */
+.s-ARMED     { color: var(--green); font-weight: 700; }
+.s-BASE      { color: var(--fg2); }
+.s-TRIGGERED { color: var(--red); font-weight: 700; }
+.s-ACCEPTED  { color: var(--blue); font-weight: 700; }
+.s-CONFIRMED { color: var(--purple); font-weight: 700; }
+.s-FAILED    { color: var(--fg3); text-decoration: line-through; }
+.s-LATE      { color: var(--amber); }
+.s-NONE      { color: var(--fg3); }
+
+/* ── Tables ───────────────────────────────────────────────────────────────── */
+table { border-collapse: collapse; width: 100%; font-size: .8rem; margin: .5rem 0; }
+th { background: var(--bg3); color: var(--blue); text-align: left;
+     padding: .3rem .5rem; border-bottom: 1px solid var(--border); }
+td { padding: .25rem .5rem; border-bottom: 1px solid var(--bg3); }
+tr:hover td { background: var(--bg2); }
+
+/* ── Collapsible ─────────────────────────────────────────────────────────── */
+details { border: 1px solid var(--border); border-radius: 6px;
+          margin: .6rem 0; overflow: hidden; }
+details > summary { padding: .6rem 1rem; background: var(--bg2);
+                    cursor: pointer; font-weight: 600; font-size: .9rem;
+                    list-style: none; user-select: none; color: var(--fg2); }
+details > summary::before { content: "▶ "; font-size: .7rem; }
+details[open] > summary::before { content: "▼ "; }
+details > .details-body { padding: .5rem 1rem; }
+
+/* ── Portfolio attention callouts ─────────────────────────────────────────── */
+.portfolio-strip { display: flex; gap: .6rem; flex-wrap: wrap; margin-bottom: 1rem; }
+.port-chip { background: var(--bg2); border: 1px solid var(--border);
+             border-radius: 6px; padding: .4rem .7rem; font-size: .82rem;
+             display: flex; flex-direction: column; gap: .1rem; min-width: 110px; }
+.port-chip .pc-sym { font-weight: 700; color: var(--fg); }
+.port-chip .pc-state { font-size: .75rem; }
+.port-chip .pc-action { font-size: .72rem; color: var(--fg2); }
+
+/* ── Bias note ────────────────────────────────────────────────────────────── */
+.bias { background: var(--bg2); border-left: 3px solid var(--amber);
+        padding: .4rem .8rem; border-radius: 0 4px 4px 0;
+        font-size: .78rem; color: var(--fg3); margin-bottom: 1rem; }
+
+footer { margin-top: 2rem; font-size: .75rem; color: var(--fg3);
+         border-top: 1px solid var(--border); padding-top: .5rem; }
+
+/* ── Rank bar ────────────────────────────────────────────────────────────── */
+.rank-bar { display: inline-block; height: 6px; background: var(--blue);
+            border-radius: 2px; vertical-align: middle; margin-left: 3px; }
+
+/* ── Setup classification badges ─────────────────────────────────────────── */
+.setup-class { font-size: .75rem; font-weight: 500; padding: .1rem .4rem;
+               border-radius: 3px; margin-left: .3rem; }
+.sc-active   { color: var(--green); background: #1a4f2a; }
+.sc-early    { color: var(--blue);  background: #0f2d4f; }
+.sc-near     { color: var(--purple); background: #2b1d4f; }
+.sc-pullback { color: var(--amber); background: #3d2f0a; }
+.sc-building { color: var(--fg2);  background: var(--bg3); }
+.sc-extended { color: var(--fg3);  background: var(--bg3); }
+.sc-failed   { color: var(--red);  background: #3d1212; }
+
+/* ── MA table ─────────────────────────────────────────────────────────────── */
+.ma-table table { font-size: .75rem; }
+.slope-rising  { color: var(--green); font-weight: 600; }
+.slope-falling { color: var(--red);   font-weight: 600; }
+.slope-flat    { color: var(--fg2); }
+
+/* ── AVWAP table ──────────────────────────────────────────────────────────── */
+.avwap-support    { color: var(--green); font-weight: 600; }
+.avwap-resistance { color: var(--red);   font-weight: 600; }
+.avwap-testing    { color: var(--amber); font-weight: 600; }
+
+/* ── Checklist ────────────────────────────────────────────────────────────── */
+.checklist { list-style: none; font-size: .78rem; margin: .3rem 0; }
+.checklist li { padding: .16rem 0; display: flex; gap: .4rem; align-items: flex-start;
+                border-bottom: 1px solid var(--bg3); flex-wrap: wrap; }
+.chk-icon { flex-shrink: 0; width: 1rem; text-align: center; font-weight: 700; }
+.chk-pass    { color: var(--green); }
+.chk-fail    { color: var(--red); }
+.chk-neutral { color: var(--fg3); }
+.chk-item    { color: var(--fg2); min-width: 160px; }
+.chk-reason  { color: var(--fg3); font-size: .72rem; margin-left: auto; }
+
+/* ── Confluence ───────────────────────────────────────────────────────────── */
+.confluence-box { border-radius: 4px; padding: .35rem .6rem; font-size: .78rem;
+                  margin: .35rem 0; background: var(--bg3); }
+.conf-support    { border-left: 3px solid var(--green); }
+.conf-resistance { border-left: 3px solid var(--red); }
+.conf-trigger    { border-left: 3px solid var(--blue); }
+.conf-scattered  { border-left: 3px solid var(--fg3); }
+
+/* ── Volume block ─────────────────────────────────────────────────────────── */
+.vol-block { display: grid; grid-template-columns: 1fr 1fr; gap: .15rem .8rem;
+             font-size: .77rem; margin: .3rem 0; }
+.vol-row { display: flex; justify-content: space-between;
+           border-bottom: 1px solid var(--bg3); padding: .1rem 0; }
+.vol-label { color: var(--fg3); }
+.vol-value { color: var(--fg); font-family: monospace; }
+
+/* ── AI note ──────────────────────────────────────────────────────────────── */
+.ai-note { background: var(--bg3); border-left: 3px solid var(--purple);
+           padding: .5rem .8rem; border-radius: 0 4px 4px 0;
+           font-size: .8rem; line-height: 1.55; margin-top: .5rem; }
+.ai-note-label { font-size: .7rem; color: var(--purple); text-transform: uppercase;
+                 letter-spacing: .05em; margin-bottom: .3rem; font-weight: 600; }
+
+/* ── Trade plan ───────────────────────────────────────────────────────────── */
+.trade-plan { background: var(--bg3); border: 1px solid var(--border);
+              border-radius: 4px; padding: .5rem .7rem; font-size: .8rem;
+              line-height: 1.55; margin-top: .5rem; }
+.tp-label { font-size: .7rem; color: var(--blue); text-transform: uppercase;
+            letter-spacing: .05em; margin-bottom: .3rem; font-weight: 600; }
+
+/* ── Portfolio guidance chip ──────────────────────────────────────────────── */
+.port-chip .pc-guidance { font-size: .7rem; color: var(--amber);
+                          margin-top: .1rem; font-style: italic; }
+
+/* ── Regime environment pill ──────────────────────────────────────────────── */
+.env-favorable { color: var(--green); }
+.env-selective  { color: var(--amber); }
+.env-risk-off   { color: var(--red); }
+.env-mixed      { color: var(--fg2); }
+
+/* ── Score drivers ────────────────────────────────────────────────────────── */
+.score-drivers { background: var(--bg3); border-radius: 4px; padding: .4rem .6rem;
+                 font-size: .77rem; margin: .35rem 0; }
+.driver-row { display: flex; align-items: baseline; gap: .4rem; padding: .1rem 0;
+              border-bottom: 1px solid var(--bg2); }
+.driver-bull { color: var(--green); font-weight: 700; flex-shrink: 0; }
+.driver-bear { color: var(--red);   font-weight: 700; flex-shrink: 0; }
+.driver-text { color: var(--fg2); }
+.driver-why  { color: var(--fg3); font-size: .72rem; margin-bottom: .25rem;
+               border-bottom: 1px solid var(--border); padding-bottom: .2rem; }
+
+/* ── Export links ─────────────────────────────────────────────────────────── */
+.export-links { font-size: .72rem; color: var(--fg3); margin-top: .3rem; }
+
+/* ── Portfolio guidance icons ─────────────────────────────────────────────── */
+.pg-hold   { color: var(--green); }
+.pg-trim   { color: var(--amber); }
+.pg-defend { color: var(--orange); }
+.pg-exit   { color: var(--red); }
+.pg-info   { color: var(--fg3); }
+
+/* ── MA direction brief (visible strip on card, not collapsible) ──────────── */
+.ma-brief { display: flex; gap: .5rem; flex-wrap: wrap; align-items: center;
+            font-size: .77rem; margin: .3rem 0; padding: .25rem .4rem;
+            background: var(--bg3); border-radius: 4px; }
+.ma-brief-label { color: var(--fg3); font-size: .72rem; margin-right: .2rem; }
+.ma-pill { display: inline-flex; align-items: center; gap: .2rem;
+           padding: .1rem .35rem; border-radius: 3px; font-weight: 600;
+           font-size: .74rem; white-space: nowrap; }
+.ma-rising  { color: var(--green); background: #1a4f2a; }
+.ma-falling { color: var(--red);   background: #3d1212; }
+.ma-flat    { color: var(--fg3);   background: var(--bg2); }
+.ma-bias-note { font-size: .72rem; color: var(--fg3); margin-top: .15rem;
+                padding-left: .4rem; border-left: 2px solid var(--border); }
+
+/* ── Intraday unavailable inline note ────────────────────────────────────── */
+.chart-na-inline { font-size: .74rem; color: var(--fg3); padding: .3rem .4rem;
+                   border-left: 2px solid var(--bg3); margin-top: .3rem;
+                   font-style: italic; }
+
+/* ── Universe summary bar ─────────────────────────────────────────────────── */
+.universe-bar { background: var(--bg2); border: 1px solid var(--border);
+                border-radius: 6px; padding: .5rem .9rem; margin-bottom: 1.2rem;
+                font-size: .78rem; color: var(--fg3); }
+.universe-bar strong { color: var(--fg); }
+
+/* ── Bucket section headings ─────────────────────────────────────────────── */
+.bucket-section { margin-bottom: 2rem; }
+.bucket-header  { display: flex; align-items: center; gap: .7rem; flex-wrap: wrap;
+                  background: var(--bg2); border: 1px solid var(--border);
+                  border-radius: 6px; padding: .55rem 1rem; margin-bottom: .8rem; }
+.bh-title  { font-size: 1rem; font-weight: 700; color: var(--fg); }
+.bh-count  { font-size: .8rem; color: var(--fg2); }
+.bh-desc   { font-size: .75rem; color: var(--fg3); margin-left: auto; }
+.bh-breakout { border-left: 3px solid var(--blue); }
+.bh-pullback { border-left: 3px solid var(--amber); }
+.bh-extended { border-left: 3px solid var(--fg3); }
+.bh-reversal { border-left: 3px solid var(--red); }
+
+/* ── "No setups" notice ──────────────────────────────────────────────────── */
+.no-setups-note { background: var(--bg3); border: 1px solid var(--border);
+                  border-radius: 4px; padding: .5rem .9rem;
+                  font-size: .82rem; color: var(--fg3); }
+
+/* ── Setup quality warning ────────────────────────────────────────────────── */
+.top5-warn   { background: #3d2f0a; border: 1px solid var(--amber);
+               border-radius: 4px; padding: .4rem .8rem; margin: .4rem 0;
+               font-size: .82rem; color: var(--amber); }
+
+/* ── Bucket tag on card header ────────────────────────────────────────────── */
+.bucket-tag  { font-size: .72rem; padding: .1rem .35rem; border-radius: 3px;
+               font-weight: 600; margin-left: .3rem; }
+.bt-breakout { color: var(--blue);  background: #0f2d4f; }
+.bt-pullback { color: var(--amber); background: #3d2f0a; }
+.rank-num    { font-size: .85rem; color: var(--fg3); font-weight: 700;
+               min-width: 1.4rem; }
+
+/* ── Compact monitoring list (Extended Leaders / Speculative Watch) ─────── */
+.monitor-list { background: var(--bg2); border: 1px solid var(--border);
+                border-radius: 6px; overflow: hidden; margin-bottom: .6rem; }
+.monitor-row  { display: flex; align-items: center; gap: .7rem; flex-wrap: wrap;
+                padding: .4rem .8rem; border-bottom: 1px solid var(--bg3);
+                font-size: .82rem; }
+.monitor-row:last-child { border-bottom: none; }
+.mr-sym   { font-weight: 700; color: var(--fg); min-width: 60px; }
+.mr-state { font-size: .75rem; min-width: 70px; }
+.mr-score { font-family: monospace; color: var(--fg2); font-size: .78rem; }
+.mr-note  { color: var(--fg3); font-size: .76rem; flex: 1; }
+.mr-warn  { background: #3d2f0a; color: var(--amber); font-size: .7rem;
+            padding: .1rem .35rem; border-radius: 3px; white-space: nowrap; }
+
+/* ── Speculative warning banner ───────────────────────────────────────────── */
+.reversal-banner { background: #3d1212; border: 1px solid var(--red);
+                   border-radius: 4px; padding: .4rem .8rem; margin-bottom: .6rem;
+                   font-size: .78rem; color: var(--red); }
+</style>
+</head>
+<body>
+
+<h1>Daily Dashboard &mdash; 2026-05-28</h1>
+
+<div class="bias">
+  <strong>Bias caveat:</strong> Universe membership uses monthly snapshots.
+  Survivorship bias is present. Analysis-only — not investment advice.
+  Models not yet fitted — composite scores are NaN.
+</div>
+
+<div class="summary-bar"><div class="summary-pill"><span class="pill-label">SPY Trend</span><span class="pill-value up">Uptrend</span></div><div class="summary-pill"><span class="pill-label">SPY vs 200SMA</span><span class="pill-value">—</span></div><div class="summary-pill"><span class="pill-label">VIX</span><span class="pill-value">—</span></div><div class="summary-pill"><span class="pill-label">Environment</span><span class="pill-value ">—</span></div><div class="summary-pill"><span class="pill-label">Actionable</span><span class="pill-value">0</span></div><div class="summary-pill"><span class="pill-label">ARMED</span><span class="pill-value">3</span></div><div class="summary-pill"><span class="pill-label">Triggered/Acc</span><span class="pill-value">0</span></div></div>
+
+<h2>Portfolio Holdings</h2><div class="portfolio-strip"><div class="port-chip"><span class="pc-sym">QQQ</span><span class="pc-state s-CONFIRMED">CONFIRMED</span><span class="pc-action">Portfolio hold</span><span class="pc-guidance pg-defend">⚠ HOLD — confirmed uptrend, maintain stop below pivot</span></div><div class="port-chip"><span class="pc-sym">VOO</span><span class="pc-state s-CONFIRMED">CONFIRMED</span><span class="pc-action">Portfolio hold</span><span class="pc-guidance pg-defend">⚠ HOLD — confirmed uptrend, maintain stop below pivot</span></div><div class="port-chip"><span class="pc-sym">VXUS</span><span class="pc-state s-CONFIRMED">CONFIRMED</span><span class="pc-action">Portfolio hold</span><span class="pc-guidance pg-defend">⚠ HOLD — confirmed uptrend, maintain stop below pivot</span></div><div class="port-chip"><span class="pc-sym">GEV</span><span class="pc-state s-CONFIRMED">CONFIRMED</span><span class="pc-action">Portfolio hold</span><span class="pc-guidance pg-defend">⚠ WATCH STOP — below pivot, stop discipline required</span></div><div class="port-chip"><span class="pc-sym">ETN</span><span class="pc-state s-CONFIRMED">CONFIRMED</span><span class="pc-action">Portfolio hold</span><span class="pc-guidance pg-defend">⚠ WATCH STOP — below pivot, stop discipline required</span></div><div class="port-chip"><span class="pc-sym">PWR</span><span class="pc-state s-CONFIRMED">CONFIRMED</span><span class="pc-action">Portfolio hold</span><span class="pc-guidance pg-defend">⚠ WATCH STOP — below pivot, stop discipline required</span></div><div class="port-chip"><span class="pc-sym">VRT</span><span class="pc-state s-CONFIRMED">CONFIRMED</span><span class="pc-action">Portfolio hold</span><span class="pc-guidance pg-defend">⚠ WATCH STOP — below pivot, stop discipline required</span></div><div class="port-chip"><span class="pc-sym">ASML</span><span class="pc-state s-CONFIRMED">CONFIRMED</span><span class="pc-action">Portfolio hold</span><span class="pc-guidance pg-defend">⚠ HOLD — confirmed uptrend, maintain stop below pivot</span></div><div class="port-chip"><span class="pc-sym">SOXX</span><span class="pc-state s-CONFIRMED">CONFIRMED</span><span class="pc-action">Portfolio hold</span><span class="pc-guidance pg-defend">⚠ HOLD — confirmed uptrend, maintain stop below pivot</span></div><div class="port-chip"><span class="pc-sym">CEG</span><span class="pc-state s-CONFIRMED">CONFIRMED</span><span class="pc-action">Portfolio hold</span><span class="pc-guidance pg-defend">⚠ WATCH STOP — below pivot, stop discipline required</span></div><div class="port-chip"><span class="pc-sym">VST</span><span class="pc-state s-CONFIRMED">CONFIRMED</span><span class="pc-action">Portfolio hold</span><span class="pc-guidance pg-defend">⚠ WATCH STOP — below pivot, stop discipline required</span></div><div class="port-chip"><span class="pc-sym">CCJ</span><span class="pc-state s-CONFIRMED">CONFIRMED</span><span class="pc-action">Portfolio hold</span><span class="pc-guidance pg-defend">⚠ WATCH STOP — below pivot, stop discipline required</span></div><div class="port-chip"><span class="pc-sym">LEU</span><span class="pc-state s-CONFIRMED">CONFIRMED</span><span class="pc-action">Portfolio hold</span><span class="pc-guidance pg-defend">⚠ HOLD — confirmed uptrend, maintain stop below pivot</span></div><div class="port-chip"><span class="pc-sym">RTX</span><span class="pc-state s-CONFIRMED">CONFIRMED</span><span class="pc-action">Portfolio hold</span><span class="pc-guidance pg-defend">⚠ WATCH STOP — below pivot, stop discipline required</span></div><div class="port-chip"><span class="pc-sym">CRS</span><span class="pc-state s-CONFIRMED">CONFIRMED</span><span class="pc-action">Portfolio hold</span><span class="pc-guidance pg-defend">⚠ HOLD — confirmed uptrend, maintain stop below pivot</span></div><div class="port-chip"><span class="pc-sym">MP</span><span class="pc-state s-CONFIRMED">CONFIRMED</span><span class="pc-action">Portfolio hold</span><span class="pc-guidance pg-defend">⚠ HOLD — confirmed uptrend, maintain stop below pivot</span></div><div class="port-chip"><span class="pc-sym">NVDA</span><span class="pc-state s-CONFIRMED">CONFIRMED</span><span class="pc-action">Portfolio hold</span><span class="pc-guidance pg-defend">⚠ WATCH STOP — below pivot, stop discipline required</span></div><div class="port-chip"><span class="pc-sym">GOOGL</span><span class="pc-state s-CONFIRMED">CONFIRMED</span><span class="pc-action">Portfolio hold</span><span class="pc-guidance pg-defend">⚠ WATCH STOP — below pivot, stop discipline required</span></div></div>
+
+<h2>Setups &mdash; 2026-05-28</h2><div class="universe-bar"><strong>151</strong> universe &nbsp;·&nbsp; <strong>1</strong> eligible &nbsp;·&nbsp; <strong>7</strong> fresh &nbsp;·&nbsp; <strong style="color:var(--blue)">0</strong> breakout candidates &nbsp;·&nbsp; <strong style="color:var(--amber)">0</strong> pullback candidates &nbsp;·&nbsp; <strong style="color:var(--fg3)">1</strong> extended &nbsp;·&nbsp; <strong style="color:var(--red)">3</strong> reversal watch &nbsp;·&nbsp; <strong>128</strong> excluded by gates</div><div class="bucket-section"><div class="bucket-header bh-breakout"><span class="bh-title">Top Breakout Longs</span><span class="bh-count">0 shown</span><span class="bh-desc">Eligible, fresh setups at or near pivot. Ranked by setup quality score.</span></div><div class="no-setups-note">No breakout candidates qualify today. 0 names landed in the breakout bucket, but 0 were blocked for packet coherence or completeness.</div></div><div class="bucket-section"><div class="bucket-header bh-pullback"><span class="bh-title">Top Pullback / Re-entry Longs</span><span class="bh-count">0 shown</span><span class="bh-desc">Constructive pullbacks within confirmed uptrends. Secondary candidates.</span></div><div class="no-setups-note">No pullback candidates qualify today. 0 names landed in the pullback bucket, but 0 were blocked for packet coherence or completeness.</div></div><div class="bucket-section"><div class="bucket-header bh-extended"><span class="bh-title">Extended Leaders</span><span class="bh-count">1 total</span><span class="bh-desc">Healthy names too extended for fresh entry. Monitor for pullback add zones.</span></div><div class="monitor-list"><div class="monitor-row"><span class="mr-sym">XLRE</span><span class="mr-state s-ARMED">ARMED</span><span class="mr-score">—</span><span class="mr-note">4.3 ATR above YTD AVWAP</span></div></div></div><div class="bucket-section"><div class="bucket-header bh-reversal"><span class="bh-title">Speculative / Reversal Watch</span><span class="bh-count">3 total</span><span class="bh-desc">NOT in primary long list.</span></div><div class="reversal-banner"><strong>⚠ These names failed primary eligibility gates.</strong> They are shown for informational monitoring only. Do not treat these as equivalent to breakout or pullback candidates. They require separate discretionary judgment and should not be read as primary long ideas.</div><div class="monitor-list"><div class="monitor-row"><span class="mr-sym">CNXC</span><span class="mr-state s-ARMED">ARMED</span><span class="mr-score">—</span><span class="mr-warn">failed: poor_rs</span><span class="mr-note">speculative only; failed primary long eligibility</span></div><div class="monitor-row"><span class="mr-sym">PHR</span><span class="mr-state s-BASE">BASE</span><span class="mr-score">—</span><span class="mr-warn">failed: poor_rs</span><span class="mr-note">speculative only; failed primary long eligibility</span></div><div class="monitor-row"><span class="mr-sym">PYPL</span><span class="mr-state s-BASE">BASE</span><span class="mr-score">—</span><span class="mr-warn">failed: poor_rs</span><span class="mr-note">speculative only; failed primary long eligibility</span></div></div></div>
+
+
+
+<h2>Full Research Tables</h2>
+<p style="font-size:.82rem;color:var(--fg3);margin-bottom:.5rem">
+  Expand a state to see all symbols. Sorted by composite score descending.
+</p>
+<details><summary class="s-ARMED">ARMED — 3 symbols</summary><div class="details-body"><table><tr><th>user_symbol</th><th>state</th><th>close</th><th>pivot</th><th>atr14</th><th>dist_to_pivot_atr</th><th>base_length</th><th>days_in_state</th><th>atr_compression_pct</th><th>volume_dryup</th><th>daily_rs_63</th><th>composite_score</th><th>percentile_rank</th></tr><tr><td>XLRE</td><td><span class="s-ARMED">ARMED</span></td><td>44.41</td><td>44.99</td><td>0.53</td><td>-1.08</td><td>120.00</td><td>7.00</td><td>0.00</td><td>0.52</td><td>-0.07</td><td class="">—</td><td>—</td></tr><tr><td>CNXC</td><td><span class="s-ARMED">ARMED</span></td><td>26.48</td><td>28.10</td><td>1.47</td><td>-1.10</td><td>25.00</td><td>5.00</td><td>0.00</td><td>0.48</td><td>-0.27</td><td class="">—</td><td>—</td></tr><tr><td>OCUL</td><td><span class="s-ARMED">ARMED</span></td><td>9.15</td><td>9.98</td><td>0.46</td><td>-1.78</td><td>41.00</td><td>1.00</td><td>4.08</td><td>1.06</td><td>-0.14</td><td class="">—</td><td>—</td></tr></table></div></details><details><summary class="s-BASE">BASE — 4 symbols</summary><div class="details-body"><table><tr><th>user_symbol</th><th>state</th><th>close</th><th>pivot</th><th>atr14</th><th>dist_to_pivot_atr</th><th>base_length</th><th>days_in_state</th><th>atr_compression_pct</th><th>volume_dryup</th><th>daily_rs_63</th><th>composite_score</th><th>percentile_rank</th></tr><tr><td>KVUE</td><td><span class="s-BASE">BASE</span></td><td>17.64</td><td>18.95</td><td>0.33</td><td>-4.02</td><td>120.00</td><td>55.00</td><td>12.24</td><td>0.53</td><td>-0.16</td><td class="">—</td><td>—</td></tr><tr><td>PHR</td><td><span class="s-BASE">BASE</span></td><td>9.45</td><td>10.96</td><td>0.58</td><td>-2.62</td><td>32.00</td><td>12.00</td><td>40.82</td><td>2.43</td><td>-0.36</td><td class="">—</td><td>—</td></tr><tr><td>PYPL</td><td><span class="s-BASE">BASE</span></td><td>44.46</td><td>52.30</td><td>1.25</td><td>-6.27</td><td>71.00</td><td>16.00</td><td>2.04</td><td>1.02</td><td>-0.11</td><td class="">—</td><td>—</td></tr><tr><td>SMA</td><td><span class="s-BASE">BASE</span></td><td>31.53</td><td>35.03</td><td>0.88</td><td>-3.99</td><td>120.00</td><td>14.00</td><td>2.04</td><td>0.81</td><td>-0.13</td><td class="">—</td><td>—</td></tr></table></div></details><details><summary class="s-CONFIRMED">CONFIRMED — 134 symbols</summary><div class="details-body"><table><tr><th>user_symbol</th><th>state</th><th>close</th><th>pivot</th><th>atr14</th><th>dist_to_pivot_atr</th><th>base_length</th><th>days_in_state</th><th>atr_compression_pct</th><th>volume_dryup</th><th>daily_rs_63</th><th>composite_score</th><th>percentile_rank</th></tr><tr><td>SPY</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>754.60</td><td>755.15</td><td>7.13</td><td>-0.08</td><td>120.00</td><td>4275.00</td><td>0.00</td><td>0.55</td><td>0.00</td><td class="">—</td><td>—</td></tr><tr><td>QQQ</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>735.60</td><td>736.60</td><td>10.65</td><td>-0.09</td><td>120.00</td><td>4294.00</td><td>53.06</td><td>0.64</td><td>0.10</td><td class="">—</td><td>—</td></tr><tr><td>IWM</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>292.03</td><td>292.74</td><td>4.86</td><td>-0.15</td><td>120.00</td><td>4294.00</td><td>34.69</td><td>0.69</td><td>0.00</td><td class="">—</td><td>—</td></tr><tr><td>DIA</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>507.05</td><td>508.74</td><td>5.24</td><td>-0.32</td><td>120.00</td><td>4233.00</td><td>4.08</td><td>0.65</td><td>-0.07</td><td class="">—</td><td>—</td></tr><tr><td>MDY</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>679.25</td><td>685.50</td><td>9.29</td><td>-0.67</td><td>120.00</td><td>4294.00</td><td>0.00</td><td>0.81</td><td>-0.06</td><td class="">—</td><td>—</td></tr><tr><td>RSP</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>208.25</td><td>208.89</td><td>2.12</td><td>-0.30</td><td>120.00</td><td>4305.00</td><td>12.24</td><td>0.62</td><td>-0.07</td><td class="">—</td><td>—</td></tr><tr><td>XLK</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>186.85</td><td>187.58</td><td>3.86</td><td>-0.19</td><td>34.00</td><td>4239.00</td><td>95.92</td><td>0.86</td><td>0.19</td><td class="">—</td><td>—</td></tr><tr><td>XLF</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>51.27</td><td>56.23</td><td>0.66</td><td>-7.51</td><td>120.00</td><td>4305.00</td><td>0.00</td><td>1.01</td><td>-0.11</td><td class="">—</td><td>—</td></tr><tr><td>XLE</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>56.95</td><td>63.46</td><td>1.37</td><td>-4.74</td><td>89.00</td><td>1323.00</td><td>38.78</td><td>0.98</td><td>-0.05</td><td class="">—</td><td>—</td></tr><tr><td>XLV</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>150.88</td><td>159.93</td><td>2.10</td><td>-4.32</td><td>120.00</td><td>4219.00</td><td>38.78</td><td>0.91</td><td>-0.13</td><td class="">—</td><td>—</td></tr><tr><td>XLI</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>173.80</td><td>178.81</td><td>2.76</td><td>-1.82</td><td>120.00</td><td>4300.00</td><td>0.00</td><td>0.78</td><td>-0.11</td><td class="">—</td><td>—</td></tr><tr><td>XLY</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>122.06</td><td>124.76</td><td>1.97</td><td>-1.37</td><td>120.00</td><td>4305.00</td><td>18.37</td><td>0.83</td><td>-0.05</td><td class="">—</td><td>—</td></tr><tr><td>XLP</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>84.43</td><td>89.64</td><td>1.19</td><td>-4.37</td><td>120.00</td><td>4234.00</td><td>48.98</td><td>0.48</td><td>-0.14</td><td class="">—</td><td>—</td></tr><tr><td>XLB</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>51.36</td><td>53.90</td><td>0.83</td><td>-3.05</td><td>120.00</td><td>4294.00</td><td>24.49</td><td>0.87</td><td>-0.12</td><td class="">—</td><td>—</td></tr><tr><td>XLU</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>44.63</td><td>47.71</td><td>0.65</td><td>-4.75</td><td>120.00</td><td>3956.00</td><td>2.04</td><td>0.88</td><td>-0.14</td><td class="">—</td><td>—</td></tr><tr><td>XLC</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>116.67</td><td>120.02</td><td>1.43</td><td>-2.35</td><td>120.00</td><td>757.00</td><td>26.53</td><td>0.81</td><td>-0.09</td><td class="">—</td><td>—</td></tr><tr><td>XBI</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>135.99</td><td>139.19</td><td>3.46</td><td>-0.93</td><td>120.00</td><td>3606.00</td><td>46.94</td><td>0.74</td><td>-0.03</td><td class="">—</td><td>—</td></tr><tr><td>SMH</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>599.83</td><td>612.30</td><td>19.00</td><td>-0.66</td><td>27.00</td><td>4242.00</td><td>97.96</td><td>0.78</td><td>0.28</td><td class="">—</td><td>—</td></tr><tr><td>IGV</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>95.68</td><td>96.14</td><td>2.54</td><td>-0.18</td><td>83.00</td><td>4238.00</td><td>36.73</td><td>0.75</td><td>0.05</td><td class="">—</td><td>—</td></tr><tr><td>ITB</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>93.18</td><td>112.34</td><td>2.52</td><td>-7.59</td><td>69.00</td><td>3616.00</td><td>18.37</td><td>0.75</td><td>-0.23</td><td class="">—</td><td>—</td></tr><tr><td>KRE</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>69.55</td><td>73.65</td><td>1.25</td><td>-3.28</td><td>120.00</td><td>3616.00</td><td>0.00</td><td>0.96</td><td>-0.10</td><td class="">—</td><td>—</td></tr><tr><td>XOP</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>164.96</td><td>190.36</td><td>4.97</td><td>-5.11</td><td>70.00</td><td>1350.00</td><td>24.49</td><td>0.65</td><td>0.01</td><td class="">—</td><td>—</td></tr><tr><td>XRT</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>85.61</td><td>91.40</td><td>1.90</td><td>-3.05</td><td>120.00</td><td>4315.00</td><td>97.96</td><td>1.32</td><td>-0.11</td><td class="">—</td><td>—</td></tr><tr><td>XHB</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>102.77</td><td>122.76</td><td>2.70</td><td>-7.39</td><td>120.00</td><td>3611.00</td><td>24.49</td><td>0.73</td><td>-0.21</td><td class="">—</td><td>—</td></tr><tr><td>VOO</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>693.91</td><td>694.29</td><td>6.54</td><td>-0.06</td><td>120.00</td><td>3355.00</td><td>0.00</td><td>0.62</td><td>0.00</td><td class="">—</td><td>—</td></tr><tr><td>VXUS</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>85.99</td><td>86.27</td><td>1.22</td><td>-0.23</td><td>120.00</td><td>1504.00</td><td>2.04</td><td>0.80</td><td>-0.07</td><td class="">—</td><td>—</td></tr><tr><td>GEV</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>996.00</td><td>1181.95</td><td>45.59</td><td>-4.08</td><td>36.00</td><td>469.00</td><td>67.35</td><td>1.08</td><td>0.04</td><td class="">—</td><td>—</td></tr><tr><td>ETN</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>401.94</td><td>434.23</td><td>14.76</td><td>-2.19</td><td>85.00</td><td>4305.00</td><td>77.55</td><td>0.89</td><td>-0.02</td><td class="">—</td><td>—</td></tr><tr><td>PWR</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>730.10</td><td>788.75</td><td>26.25</td><td>-2.23</td><td>28.00</td><td>2546.00</td><td>79.59</td><td>0.64</td><td>0.16</td><td class="">—</td><td>—</td></tr><tr><td>VRT</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>314.18</td><td>379.93</td><td>17.64</td><td>-3.73</td><td>34.00</td><td>754.00</td><td>85.71</td><td>0.72</td><td>0.10</td><td class="">—</td><td>—</td></tr><tr><td>ASML</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>1605.77</td><td>1653.53</td><td>61.75</td><td>-0.77</td><td>95.00</td><td>4239.00</td><td>77.55</td><td>0.55</td><td>0.00</td><td class="">—</td><td>—</td></tr><tr><td>SOXX</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>569.47</td><td>584.50</td><td>20.72</td><td>-0.73</td><td>21.00</td><td>4239.00</td><td>100.00</td><td>0.86</td><td>0.37</td><td class="">—</td><td>—</td></tr><tr><td>CEG</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>286.31</td><td>332.84</td><td>13.04</td><td>-3.57</td><td>77.00</td><td>1038.00</td><td>34.69</td><td>0.76</td><td>-0.21</td><td class="">—</td><td>—</td></tr><tr><td>VST</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>160.28</td><td>176.28</td><td>6.97</td><td>-2.30</td><td>62.00</td><td>716.00</td><td>32.65</td><td>0.70</td><td>-0.19</td><td class="">—</td><td>—</td></tr><tr><td>CCJ</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>110.63</td><td>131.21</td><td>5.30</td><td>-3.88</td><td>82.00</td><td>722.00</td><td>2.04</td><td>0.81</td><td>-0.16</td><td class="">—</td><td>—</td></tr><tr><td>LEU</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>185.46</td><td>—</td><td>13.52</td><td>—</td><td>0.00</td><td>1670.00</td><td>0.00</td><td>0.68</td><td>-0.22</td><td class="">—</td><td>—</td></tr><tr><td>RTX</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>178.96</td><td>213.61</td><td>4.05</td><td>-8.55</td><td>120.00</td><td>4275.00</td><td>4.08</td><td>0.74</td><td>-0.19</td><td class="">—</td><td>—</td></tr><tr><td>CRS</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>462.01</td><td>475.69</td><td>19.29</td><td>-0.71</td><td>52.00</td><td>4300.00</td><td>26.53</td><td>0.66</td><td>0.06</td><td class="">—</td><td>—</td></tr><tr><td>MP</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>66.83</td><td>—</td><td>4.47</td><td>—</td><td>0.00</td><td>1472.00</td><td>79.59</td><td>0.77</td><td>0.01</td><td class="">—</td><td>—</td></tr><tr><td>NVDA</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>214.25</td><td>236.54</td><td>7.17</td><td>-3.11</td><td>36.00</td><td>4320.00</td><td>81.63</td><td>0.88</td><td>0.05</td><td class="">—</td><td>—</td></tr><tr><td>GOOGL</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>390.13</td><td>408.61</td><td>9.33</td><td>-1.98</td><td>36.00</td><td>4290.00</td><td>61.22</td><td>0.75</td><td>0.15</td><td class="">—</td><td>—</td></tr><tr><td>AAPL</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>312.51</td><td>313.26</td><td>5.57</td><td>-0.13</td><td>120.00</td><td>4986.00</td><td>8.16</td><td>0.98</td><td>0.04</td><td class="">—</td><td>—</td></tr><tr><td>ABBV</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>218.63</td><td>235.16</td><td>5.17</td><td>-3.19</td><td>120.00</td><td>3311.00</td><td>6.12</td><td>0.56</td><td>-0.11</td><td class="">—</td><td>—</td></tr><tr><td>ABT</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>86.30</td><td>109.26</td><td>2.05</td><td>-11.20</td><td>50.00</td><td>4997.00</td><td>0.00</td><td>0.58</td><td>-0.38</td><td class="">—</td><td>—</td></tr><tr><td>ACN</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>178.40</td><td>206.86</td><td>6.92</td><td>-4.11</td><td>56.00</td><td>3883.00</td><td>12.24</td><td>0.50</td><td>-0.24</td><td class="">—</td><td>—</td></tr><tr><td>ADP</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>219.86</td><td>250.36</td><td>5.89</td><td>-5.18</td><td>83.00</td><td>3921.00</td><td>65.31</td><td>0.52</td><td>-0.08</td><td class="">—</td><td>—</td></tr><tr><td>AMCR</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>39.25</td><td>48.26</td><td>1.26</td><td>-7.13</td><td>62.00</td><td>1505.00</td><td>67.35</td><td>0.66</td><td>-0.30</td><td class="">—</td><td>—</td></tr><tr><td>AMZN</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>274.00</td><td>278.56</td><td>6.75</td><td>-0.68</td><td>38.00</td><td>4353.00</td><td>71.43</td><td>0.87</td><td>0.18</td><td class="">—</td><td>—</td></tr><tr><td>APD</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>283.65</td><td>307.96</td><td>6.16</td><td>-3.95</td><td>115.00</td><td>4296.00</td><td>8.16</td><td>0.65</td><td>-0.06</td><td class="">—</td><td>—</td></tr><tr><td>ARES</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>126.00</td><td>129.35</td><td>4.63</td><td>-0.72</td><td>52.00</td><td>2474.00</td><td>0.00</td><td>0.62</td><td>-0.01</td><td class="">—</td><td>—</td></tr><tr><td>AVGO</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>426.58</td><td>442.36</td><td>15.27</td><td>-1.03</td><td>36.00</td><td>3907.00</td><td>89.80</td><td>0.83</td><td>0.19</td><td class="">—</td><td>—</td></tr><tr><td>AXP</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>315.12</td><td>385.41</td><td>6.61</td><td>-10.63</td><td>120.00</td><td>4227.00</td><td>6.12</td><td>0.93</td><td>-0.15</td><td class="">—</td><td>—</td></tr><tr><td>AXTI</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>115.70</td><td>—</td><td>15.04</td><td>—</td><td>0.00</td><td>243.00</td><td>95.92</td><td>0.51</td><td>1.04</td><td class="">—</td><td>—</td></tr><tr><td>BBEU</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>77.94</td><td>79.29</td><td>1.08</td><td>-1.25</td><td>120.00</td><td>1505.00</td><td>0.00</td><td>1.26</td><td>-0.11</td><td class="">—</td><td>—</td></tr><tr><td>BDX</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>148.41</td><td>186.16</td><td>4.25</td><td>-8.89</td><td>120.00</td><td>3367.00</td><td>75.51</td><td>0.85</td><td>-0.26</td><td class="">—</td><td>—</td></tr><tr><td>BE</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>290.01</td><td>—</td><td>23.70</td><td>—</td><td>0.00</td><td>239.00</td><td>87.76</td><td>0.64</td><td>0.45</td><td class="">—</td><td>—</td></tr><tr><td>BLK</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>1046.49</td><td>1174.82</td><td>23.29</td><td>-5.51</td><td>120.00</td><td>3385.00</td><td>2.04</td><td>0.84</td><td>-0.13</td><td class="">—</td><td>—</td></tr><tr><td>BP</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>41.59</td><td>47.72</td><td>1.13</td><td>-5.45</td><td>74.00</td><td>198.00</td><td>30.61</td><td>0.75</td><td>0.01</td><td class="">—</td><td>—</td></tr><tr><td>BRK.B</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>477.42</td><td>512.13</td><td>6.44</td><td>-5.39</td><td>120.00</td><td>4231.00</td><td>18.37</td><td>0.63</td><td>-0.14</td><td class="">—</td><td>—</td></tr><tr><td>CAR</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>174.88</td><td>178.76</td><td>27.96</td><td>-0.14</td><td>17.00</td><td>4246.00</td><td>36.73</td><td>0.24</td><td>0.50</td><td class="">—</td><td>—</td></tr><tr><td>CAT</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>887.67</td><td>931.35</td><td>27.87</td><td>-1.57</td><td>40.00</td><td>4314.00</td><td>77.55</td><td>1.11</td><td>0.07</td><td class="">—</td><td>—</td></tr><tr><td>CB</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>316.22</td><td>344.65</td><td>6.05</td><td>-4.70</td><td>120.00</td><td>4309.00</td><td>59.18</td><td>0.87</td><td>-0.16</td><td class="">—</td><td>—</td></tr><tr><td>CBZ</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>32.32</td><td>36.42</td><td>1.67</td><td>-2.45</td><td>32.00</td><td>3242.00</td><td>46.94</td><td>0.58</td><td>-0.08</td><td class="">—</td><td>—</td></tr><tr><td>CIEN</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>570.18</td><td>605.61</td><td>34.63</td><td>-1.02</td><td>36.00</td><td>4300.00</td><td>89.80</td><td>0.72</td><td>0.42</td><td class="">—</td><td>—</td></tr><tr><td>CLS</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>351.02</td><td>429.31</td><td>21.78</td><td>-3.59</td><td>16.00</td><td>738.00</td><td>57.14</td><td>1.09</td><td>0.14</td><td class="">—</td><td>—</td></tr><tr><td>CMCSA</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>25.16</td><td>32.48</td><td>0.71</td><td>-10.34</td><td>116.00</td><td>3918.00</td><td>20.41</td><td>0.66</td><td>-0.29</td><td class="">—</td><td>—</td></tr><tr><td>COHR</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>376.95</td><td>—</td><td>25.56</td><td>—</td><td>0.00</td><td>4305.00</td><td>79.59</td><td>0.47</td><td>0.32</td><td class="">—</td><td>—</td></tr><tr><td>CRDO</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>222.35</td><td>—</td><td>16.80</td><td>—</td><td>0.00</td><td>408.00</td><td>95.92</td><td>0.72</td><td>0.57</td><td class="">—</td><td>—</td></tr><tr><td>CTSH</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>53.85</td><td>60.03</td><td>1.99</td><td>-3.10</td><td>26.00</td><td>4294.00</td><td>36.73</td><td>1.33</td><td>-0.27</td><td class="">—</td><td>—</td></tr><tr><td>DOCN</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>151.91</td><td>165.99</td><td>10.85</td><td>-1.30</td><td>17.00</td><td>137.00</td><td>89.80</td><td>0.34</td><td>0.94</td><td class="">—</td><td>—</td></tr><tr><td>EME</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>848.45</td><td>951.96</td><td>28.60</td><td>-3.62</td><td>40.00</td><td>3617.00</td><td>42.86</td><td>0.75</td><td>0.04</td><td class="">—</td><td>—</td></tr><tr><td>ERIE</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>218.19</td><td>277.86</td><td>7.31</td><td>-8.16</td><td>69.00</td><td>4134.00</td><td>0.00</td><td>0.52</td><td>-0.30</td><td class="">—</td><td>—</td></tr><tr><td>EYPT</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>13.50</td><td>15.18</td><td>0.79</td><td>-2.14</td><td>27.00</td><td>183.00</td><td>59.18</td><td>1.59</td><td>-0.37</td><td class="">—</td><td>—</td></tr><tr><td>EZPW</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>32.15</td><td>37.13</td><td>1.27</td><td>-3.92</td><td>34.00</td><td>581.00</td><td>87.76</td><td>1.15</td><td>0.10</td><td class="">—</td><td>—</td></tr><tr><td>FCNCA</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>2009.03</td><td>2229.87</td><td>46.88</td><td>-4.71</td><td>120.00</td><td>3326.00</td><td>0.00</td><td>0.83</td><td>-0.09</td><td class="">—</td><td>—</td></tr><tr><td>FDS</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>238.90</td><td>247.33</td><td>10.12</td><td>-0.83</td><td>70.00</td><td>4300.00</td><td>79.59</td><td>0.78</td><td>0.02</td><td class="">—</td><td>—</td></tr><tr><td>FTGC</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>29.26</td><td>30.65</td><td>0.36</td><td>-3.91</td><td>100.00</td><td>1369.00</td><td>32.65</td><td>0.56</td><td>0.07</td><td class="">—</td><td>—</td></tr><tr><td>GLW</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>182.97</td><td>211.79</td><td>12.15</td><td>-2.37</td><td>17.00</td><td>4375.00</td><td>79.59</td><td>0.66</td><td>0.11</td><td class="">—</td><td>—</td></tr><tr><td>GNRC</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>279.45</td><td>284.00</td><td>11.43</td><td>-0.40</td><td>21.00</td><td>3662.00</td><td>93.88</td><td>0.66</td><td>0.08</td><td class="">—</td><td>—</td></tr><tr><td>GOOG</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>386.12</td><td>404.47</td><td>9.01</td><td>-2.04</td><td>36.00</td><td>4290.00</td><td>61.22</td><td>0.94</td><td>0.14</td><td class="">—</td><td>—</td></tr><tr><td>HD</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>321.21</td><td>379.65</td><td>8.36</td><td>-6.99</td><td>65.00</td><td>3638.00</td><td>30.61</td><td>0.78</td><td>-0.24</td><td class="">—</td><td>—</td></tr><tr><td>HROW</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>35.39</td><td>—</td><td>1.99</td><td>—</td><td>0.00</td><td>2020.00</td><td>48.98</td><td>0.79</td><td>-0.52</td><td class="">—</td><td>—</td></tr><tr><td>IBM</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>264.22</td><td>269.32</td><td>8.70</td><td>-0.59</td><td>73.00</td><td>4276.00</td><td>100.00</td><td>1.77</td><td>0.00</td><td class="">—</td><td>—</td></tr><tr><td>IBP</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>209.80</td><td>—</td><td>12.84</td><td>—</td><td>0.00</td><td>2555.00</td><td>34.69</td><td>0.89</td><td>-0.51</td><td class="">—</td><td>—</td></tr><tr><td>ICLR</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>136.80</td><td>139.69</td><td>7.07</td><td>-0.41</td><td>21.00</td><td>4991.00</td><td>100.00</td><td>2.97</td><td>0.16</td><td class="">—</td><td>—</td></tr><tr><td>IFNNY</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>93.28</td><td>—</td><td>3.66</td><td>—</td><td>0.00</td><td>4212.00</td><td>97.96</td><td>0.34</td><td>0.43</td><td class="">—</td><td>—</td></tr><tr><td>IONQ</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>70.14</td><td>—</td><td>5.16</td><td>—</td><td>0.00</td><td>837.00</td><td>100.00</td><td>0.94</td><td>0.45</td><td class="">—</td><td>—</td></tr><tr><td>IQV</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>181.09</td><td>206.00</td><td>7.31</td><td>-3.41</td><td>79.00</td><td>2474.00</td><td>97.96</td><td>1.14</td><td>-0.03</td><td class="">—</td><td>—</td></tr><tr><td>IVZ</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>28.06</td><td>28.80</td><td>0.78</td><td>-0.95</td><td>87.00</td><td>1415.00</td><td>2.04</td><td>0.60</td><td>-0.05</td><td class="">—</td><td>—</td></tr><tr><td>JNJ</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>230.80</td><td>250.27</td><td>3.89</td><td>-5.00</td><td>120.00</td><td>4238.00</td><td>0.00</td><td>0.88</td><td>-0.14</td><td class="">—</td><td>—</td></tr><tr><td>KOD</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>36.12</td><td>—</td><td>2.81</td><td>—</td><td>0.00</td><td>221.00</td><td>12.24</td><td>0.39</td><td>0.16</td><td class="">—</td><td>—</td></tr><tr><td>KR</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>63.66</td><td>76.18</td><td>1.88</td><td>-6.66</td><td>120.00</td><td>5010.00</td><td>40.82</td><td>1.24</td><td>-0.14</td><td class="">—</td><td>—</td></tr><tr><td>LHX</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>314.78</td><td>377.91</td><td>7.35</td><td>-8.59</td><td>108.00</td><td>3230.00</td><td>0.00</td><td>0.69</td><td>-0.21</td><td class="">—</td><td>—</td></tr><tr><td>LIN</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>501.98</td><td>521.28</td><td>9.43</td><td>-2.05</td><td>115.00</td><td>3923.00</td><td>14.29</td><td>1.05</td><td>-0.08</td><td class="">—</td><td>—</td></tr><tr><td>LITE</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>860.62</td><td>1085.68</td><td>78.65</td><td>-2.86</td><td>20.00</td><td>2474.00</td><td>77.55</td><td>0.87</td><td>0.15</td><td class="">—</td><td>—</td></tr><tr><td>LWLG</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>11.46</td><td>—</td><td>1.71</td><td>—</td><td>0.00</td><td>219.00</td><td>65.31</td><td>0.56</td><td>0.85</td><td class="">—</td><td>—</td></tr><tr><td>LZB</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>38.15</td><td>40.13</td><td>1.08</td><td>-1.83</td><td>120.00</td><td>3669.00</td><td>95.92</td><td>0.63</td><td>-0.04</td><td class="">—</td><td>—</td></tr><tr><td>MA</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>493.75</td><td>587.78</td><td>10.55</td><td>-8.92</td><td>120.00</td><td>4977.00</td><td>8.16</td><td>1.12</td><td>-0.13</td><td class="">—</td><td>—</td></tr><tr><td>MDT</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>75.57</td><td>98.18</td><td>1.63</td><td>-13.85</td><td>71.00</td><td>3462.00</td><td>2.04</td><td>1.35</td><td>-0.34</td><td class="">—</td><td>—</td></tr><tr><td>META</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>635.29</td><td>691.52</td><td>15.78</td><td>-3.56</td><td>79.00</td><td>3203.00</td><td>4.08</td><td>1.00</td><td>-0.13</td><td class="">—</td><td>—</td></tr><tr><td>MLM</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>575.14</td><td>682.97</td><td>16.06</td><td>-6.71</td><td>64.00</td><td>3444.00</td><td>22.45</td><td>0.61</td><td>-0.26</td><td class="">—</td><td>—</td></tr><tr><td>MMM</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>152.85</td><td>175.71</td><td>3.68</td><td>-6.21</td><td>120.00</td><td>4292.00</td><td>24.49</td><td>0.87</td><td>-0.17</td><td class="">—</td><td>—</td></tr><tr><td>MRVL</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>204.83</td><td>—</td><td>12.47</td><td>—</td><td>0.00</td><td>2476.00</td><td>100.00</td><td>1.92</td><td>0.86</td><td class="">—</td><td>—</td></tr><tr><td>MSFT</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>426.99</td><td>440.54</td><td>10.85</td><td>-1.25</td><td>83.00</td><td>4268.00</td><td>73.47</td><td>1.37</td><td>-0.03</td><td class="">—</td><td>—</td></tr><tr><td>MU</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>923.52</td><td>—</td><td>55.87</td><td>—</td><td>0.00</td><td>3364.00</td><td>97.96</td><td>0.96</td><td>0.71</td><td class="">—</td><td>—</td></tr><tr><td>MUA</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>10.72</td><td>11.09</td><td>0.11</td><td>-3.19</td><td>120.00</td><td>4340.00</td><td>24.49</td><td>0.92</td><td>-0.11</td><td class="">—</td><td>—</td></tr><tr><td>NDAQ</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>91.00</td><td>101.47</td><td>1.96</td><td>-5.34</td><td>120.00</td><td>3378.00</td><td>0.00</td><td>0.90</td><td>-0.06</td><td class="">—</td><td>—</td></tr><tr><td>NFLX</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>86.36</td><td>108.95</td><td>2.38</td><td>-9.51</td><td>64.00</td><td>4349.00</td><td>0.00</td><td>0.98</td><td>-0.07</td><td class="">—</td><td>—</td></tr><tr><td>NVT</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>164.87</td><td>175.00</td><td>6.64</td><td>-1.53</td><td>28.00</td><td>1382.00</td><td>71.43</td><td>0.62</td><td>0.21</td><td class="">—</td><td>—</td></tr><tr><td>ORLY</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>89.23</td><td>102.11</td><td>2.45</td><td>-5.26</td><td>120.00</td><td>4330.00</td><td>73.47</td><td>1.11</td><td>-0.12</td><td class="">—</td><td>—</td></tr><tr><td>PEP</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>146.29</td><td>169.96</td><td>3.21</td><td>-7.37</td><td>120.00</td><td>4179.00</td><td>71.43</td><td>1.18</td><td>-0.22</td><td class="">—</td><td>—</td></tr><tr><td>PKG</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>218.14</td><td>248.05</td><td>6.12</td><td>-4.89</td><td>120.00</td><td>4300.00</td><td>32.65</td><td>0.72</td><td>-0.15</td><td class="">—</td><td>—</td></tr><tr><td>PLD</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>145.64</td><td>147.93</td><td>2.45</td><td>-0.94</td><td>120.00</td><td>4229.00</td><td>2.04</td><td>0.50</td><td>-0.06</td><td class="">—</td><td>—</td></tr><tr><td>PNC</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>219.78</td><td>242.08</td><td>4.24</td><td>-5.26</td><td>120.00</td><td>4190.00</td><td>0.00</td><td>0.77</td><td>-0.10</td><td class="">—</td><td>—</td></tr><tr><td>PPG</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>112.86</td><td>126.35</td><td>3.49</td><td>-3.86</td><td>69.00</td><td>4314.00</td><td>51.02</td><td>1.00</td><td>-0.18</td><td class="">—</td><td>—</td></tr><tr><td>PRGS</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>30.54</td><td>32.23</td><td>1.38</td><td>-1.22</td><td>38.00</td><td>4300.00</td><td>0.00</td><td>0.43</td><td>-0.41</td><td class="">—</td><td>—</td></tr><tr><td>REGN</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>621.52</td><td>812.81</td><td>20.65</td><td>-9.26</td><td>95.00</td><td>4134.00</td><td>63.27</td><td>1.39</td><td>-0.31</td><td class="">—</td><td>—</td></tr><tr><td>ROL</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>49.42</td><td>65.72</td><td>1.24</td><td>-13.12</td><td>120.00</td><td>4985.00</td><td>63.27</td><td>1.17</td><td>-0.28</td><td class="">—</td><td>—</td></tr><tr><td>SE</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>91.94</td><td>99.97</td><td>4.29</td><td>-1.87</td><td>61.00</td><td>1833.00</td><td>59.18</td><td>0.86</td><td>-0.28</td><td class="">—</td><td>—</td></tr><tr><td>SGI</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>71.36</td><td>80.21</td><td>3.23</td><td>-2.74</td><td>24.00</td><td>4200.00</td><td>32.65</td><td>0.68</td><td>-0.33</td><td class="">—</td><td>—</td></tr><tr><td>T</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>24.88</td><td>29.14</td><td>0.55</td><td>-7.72</td><td>120.00</td><td>3958.00</td><td>0.00</td><td>0.65</td><td>-0.18</td><td class="">—</td><td>—</td></tr><tr><td>TROW</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>103.55</td><td>107.85</td><td>2.01</td><td>-2.15</td><td>120.00</td><td>4323.00</td><td>0.00</td><td>0.69</td><td>-0.01</td><td class="">—</td><td>—</td></tr><tr><td>TSCO</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>31.37</td><td>38.67</td><td>1.23</td><td>-5.95</td><td>25.00</td><td>4242.00</td><td>2.04</td><td>1.17</td><td>-0.57</td><td class="">—</td><td>—</td></tr><tr><td>TTD</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>21.15</td><td>24.87</td><td>1.27</td><td>-2.93</td><td>50.00</td><td>2330.00</td><td>12.24</td><td>1.08</td><td>-0.22</td><td class="">—</td><td>—</td></tr><tr><td>TXN</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>315.95</td><td>331.51</td><td>11.13</td><td>-1.40</td><td>25.00</td><td>4269.00</td><td>97.96</td><td>0.79</td><td>0.31</td><td class="">—</td><td>—</td></tr><tr><td>VEA</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>71.66</td><td>71.88</td><td>1.03</td><td>-0.21</td><td>120.00</td><td>4294.00</td><td>0.00</td><td>0.61</td><td>-0.07</td><td class="">—</td><td>—</td></tr><tr><td>VIAV</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>48.49</td><td>57.01</td><td>3.78</td><td>-2.25</td><td>19.00</td><td>403.00</td><td>97.96</td><td>1.26</td><td>0.39</td><td class="">—</td><td>—</td></tr><tr><td>VICI</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>28.33</td><td>30.00</td><td>0.45</td><td>-3.67</td><td>120.00</td><td>1318.00</td><td>0.00</td><td>0.97</td><td>-0.13</td><td class="">—</td><td>—</td></tr><tr><td>VRSN</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>296.14</td><td>312.48</td><td>7.78</td><td>-2.10</td><td>52.00</td><td>4083.00</td><td>75.51</td><td>0.59</td><td>0.18</td><td class="">—</td><td>—</td></tr><tr><td>WAT</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>366.67</td><td>367.61</td><td>12.87</td><td>-0.07</td><td>76.00</td><td>4294.00</td><td>79.59</td><td>1.03</td><td>0.03</td><td class="">—</td><td>—</td></tr><tr><td>WDAY</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>130.01</td><td>145.50</td><td>7.21</td><td>-2.15</td><td>55.00</td><td>2271.00</td><td>97.96</td><td>1.08</td><td>-0.16</td><td class="">—</td><td>—</td></tr><tr><td>WFC</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>76.65</td><td>96.73</td><td>1.85</td><td>-10.87</td><td>120.00</td><td>1354.00</td><td>6.12</td><td>0.70</td><td>-0.21</td><td class="">—</td><td>—</td></tr><tr><td>WMB</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>73.13</td><td>80.08</td><td>1.79</td><td>-3.88</td><td>90.00</td><td>724.00</td><td>85.71</td><td>1.15</td><td>-0.11</td><td class="">—</td><td>—</td></tr><tr><td>XNGSY</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>27.77</td><td>36.13</td><td>0.69</td><td>-12.05</td><td>60.00</td><td>2237.00</td><td>0.00</td><td>0.20</td><td>-0.32</td><td class="">—</td><td>—</td></tr></table></div></details><details><summary class="s-NONE">NONE — 7 symbols</summary><div class="details-body"><table><tr><th>user_symbol</th><th>state</th><th>close</th><th>pivot</th><th>atr14</th><th>dist_to_pivot_atr</th><th>base_length</th><th>days_in_state</th><th>atr_compression_pct</th><th>volume_dryup</th><th>daily_rs_63</th><th>composite_score</th><th>percentile_rank</th></tr><tr><td>AAOI</td><td><span class="s-NONE">NONE</span></td><td>169.02</td><td>—</td><td>21.30</td><td>—</td><td>0.00</td><td>84.00</td><td>77.55</td><td>0.81</td><td>1.05</td><td class="">—</td><td>—</td></tr><tr><td>ALAB</td><td><span class="s-NONE">NONE</span></td><td>349.17</td><td>—</td><td>21.82</td><td>—</td><td>0.00</td><td>9.00</td><td>100.00</td><td>0.97</td><td>0.94</td><td class="">—</td><td>—</td></tr><tr><td>ALMU</td><td><span class="s-NONE">NONE</span></td><td>23.09</td><td>—</td><td>3.34</td><td>—</td><td>0.00</td><td>37.00</td><td>79.59</td><td>0.57</td><td>0.27</td><td class="">—</td><td>—</td></tr><tr><td>BW</td><td><span class="s-NONE">NONE</span></td><td>19.18</td><td>—</td><td>1.79</td><td>—</td><td>0.00</td><td>24.00</td><td>83.67</td><td>0.74</td><td>0.64</td><td class="">—</td><td>—</td></tr><tr><td>EOSE</td><td><span class="s-NONE">NONE</span></td><td>8.99</td><td>—</td><td>0.80</td><td>—</td><td>0.00</td><td>13.00</td><td>73.47</td><td>0.94</td><td>0.19</td><td class="">—</td><td>—</td></tr><tr><td>POET</td><td><span class="s-NONE">NONE</span></td><td>13.26</td><td>—</td><td>2.00</td><td>—</td><td>0.00</td><td>57.00</td><td>81.63</td><td>0.50</td><td>0.66</td><td class="">—</td><td>—</td></tr><tr><td>STIM</td><td><span class="s-NONE">NONE</span></td><td>1.54</td><td>—</td><td>0.17</td><td>—</td><td>0.00</td><td>51.00</td><td>20.41</td><td>1.24</td><td>-0.01</td><td class="">—</td><td>—</td></tr></table></div></details>
+<details><summary>Portfolio detail</summary><div class="details-body"><table><tr><th>user_symbol</th><th>state</th><th>close</th><th>pivot</th><th>dist_to_pivot_atr</th><th>days_in_state</th><th>composite_score</th></tr><tr><td>QQQ</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>735.60</td><td>736.60</td><td>-0.09</td><td>4294.00</td><td class="">—</td></tr><tr><td>SPAXX</td><td><span class="s-SKIPPED">SKIPPED</span></td><td>—</td><td>—</td><td>—</td><td>0.00</td><td class="">—</td></tr><tr><td>VOO</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>693.91</td><td>694.29</td><td>-0.06</td><td>3355.00</td><td class="">—</td></tr><tr><td>VXUS</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>85.99</td><td>86.27</td><td>-0.23</td><td>1504.00</td><td class="">—</td></tr><tr><td>GEV</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>996.00</td><td>1181.95</td><td>-4.08</td><td>469.00</td><td class="">—</td></tr><tr><td>ETN</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>401.94</td><td>434.23</td><td>-2.19</td><td>4305.00</td><td class="">—</td></tr><tr><td>PWR</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>730.10</td><td>788.75</td><td>-2.23</td><td>2546.00</td><td class="">—</td></tr><tr><td>VRT</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>314.18</td><td>379.93</td><td>-3.73</td><td>754.00</td><td class="">—</td></tr><tr><td>ASML</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>1605.77</td><td>1653.53</td><td>-0.77</td><td>4239.00</td><td class="">—</td></tr><tr><td>SOXX</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>569.47</td><td>584.50</td><td>-0.73</td><td>4239.00</td><td class="">—</td></tr><tr><td>CEG</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>286.31</td><td>332.84</td><td>-3.57</td><td>1038.00</td><td class="">—</td></tr><tr><td>VST</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>160.28</td><td>176.28</td><td>-2.30</td><td>716.00</td><td class="">—</td></tr><tr><td>CCJ</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>110.63</td><td>131.21</td><td>-3.88</td><td>722.00</td><td class="">—</td></tr><tr><td>LEU</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>185.46</td><td>—</td><td>—</td><td>1670.00</td><td class="">—</td></tr><tr><td>RTX</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>178.96</td><td>213.61</td><td>-8.55</td><td>4275.00</td><td class="">—</td></tr><tr><td>CRS</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>462.01</td><td>475.69</td><td>-0.71</td><td>4300.00</td><td class="">—</td></tr><tr><td>MP</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>66.83</td><td>—</td><td>—</td><td>1472.00</td><td class="">—</td></tr><tr><td>NVDA</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>214.25</td><td>236.54</td><td>-3.11</td><td>4320.00</td><td class="">—</td></tr><tr><td>GOOGL</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>390.13</td><td>408.61</td><td>-1.98</td><td>4290.00</td><td class="">—</td></tr></table></div></details>
+<details><summary>Skipped symbols — 3</summary><div class="details-body"><table><tr><th>Symbol</th><th>Reason</th><th>Non-equity</th></tr><tr><td>SPAXX</td><td>non_equity</td><td>Y</td></tr><tr><td>EXAS</td><td>ingest_failed</td><td>N</td></tr><tr><td>ZT</td><td>ingest_failed</td><td>N</td></tr></table></div></details>
+
+<footer>
+  Generated 2026-05-28 23:17 UTC &nbsp;|&nbsp;
+  <a href="snapshot.md">Markdown version</a> &nbsp;|&nbsp;
+  swingtrader v0.1
+</footer>
+
+</body>
+</html>
