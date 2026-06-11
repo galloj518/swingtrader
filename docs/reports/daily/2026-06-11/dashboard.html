@@ -1,0 +1,1765 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Swingtrader — 2026-06-11</title>
+<style>
+:root {
+  --bg: #0d1117; --bg2: #161b22; --bg3: #21262d;
+  --fg: #c9d1d9; --fg2: #8b949e; --fg3: #6e7681;
+  --blue: #58a6ff; --green: #3fb950; --red: #f78166;
+  --amber: #d29922; --purple: #bc8cff; --orange: #fb8f44;
+  --border: #30363d;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: system-ui, -apple-system, sans-serif;
+       background: var(--bg); color: var(--fg);
+       padding: 1rem 1.5rem; font-size: 14px; }
+a { color: var(--blue); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+/* ── Typography ────────────────────────────────────────────────────────────── */
+h1 { color: var(--blue); font-size: 1.4rem; border-bottom: 1px solid var(--border);
+     padding-bottom: .4rem; margin-bottom: .8rem; }
+h2 { color: var(--fg); font-size: 1.1rem; margin: 1.6rem 0 .6rem; }
+h3 { color: var(--fg2); font-size: .95rem; margin: .8rem 0 .4rem; }
+
+/* ── Regime / summary bar ─────────────────────────────────────────────────── */
+.summary-bar { display: flex; gap: 1rem; flex-wrap: wrap;
+               background: var(--bg2); border: 1px solid var(--border);
+               border-radius: 6px; padding: .6rem 1rem; margin-bottom: 1.2rem; }
+.summary-pill { display: flex; flex-direction: column; align-items: center;
+                min-width: 80px; }
+.pill-label { font-size: .72rem; color: var(--fg3); text-transform: uppercase;
+              letter-spacing: .05em; }
+.pill-value { font-size: 1rem; font-weight: 600; color: var(--fg); }
+.pill-value.up { color: var(--green); }
+.pill-value.down { color: var(--red); }
+.pill-value.neutral { color: var(--amber); }
+
+/* ── Action label badges ──────────────────────────────────────────────────── */
+.badge { display: inline-block; padding: .18rem .55rem; border-radius: 20px;
+         font-size: .75rem; font-weight: 600; letter-spacing: .03em;
+         white-space: nowrap; }
+.badge-now      { background: #1a4f2a; color: var(--green); border: 1px solid var(--green); }
+.badge-breakout { background: #0f2d4f; color: var(--blue);  border: 1px solid var(--blue); }
+.badge-pullback { background: #3d2f0a; color: var(--amber); border: 1px solid var(--amber); }
+.badge-extended { background: #2a2a2a; color: var(--fg3);   border: 1px solid var(--fg3); }
+.badge-avoid    { background: #3d1212; color: var(--red);   border: 1px solid var(--red); }
+
+/* ── Setup cards ──────────────────────────────────────────────────────────── */
+.setup-cards { display: flex; flex-direction: column; gap: 1.4rem; }
+.card { background: var(--bg2); border: 1px solid var(--border);
+        border-radius: 8px; overflow: hidden; }
+.card-header { display: flex; align-items: center; gap: .8rem;
+               padding: .7rem 1rem; border-bottom: 1px solid var(--border);
+               background: var(--bg3); flex-wrap: wrap; }
+.card-symbol { font-size: 1.2rem; font-weight: 700; color: var(--fg); }
+.card-state  { font-size: .85rem; font-weight: 600; }
+.card-score  { margin-left: auto; font-size: .85rem; color: var(--fg2); }
+.score-hi { color: var(--green); font-weight: 700; }
+.score-md { color: var(--amber); font-weight: 700; }
+.score-lo { color: var(--red); }
+
+.card-body { display: grid; grid-template-columns: 1fr 1fr; gap: 0;
+             padding: 0; }
+@media (max-width: 900px) {
+  .card-body { grid-template-columns: 1fr; }
+}
+.card-charts { padding: .8rem; border-right: 1px solid var(--border);
+               display: flex; flex-direction: column; gap: .5rem; }
+.card-charts img { width: 100%; border-radius: 4px;
+                   border: 1px solid var(--border); }
+.chart-na { background: var(--bg3); border: 1px solid var(--border);
+            border-radius: 4px; padding: .5rem; text-align: center;
+            color: var(--fg3); font-size: .78rem; }
+.card-detail { padding: .8rem 1rem; display: flex; flex-direction: column; gap: .8rem; }
+
+/* ── Levels table ─────────────────────────────────────────────────────────── */
+.levels-grid { display: grid; grid-template-columns: 1fr 1fr; gap: .3rem .8rem; }
+.lvl-row { display: flex; justify-content: space-between; align-items: baseline;
+           font-size: .82rem; border-bottom: 1px solid var(--bg3); padding: .15rem 0; }
+.lvl-label { color: var(--fg2); }
+.lvl-value { font-family: monospace; font-size: .82rem; font-weight: 600; }
+.lvl-pivot   { color: var(--purple); }
+.lvl-entry   { color: var(--green); }
+.lvl-stop    { color: var(--red); }
+.lvl-target  { color: var(--orange); }
+.lvl-rs      { color: var(--fg2); }
+.lvl-sp      { color: var(--amber); }
+
+/* ── Narrative ────────────────────────────────────────────────────────────── */
+.narrative { font-size: .83rem; line-height: 1.55; }
+.narrative dt { color: var(--fg2); font-weight: 600; font-size: .78rem;
+                text-transform: uppercase; letter-spacing: .04em;
+                margin-top: .5rem; }
+.narrative dd { color: var(--fg); margin: .15rem 0 0 0; }
+.verdict-box { background: var(--bg3); border-left: 3px solid var(--blue);
+               padding: .4rem .7rem; border-radius: 0 4px 4px 0;
+               font-size: .83rem; margin-top: .4rem; }
+
+/* ── State colours ────────────────────────────────────────────────────────── */
+.s-ARMED     { color: var(--green); font-weight: 700; }
+.s-BASE      { color: var(--fg2); }
+.s-TRIGGERED { color: var(--red); font-weight: 700; }
+.s-ACCEPTED  { color: var(--blue); font-weight: 700; }
+.s-CONFIRMED { color: var(--purple); font-weight: 700; }
+.s-FAILED    { color: var(--fg3); text-decoration: line-through; }
+.s-LATE      { color: var(--amber); }
+.s-NONE      { color: var(--fg3); }
+
+/* ── Tables ───────────────────────────────────────────────────────────────── */
+table { border-collapse: collapse; width: 100%; font-size: .8rem; margin: .5rem 0; }
+th { background: var(--bg3); color: var(--blue); text-align: left;
+     padding: .3rem .5rem; border-bottom: 1px solid var(--border); }
+td { padding: .25rem .5rem; border-bottom: 1px solid var(--bg3); }
+tr:hover td { background: var(--bg2); }
+
+/* ── Collapsible ─────────────────────────────────────────────────────────── */
+details { border: 1px solid var(--border); border-radius: 6px;
+          margin: .6rem 0; overflow: hidden; }
+details > summary { padding: .6rem 1rem; background: var(--bg2);
+                    cursor: pointer; font-weight: 600; font-size: .9rem;
+                    list-style: none; user-select: none; color: var(--fg2); }
+details > summary::before { content: "▶ "; font-size: .7rem; }
+details[open] > summary::before { content: "▼ "; }
+details > .details-body { padding: .5rem 1rem; }
+
+/* ── Portfolio attention callouts ─────────────────────────────────────────── */
+.portfolio-strip { display: flex; gap: .6rem; flex-wrap: wrap; margin-bottom: 1rem; }
+.port-chip { background: var(--bg2); border: 1px solid var(--border);
+             border-radius: 6px; padding: .4rem .7rem; font-size: .82rem;
+             display: flex; flex-direction: column; gap: .1rem; min-width: 110px; }
+.port-chip .pc-sym { font-weight: 700; color: var(--fg); }
+.port-chip .pc-state { font-size: .75rem; }
+.port-chip .pc-action { font-size: .72rem; color: var(--fg2); }
+
+/* ── Bias note ────────────────────────────────────────────────────────────── */
+.bias { background: var(--bg2); border-left: 3px solid var(--amber);
+        padding: .4rem .8rem; border-radius: 0 4px 4px 0;
+        font-size: .78rem; color: var(--fg3); margin-bottom: 1rem; }
+
+footer { margin-top: 2rem; font-size: .75rem; color: var(--fg3);
+         border-top: 1px solid var(--border); padding-top: .5rem; }
+
+/* ── Rank bar ────────────────────────────────────────────────────────────── */
+.rank-bar { display: inline-block; height: 6px; background: var(--blue);
+            border-radius: 2px; vertical-align: middle; margin-left: 3px; }
+
+/* ── Setup classification badges ─────────────────────────────────────────── */
+.setup-class { font-size: .75rem; font-weight: 500; padding: .1rem .4rem;
+               border-radius: 3px; margin-left: .3rem; }
+.sc-active   { color: var(--green); background: #1a4f2a; }
+.sc-early    { color: var(--blue);  background: #0f2d4f; }
+.sc-near     { color: var(--purple); background: #2b1d4f; }
+.sc-pullback { color: var(--amber); background: #3d2f0a; }
+.sc-building { color: var(--fg2);  background: var(--bg3); }
+.sc-extended { color: var(--fg3);  background: var(--bg3); }
+.sc-failed   { color: var(--red);  background: #3d1212; }
+
+/* ── MA table ─────────────────────────────────────────────────────────────── */
+.ma-table table { font-size: .75rem; }
+.slope-rising  { color: var(--green); font-weight: 600; }
+.slope-falling { color: var(--red);   font-weight: 600; }
+.slope-flat    { color: var(--fg2); }
+
+/* ── AVWAP table ──────────────────────────────────────────────────────────── */
+.avwap-support    { color: var(--green); font-weight: 600; }
+.avwap-resistance { color: var(--red);   font-weight: 600; }
+.avwap-testing    { color: var(--amber); font-weight: 600; }
+
+/* ── Checklist ────────────────────────────────────────────────────────────── */
+.checklist { list-style: none; font-size: .78rem; margin: .3rem 0; }
+.checklist li { padding: .16rem 0; display: flex; gap: .4rem; align-items: flex-start;
+                border-bottom: 1px solid var(--bg3); flex-wrap: wrap; }
+.chk-icon { flex-shrink: 0; width: 1rem; text-align: center; font-weight: 700; }
+.chk-pass    { color: var(--green); }
+.chk-fail    { color: var(--red); }
+.chk-neutral { color: var(--fg3); }
+.chk-item    { color: var(--fg2); min-width: 160px; }
+.chk-reason  { color: var(--fg3); font-size: .72rem; margin-left: auto; }
+
+/* ── Confluence ───────────────────────────────────────────────────────────── */
+.confluence-box { border-radius: 4px; padding: .35rem .6rem; font-size: .78rem;
+                  margin: .35rem 0; background: var(--bg3); }
+.conf-support    { border-left: 3px solid var(--green); }
+.conf-resistance { border-left: 3px solid var(--red); }
+.conf-trigger    { border-left: 3px solid var(--blue); }
+.conf-scattered  { border-left: 3px solid var(--fg3); }
+
+/* ── Volume block ─────────────────────────────────────────────────────────── */
+.vol-block { display: grid; grid-template-columns: 1fr 1fr; gap: .15rem .8rem;
+             font-size: .77rem; margin: .3rem 0; }
+.vol-row { display: flex; justify-content: space-between;
+           border-bottom: 1px solid var(--bg3); padding: .1rem 0; }
+.vol-label { color: var(--fg3); }
+.vol-value { color: var(--fg); font-family: monospace; }
+
+/* ── AI note ──────────────────────────────────────────────────────────────── */
+.ai-note { background: var(--bg3); border-left: 3px solid var(--purple);
+           padding: .5rem .8rem; border-radius: 0 4px 4px 0;
+           font-size: .8rem; line-height: 1.55; margin-top: .5rem; }
+.ai-note-label { font-size: .7rem; color: var(--purple); text-transform: uppercase;
+                 letter-spacing: .05em; margin-bottom: .3rem; font-weight: 600; }
+
+/* ── Trade plan ───────────────────────────────────────────────────────────── */
+.trade-plan { background: var(--bg3); border: 1px solid var(--border);
+              border-radius: 4px; padding: .5rem .7rem; font-size: .8rem;
+              line-height: 1.55; margin-top: .5rem; }
+.tp-label { font-size: .7rem; color: var(--blue); text-transform: uppercase;
+            letter-spacing: .05em; margin-bottom: .3rem; font-weight: 600; }
+
+/* ── Portfolio guidance chip ──────────────────────────────────────────────── */
+.port-chip .pc-guidance { font-size: .7rem; color: var(--amber);
+                          margin-top: .1rem; font-style: italic; }
+
+/* ── Regime environment pill ──────────────────────────────────────────────── */
+.env-favorable { color: var(--green); }
+.env-selective  { color: var(--amber); }
+.env-risk-off   { color: var(--red); }
+.env-mixed      { color: var(--fg2); }
+
+/* ── Score drivers ────────────────────────────────────────────────────────── */
+.score-drivers { background: var(--bg3); border-radius: 4px; padding: .4rem .6rem;
+                 font-size: .77rem; margin: .35rem 0; }
+.driver-row { display: flex; align-items: baseline; gap: .4rem; padding: .1rem 0;
+              border-bottom: 1px solid var(--bg2); }
+.driver-bull { color: var(--green); font-weight: 700; flex-shrink: 0; }
+.driver-bear { color: var(--red);   font-weight: 700; flex-shrink: 0; }
+.driver-text { color: var(--fg2); }
+.driver-why  { color: var(--fg3); font-size: .72rem; margin-bottom: .25rem;
+               border-bottom: 1px solid var(--border); padding-bottom: .2rem; }
+
+/* ── Export links ─────────────────────────────────────────────────────────── */
+.export-links { font-size: .72rem; color: var(--fg3); margin-top: .3rem; }
+
+/* ── Portfolio guidance icons ─────────────────────────────────────────────── */
+.pg-hold   { color: var(--green); }
+.pg-trim   { color: var(--amber); }
+.pg-defend { color: var(--orange); }
+.pg-exit   { color: var(--red); }
+.pg-info   { color: var(--fg3); }
+
+/* ── MA direction brief (visible strip on card, not collapsible) ──────────── */
+.ma-brief { display: flex; gap: .5rem; flex-wrap: wrap; align-items: center;
+            font-size: .77rem; margin: .3rem 0; padding: .25rem .4rem;
+            background: var(--bg3); border-radius: 4px; }
+.ma-brief-label { color: var(--fg3); font-size: .72rem; margin-right: .2rem; }
+.ma-pill { display: inline-flex; align-items: center; gap: .2rem;
+           padding: .1rem .35rem; border-radius: 3px; font-weight: 600;
+           font-size: .74rem; white-space: nowrap; }
+.ma-rising  { color: var(--green); background: #1a4f2a; }
+.ma-falling { color: var(--red);   background: #3d1212; }
+.ma-flat    { color: var(--fg3);   background: var(--bg2); }
+.ma-bias-note { font-size: .72rem; color: var(--fg3); margin-top: .15rem;
+                padding-left: .4rem; border-left: 2px solid var(--border); }
+
+/* ── Intraday unavailable inline note ────────────────────────────────────── */
+.chart-na-inline { font-size: .74rem; color: var(--fg3); padding: .3rem .4rem;
+                   border-left: 2px solid var(--bg3); margin-top: .3rem;
+                   font-style: italic; }
+
+/* ── Universe summary bar ─────────────────────────────────────────────────── */
+.universe-bar { background: var(--bg2); border: 1px solid var(--border);
+                border-radius: 6px; padding: .5rem .9rem; margin-bottom: 1.2rem;
+                font-size: .78rem; color: var(--fg3); }
+.universe-bar strong { color: var(--fg); }
+
+/* ── Bucket section headings ─────────────────────────────────────────────── */
+.bucket-section { margin-bottom: 2rem; }
+.bucket-header  { display: flex; align-items: center; gap: .7rem; flex-wrap: wrap;
+                  background: var(--bg2); border: 1px solid var(--border);
+                  border-radius: 6px; padding: .55rem 1rem; margin-bottom: .8rem; }
+.bh-title  { font-size: 1rem; font-weight: 700; color: var(--fg); }
+.bh-count  { font-size: .8rem; color: var(--fg2); }
+.bh-desc   { font-size: .75rem; color: var(--fg3); margin-left: auto; }
+.bh-breakout { border-left: 3px solid var(--blue); }
+.bh-pullback { border-left: 3px solid var(--amber); }
+.bh-extended { border-left: 3px solid var(--fg3); }
+.bh-reversal { border-left: 3px solid var(--red); }
+
+/* ── "No setups" notice ──────────────────────────────────────────────────── */
+.no-setups-note { background: var(--bg3); border: 1px solid var(--border);
+                  border-radius: 4px; padding: .5rem .9rem;
+                  font-size: .82rem; color: var(--fg3); }
+
+/* ── Setup quality warning ────────────────────────────────────────────────── */
+.top5-warn   { background: #3d2f0a; border: 1px solid var(--amber);
+               border-radius: 4px; padding: .4rem .8rem; margin: .4rem 0;
+               font-size: .82rem; color: var(--amber); }
+
+/* ── Bucket tag on card header ────────────────────────────────────────────── */
+.bucket-tag  { font-size: .72rem; padding: .1rem .35rem; border-radius: 3px;
+               font-weight: 600; margin-left: .3rem; }
+.bt-breakout { color: var(--blue);  background: #0f2d4f; }
+.bt-pullback { color: var(--amber); background: #3d2f0a; }
+.rank-num    { font-size: .85rem; color: var(--fg3); font-weight: 700;
+               min-width: 1.4rem; }
+
+/* ── Compact monitoring list (Extended Leaders / Speculative Watch) ─────── */
+.monitor-list { background: var(--bg2); border: 1px solid var(--border);
+                border-radius: 6px; overflow: hidden; margin-bottom: .6rem; }
+.monitor-row  { display: flex; align-items: center; gap: .7rem; flex-wrap: wrap;
+                padding: .4rem .8rem; border-bottom: 1px solid var(--bg3);
+                font-size: .82rem; }
+.monitor-row:last-child { border-bottom: none; }
+.mr-sym   { font-weight: 700; color: var(--fg); min-width: 60px; }
+.mr-state { font-size: .75rem; min-width: 70px; }
+.mr-score { font-family: monospace; color: var(--fg2); font-size: .78rem; }
+.mr-note  { color: var(--fg3); font-size: .76rem; flex: 1; }
+.mr-warn  { background: #3d2f0a; color: var(--amber); font-size: .7rem;
+            padding: .1rem .35rem; border-radius: 3px; white-space: nowrap; }
+
+/* ── Speculative warning banner ───────────────────────────────────────────── */
+.reversal-banner { background: #3d1212; border: 1px solid var(--red);
+                   border-radius: 4px; padding: .4rem .8rem; margin-bottom: .6rem;
+                   font-size: .78rem; color: var(--red); }
+</style>
+</head>
+<body>
+
+<h1>Daily Dashboard &mdash; 2026-06-11</h1>
+
+<div class="bias">
+  <strong>Bias caveat:</strong> Universe membership uses monthly snapshots.
+  Survivorship bias is present. Analysis-only — not investment advice.
+  Models not yet fitted — composite scores are NaN.
+</div>
+
+<div class="summary-bar"><div class="summary-pill"><span class="pill-label">SPY Trend</span><span class="pill-value up">Uptrend</span></div><div class="summary-pill"><span class="pill-label">SPY vs 200SMA</span><span class="pill-value">—</span></div><div class="summary-pill"><span class="pill-label">VIX</span><span class="pill-value">—</span></div><div class="summary-pill"><span class="pill-label">Environment</span><span class="pill-value ">—</span></div><div class="summary-pill"><span class="pill-label">Actionable</span><span class="pill-value">0</span></div><div class="summary-pill"><span class="pill-label">ARMED</span><span class="pill-value">0</span></div><div class="summary-pill"><span class="pill-label">Triggered/Acc</span><span class="pill-value">0</span></div></div>
+
+<h2>Portfolio Holdings</h2><div class="portfolio-strip"><div class="port-chip"><span class="pc-sym">QQQ</span><span class="pc-state s-CONFIRMED">CONFIRMED</span><span class="pc-action">Portfolio hold</span><span class="pc-guidance pg-defend">⚠ WATCH STOP — below pivot, stop discipline required</span></div><div class="port-chip"><span class="pc-sym">VOO</span><span class="pc-state s-CONFIRMED">CONFIRMED</span><span class="pc-action">Portfolio hold</span><span class="pc-guidance pg-defend">⚠ WATCH STOP — below pivot, stop discipline required</span></div><div class="port-chip"><span class="pc-sym">VXUS</span><span class="pc-state s-CONFIRMED">CONFIRMED</span><span class="pc-action">Portfolio hold</span><span class="pc-guidance pg-defend">⚠ WATCH STOP — below pivot, stop discipline required</span></div><div class="port-chip"><span class="pc-sym">GEV</span><span class="pc-state s-CONFIRMED">CONFIRMED</span><span class="pc-action">Portfolio hold</span><span class="pc-guidance pg-defend">⚠ WATCH STOP — below pivot, stop discipline required</span></div><div class="port-chip"><span class="pc-sym">ETN</span><span class="pc-state s-CONFIRMED">CONFIRMED</span><span class="pc-action">Portfolio hold</span><span class="pc-guidance pg-defend">⚠ WATCH STOP — below pivot, stop discipline required</span></div><div class="port-chip"><span class="pc-sym">PWR</span><span class="pc-state s-CONFIRMED">CONFIRMED</span><span class="pc-action">Portfolio hold</span><span class="pc-guidance pg-defend">⚠ WATCH STOP — below pivot, stop discipline required</span></div><div class="port-chip"><span class="pc-sym">VRT</span><span class="pc-state s-CONFIRMED">CONFIRMED</span><span class="pc-action">Portfolio hold</span><span class="pc-guidance pg-defend">⚠ WATCH STOP — below pivot, stop discipline required</span></div><div class="port-chip"><span class="pc-sym">ASML</span><span class="pc-state s-CONFIRMED">CONFIRMED</span><span class="pc-action">Portfolio hold</span><span class="pc-guidance pg-defend">⚠ HOLD — confirmed uptrend, maintain stop below pivot</span></div><div class="port-chip"><span class="pc-sym">SOXX</span><span class="pc-state s-CONFIRMED">CONFIRMED</span><span class="pc-action">Portfolio hold</span><span class="pc-guidance pg-defend">⚠ WATCH STOP — below pivot, stop discipline required</span></div><div class="port-chip"><span class="pc-sym">CEG</span><span class="pc-state s-CONFIRMED">CONFIRMED</span><span class="pc-action">Portfolio hold</span><span class="pc-guidance pg-defend">⚠ WATCH STOP — below pivot, stop discipline required</span></div><div class="port-chip"><span class="pc-sym">VST</span><span class="pc-state s-CONFIRMED">CONFIRMED</span><span class="pc-action">Portfolio hold</span><span class="pc-guidance pg-defend">⚠ WATCH STOP — below pivot, stop discipline required</span></div><div class="port-chip"><span class="pc-sym">CCJ</span><span class="pc-state s-CONFIRMED">CONFIRMED</span><span class="pc-action">Portfolio hold</span><span class="pc-guidance pg-defend">⚠ WATCH STOP — below pivot, stop discipline required</span></div><div class="port-chip"><span class="pc-sym">LEU</span><span class="pc-state s-CONFIRMED">CONFIRMED</span><span class="pc-action">Portfolio hold</span><span class="pc-guidance pg-defend">⚠ HOLD — confirmed uptrend, maintain stop below pivot</span></div><div class="port-chip"><span class="pc-sym">RTX</span><span class="pc-state s-CONFIRMED">CONFIRMED</span><span class="pc-action">Portfolio hold</span><span class="pc-guidance pg-defend">⚠ WATCH STOP — below pivot, stop discipline required</span></div><div class="port-chip"><span class="pc-sym">CRS</span><span class="pc-state s-CONFIRMED">CONFIRMED</span><span class="pc-action">Portfolio hold</span><span class="pc-guidance pg-defend">⚠ HOLD — confirmed uptrend, maintain stop below pivot</span></div><div class="port-chip"><span class="pc-sym">MP</span><span class="pc-state s-CONFIRMED">CONFIRMED</span><span class="pc-action">Portfolio hold</span><span class="pc-guidance pg-defend">⚠ HOLD — confirmed uptrend, maintain stop below pivot</span></div><div class="port-chip"><span class="pc-sym">NVDA</span><span class="pc-state s-CONFIRMED">CONFIRMED</span><span class="pc-action">Portfolio hold</span><span class="pc-guidance pg-defend">⚠ WATCH STOP — below pivot, stop discipline required</span></div><div class="port-chip"><span class="pc-sym">GOOGL</span><span class="pc-state s-CONFIRMED">CONFIRMED</span><span class="pc-action">Portfolio hold</span><span class="pc-guidance pg-defend">⚠ WATCH STOP — below pivot, stop discipline required</span></div></div>
+
+<h2>Setups &mdash; 2026-06-11</h2><div class="universe-bar"><strong>151</strong> universe &nbsp;·&nbsp; <strong>4</strong> eligible &nbsp;·&nbsp; <strong>6</strong> fresh &nbsp;·&nbsp; <strong style="color:var(--blue)">0</strong> breakout candidates &nbsp;·&nbsp; <strong style="color:var(--amber)">2</strong> pullback candidates &nbsp;·&nbsp; <strong style="color:var(--fg3)">2</strong> extended &nbsp;·&nbsp; <strong style="color:var(--red)">4</strong> reversal watch &nbsp;·&nbsp; <strong>124</strong> excluded by gates</div><div class="bucket-section"><div class="bucket-header bh-breakout"><span class="bh-title">Top Breakout Longs</span><span class="bh-count">0 shown</span><span class="bh-desc">Eligible, fresh setups at or near pivot. Ranked by setup quality score.</span></div><div class="no-setups-note">No breakout candidates qualify today. 0 names landed in the breakout bucket, but 0 were blocked for packet coherence or completeness.</div></div><div class="bucket-section"><div class="bucket-header bh-pullback"><span class="bh-title">Top Pullback / Re-entry Longs</span><span class="bh-count">2 shown</span><span class="bh-desc">Constructive pullbacks within confirmed uptrends. Secondary candidates.</span></div><div class="setup-cards"><div class="card"><div class="card-header"><span class="rank-num">#1</span><span class="badge badge-pullback">Actionable on pullback</span><span class="card-symbol">KVUE</span><span class="s-BASE">BASE</span><span class="setup-class sc-building">Constructive pullback</span><span class="bucket-tag bt-pullback">PULLBACK</span><small style="color:var(--fg3);margin-left:.3rem">[stale]</small><span class="card-score">Score: <span class="">—</span> &nbsp;|&nbsp; Fail: — &nbsp;|&nbsp; Rank: —</span></div><div class="card-body"><div class="card-charts"><div style="font-size:.75rem;color:var(--fg3);margin-bottom:.3rem">Weekly</div><img src="charts/KVUE_weekly.png" alt="KVUE Weekly" loading="lazy"><div style="font-size:.75rem;color:var(--fg3);margin:.4rem 0 .3rem">Daily</div><img src="charts/KVUE_daily.png" alt="KVUE Daily" loading="lazy"><div class="chart-na-inline">Intraday confirmation is not part of v1 qualification; surfaced setup truth is daily/weekly only.</div></div><div class="card-detail"><div class="trade-plan"><div class="tp-label">Why Qualified</div><div>Trend remains constructive while price works through a pullback</div></div><div><h3>Trade Levels</h3><div class="levels-grid"><div><div class="lvl-row"><span class="lvl-label">Pivot</span><span class="lvl-value lvl-pivot">18.95</span></div><div class="lvl-row"><span class="lvl-label">Entry lo</span><span class="lvl-value lvl-entry">18.95</span></div><div class="lvl-row"><span class="lvl-label">Entry hi</span><span class="lvl-value lvl-entry">18.99</span></div><div class="lvl-row"><span class="lvl-label">Stop</span><span class="lvl-value lvl-stop">18.58</span></div><div class="lvl-row"><span class="lvl-label">T1</span><span class="lvl-value lvl-target">19.70</span></div><div class="lvl-row"><span class="lvl-label">T2</span><span class="lvl-value lvl-target">20.25</span></div><div class="lvl-row"><span class="lvl-label">T3</span><span class="lvl-value lvl-target">20.81</span></div><div class="lvl-row"><span class="lvl-label">R/R T1</span><span class="lvl-value lvl-rs">1.9x</span></div></div><div><div class="lvl-row"><span class="lvl-label">R1</span><span class="lvl-value lvl-rs">18.95</span></div><div class="lvl-row"><span class="lvl-label">R2</span><span class="lvl-value lvl-rs">19.70</span></div><div class="lvl-row"><span class="lvl-label">R3</span><span class="lvl-value lvl-rs">20.25</span></div><div class="lvl-row"><span class="lvl-label">S1</span><span class="lvl-value lvl-sp">18.59</span></div><div class="lvl-row"><span class="lvl-label">S2</span><span class="lvl-value lvl-sp">18.58</span></div><div class="lvl-row"><span class="lvl-label">S3</span><span class="lvl-value lvl-sp">18.21</span></div><div class="lvl-row"><span class="lvl-label">ATR14</span><span class="lvl-value lvl-rs">0.37</span></div><div class="lvl-row"><span class="lvl-label">Base len</span><span class="lvl-value lvl-rs">120</span></div></div></div></div><div class="confluence-box conf-scattered"><strong>0 nearby levels — scattered</strong><br><small style="color:var(--fg3)">No key levels within 0.5 ATR</small></div><div class="score-drivers"><div class="driver-why">Selected because: Price 4.6% above SMA50; Volume dry-up score 0.45 - demand absorbed.</div><div class="driver-row"><span class="driver-bull">▲</span><span class="driver-text">Price 4.6% above SMA50</span></div><div class="driver-row"><span class="driver-bull">▲</span><span class="driver-text">Volume dry-up score 0.45 - demand absorbed</span></div><div class="driver-row"><span class="driver-bull">▲</span><span class="driver-text">YTD AVWAP +1.7 ATR - accepted above cost basis</span></div><div class="driver-row"><span class="driver-bull">▲</span><span class="driver-text">Weekly: 0.0 ATR above 10-week WMA</span></div><div class="driver-row"><span class="driver-bear">▼</span><span class="driver-text">ATR elevated (88th pct) - not compressed</span></div><div class="driver-row"><span class="driver-bear">▼</span><span class="driver-text">RS-63: -5% vs SPY - underperforming</span></div><div class="driver-row"><span class="driver-bear">▼</span><span class="driver-text">Pivot flatness 0.06 - loose structure</span></div></div><div><h3>Narrative</h3><div><div class="ma-brief"><span class="ma-brief-label">MA direction:</span><span class="ma-pill ma-rising">▲ SMA5</span><span class="ma-pill ma-rising">▲ SMA10</span><span class="ma-pill ma-rising">▲ SMA20</span></div><div class="ma-bias-note"><strong>SMA20:</strong> Stays rising if close > 17.19 &nbsp;·&nbsp; <strong>SMA50:</strong> Stays rising if close > 17.17</div></div><dl class="narrative"><dt>Setup</dt><dd>Trend remains constructive while price works through a pullback</dd><dt>Why now</dt><dd>Above SMA50 by 4.6%; Volume dry-up score 0.45 supports absorption; Accepted above YTD AVWAP by 1.7 ATR</dd><dt>Why not now</dt><dd>Not in a clean breakout trigger zone today; RS-63 is weak at -5% vs SPY; ATR is elevated at the 88th percentile</dd><dt>Entry</dt><dd>Treat as a pullback setup, not a breakout chase. Preferred add zone is near $18.59; confirm support before entry.</dd><dt>Risk / invalidation</dt><dd>Pullback can deepen if support does not hold on the first test.</dd><dt>Targets</dt><dd>$19.70 | $20.25 | $20.81</dd><dt>MA &amp; AVWAP context</dt><dd>SMA10 rising (tailwind); SMA20 rising (tailwind); SMA50 rising (tailwind) &nbsp;|&nbsp; YTD: Accepted above (+1.7 ATR); Swing Low: Accepted above (+2.8 ATR); WTD: Accepted above (+0.7 ATR)</dd></dl><div class="verdict-box">Constructive pullback watch. Treat this as a pullback plan, not a breakout card. Treat as a pullback setup, not a breakout chase. Preferred add zone is near $18.59; confirm support before entry.</div></div><div class="trade-plan"><div class="tp-label">Trade Plan</div><div><strong>Actionability:</strong> WAIT_PULLBACK</div><div><strong>Best entry:</strong> pullback</div><div><strong>Entry condition:</strong> Treat as a pullback setup, not a breakout chase. Preferred add zone is near $18.59; confirm support before entry.</div><div><strong>Entry trigger:</strong> $18.59</div><div><strong>Entry range:</strong> $18.95-$18.99</div><div><strong>Alternate pullback entry:</strong> $18.59</div><div><strong>Stop:</strong> $18.58</div><div><strong>Invalidation:</strong> Daily close below $18.58 invalidates the idea.</div><div><strong>Targets:</strong> $19.70 | $20.25 | $20.81</div><div><strong>R/R to T1:</strong> 1.9:1</div><div><strong>Why now:</strong> Above SMA50 by 4.6%; Volume dry-up score 0.45 supports absorption; Accepted above YTD AVWAP by 1.7 ATR; 2.8 ATR above swing-low AVWAP support</div><div><strong>Why not now:</strong> Not in a clean breakout trigger zone today; RS-63 is weak at -5% vs SPY; ATR is elevated at the 88th percentile</div><div><strong>Improves tomorrow:</strong> Holds support around $18.59 and turns back toward $18.95; Shows lighter downside volume on the pullback</div><div><strong>Weakens tomorrow:</strong> Loses support near $18.59; Closes below stop $18.58</div></div><div class="ai-note"><div class="ai-note-label">AI Analysis</div>[KVUE — Rule-based note]
+
+Setup
+Trend remains constructive while price works through a pullback
+
+Why It Matters Now
+Above SMA50 by 4.6%; Volume dry-up score 0.45 supports absorption; Accepted above YTD AVWAP by 1.7 ATR
+
+Entry Idea
+Treat as a pullback setup, not a breakout chase. Preferred add zone is near $18.59; confirm support before entry.
+
+Risk/Invalidation
+Pullback can deepen if support does not hold on the first test.
+
+Targets
+$19.70 | $20.25 | $20.81
+
+Verdict
+Constructive pullback watch. Treat this as a pullback plan, not a breakout card. Treat as a pullback setup, not a breakout chase. Preferred add zone is near $18.59; confirm support before entry.</div><details style="margin-top:.4rem"><summary style="font-size:.78rem">Full MA Table</summary><div class="details-body"><div class="ma-table"><table><tr><th>MA</th><th>Value</th><th>Dist%</th><th>Slope</th><th>Bias note</th></tr><tr><td><strong>SMA5</strong></td><td style='font-family:monospace'>17.86</td><td>+1.16%</td><td class='slope-rising'>rising</td><td style='font-size:.7rem;color:var(--fg3)'>Stays rising if close > 17.71</td></tr><tr><td><strong>SMA10</strong></td><td style='font-family:monospace'>17.50</td><td>+3.18%</td><td class='slope-rising'>rising</td><td style='font-size:.7rem;color:var(--fg3)'>Stays rising if close > 17.28</td></tr><tr><td><strong>SMA20</strong></td><td style='font-family:monospace'>17.44</td><td>+3.51%</td><td class='slope-rising'>rising</td><td style='font-size:.7rem;color:var(--fg3)'>Stays rising if close > 17.19</td></tr><tr><td><strong>SMA50</strong></td><td style='font-family:monospace'>17.28</td><td>+4.35%</td><td class='slope-rising'>rising</td><td style='font-size:.7rem;color:var(--fg3)'>Stays rising if close > 17.17</td></tr><tr><td><strong>SMA200</strong></td><td style='font-family:monospace'>16.98</td><td>+6.02%</td><td class='slope-falling'>falling</td><td style='font-size:.7rem;color:var(--fg3)'>Stays falling unless close > 20.06</td></tr><tr><td><strong>EMA20</strong></td><td style='font-family:monospace'>17.51</td><td>+3.13%</td><td class='slope-rising'>rising</td><td style='font-size:.7rem;color:var(--fg3)'>Stays rising if close > 17.51</td></tr></table></div></div></details><details style="margin-top:.4rem"><summary style="font-size:.78rem">AVWAP Map</summary><div class="details-body"><table><tr><th>Anchor</th><th>Date</th><th>AVWAP</th><th>Dist%</th><th>ATR Dist</th><th>Role</th><th>Status</th><th>Priority</th></tr><tr><td><strong>YTD</strong></td><td style='font-family:monospace'>2026-01-02</td><td style='font-family:monospace'>17.43</td><td>+3.53%</td><td style='font-family:monospace'>+1.72 ATR</td><td class='avwap-support'>support</td><td>Accepted above</td><td style='color:var(--fg2)'>primary</td></tr><tr><td><strong>Swing Low</strong></td><td style='font-family:monospace'>2025-10-30</td><td style='font-family:monospace'>17.02</td><td>+5.78%</td><td style='font-family:monospace'>+2.81 ATR</td><td class='avwap-support'>support</td><td>Accepted above</td><td style='color:var(--fg2)'>primary</td></tr><tr><td><strong>WTD</strong></td><td style='font-family:monospace'>2026-06-08</td><td style='font-family:monospace'>17.81</td><td>+1.45%</td><td style='font-family:monospace'>+0.71 ATR</td><td class='avwap-support'>support</td><td>Accepted above</td><td style='color:var(--fg2)'>secondary</td></tr><tr><td><strong>Breakout Day</strong></td><td style='font-family:monospace'>2026-02-11</td><td style='font-family:monospace'>17.67</td><td>+2.23%</td><td style='font-family:monospace'>+1.08 ATR</td><td class='avwap-support'>support</td><td>Accepted above</td><td style='color:var(--fg2)'>secondary</td></tr><tr><td><strong>MTD</strong></td><td style='font-family:monospace'>2026-06-01</td><td style='font-family:monospace'>17.38</td><td>+3.83%</td><td style='font-family:monospace'>+1.86 ATR</td><td class='avwap-support'>support</td><td>Accepted above</td><td style='color:var(--fg2)'>secondary</td></tr><tr><td><strong>Swing High</strong></td><td style='font-family:monospace'>2025-07-25</td><td style='font-family:monospace'>17.08</td><td>+5.46%</td><td style='font-family:monospace'>+2.65 ATR</td><td class='avwap-support'>support</td><td>Accepted above</td><td style='color:var(--fg2)'>secondary</td></tr><tr><td><strong>War Start</strong></td><td style='font-family:monospace'>2026-03-10</td><td style='font-family:monospace'>17.29</td><td>+4.32%</td><td style='font-family:monospace'>+2.10 ATR</td><td class='avwap-support'>support</td><td>Accepted above</td><td style='color:var(--fg2)'>macro</td></tr><tr><td><strong>Ceasefire</strong></td><td style='font-family:monospace'>2026-03-18</td><td style='font-family:monospace'>17.27</td><td>+4.45%</td><td style='font-family:monospace'>+2.16 ATR</td><td class='avwap-support'>support</td><td>Accepted above</td><td style='color:var(--fg2)'>macro</td></tr><tr><td><strong>Earnings Anchor</strong></td><td style='font-family:monospace'>—</td><td colspan='6' style='color:var(--fg3)'>Unavailable: earnings event data is not available in v1</td></tr><tr><td><strong>Per-Symbol Event</strong></td><td style='font-family:monospace'>—</td><td colspan='6' style='color:var(--fg3)'>Unavailable: no per-symbol event anchor configured for this symbol</td></tr><tr><td><strong>COVID High</strong></td><td style='font-family:monospace'>2020-09-02</td><td colspan='6' style='color:var(--fg3)'>Unavailable: anchor predates available history (2023-05-04)</td></tr><tr><td><strong>COVID Low</strong></td><td style='font-family:monospace'>2020-03-23</td><td colspan='6' style='color:var(--fg3)'>Unavailable: anchor predates available history (2023-05-04)</td></tr></table></div></details><details style="margin-top:.4rem"><summary style="font-size:.78rem">Volume &amp; Efficiency</summary><div class="details-body"><div class="vol-block"><div><div class="vol-row"><span class="vol-label">Compression</span><span class="vol-value">Elevated - 88th percentile</span></div><div class="vol-row"><span class="vol-label">Rel volume</span><span class="vol-value">Low</span></div><div class="vol-row"><span class="vol-label">Vol dry-up</span><span class="vol-value">45.3%</span></div></div><div><div class="vol-row"><span class="vol-label">ATR pct</span><span class="vol-value">88th pct</span></div><div class="vol-row"><span class="vol-label">Thrust ATR</span><span class="vol-value">—</span></div><div class="vol-row"><span class="vol-label">VC 5/20</span><span class="vol-value">0.651</span></div></div></div></div></details><details style="margin-top:.4rem"><summary style="font-size:.78rem">Trade Checklist</summary><div class="details-body"><div style="font-size:.74rem;color:var(--fg2);margin-bottom:.2rem"><span class="chk-pass">✓ 9</span> / 18 pass &nbsp;<span class="chk-fail">✗ 4</span> fail</div><ul class="checklist"><li><span class="chk-icon chk-pass">✓</span><span class="chk-item">Higher timeframe trend</span><span class="chk-reason">SPY above 200SMA</span></li><li><span class="chk-icon chk-pass">✓</span><span class="chk-item">Weekly trend constructive</span><span class="chk-reason">Price 2.4% above 10-week WMA</span></li><li><span class="chk-icon chk-neutral">-</span><span class="chk-item">Daily structure</span><span class="chk-reason">State=BASE but dist_to_pivot=-2.37 ATR (out of -2 to +0.5 range)</span></li><li><span class="chk-icon chk-fail">✗</span><span class="chk-item">Pivot clarity</span><span class="chk-reason">Only 0 touches; flatness=0.06</span></li><li><span class="chk-icon chk-fail">✗</span><span class="chk-item">Compression present</span><span class="chk-reason">ATR at 88th percentile (not compressed)</span></li><li><span class="chk-icon chk-pass">✓</span><span class="chk-item">Volume dry-up</span><span class="chk-reason">Volume dry-up score: 0.45</span></li><li><span class="chk-icon chk-fail">✗</span><span class="chk-item">Relative strength</span><span class="chk-reason">RS-63: -5.5% vs SPY (underperforming)</span></li><li><span class="chk-icon chk-pass">✓</span><span class="chk-item">YTD AVWAP acceptance</span><span class="chk-reason">Price 1.72 ATR above YTD AVWAP</span></li><li><span class="chk-icon chk-pass">✓</span><span class="chk-item">MA alignment (above SMA50)</span><span class="chk-reason">Price 4.6% above SMA50</span></li><li><span class="chk-icon chk-pass">✓</span><span class="chk-item">Not overextended</span><span class="chk-reason">-2.37 ATR from pivot (within 3 ATR)</span></li><li><span class="chk-icon chk-neutral">-</span><span class="chk-item">Failure risk acceptable</span><span class="chk-reason">Failure risk unavailable</span></li><li><span class="chk-icon chk-pass">✓</span><span class="chk-item">Market regime supportive</span><span class="chk-reason">SPY trend score: 1.00 (positive)</span></li><li><span class="chk-icon chk-neutral">-</span><span class="chk-item">R/R acceptable</span><span class="chk-reason">R/R not computable (missing levels)</span></li><li><span class="chk-icon chk-fail">✗</span><span class="chk-item">Base freshness</span><span class="chk-reason">65 days in BASE (exceeds max 60)</span></li><li><span class="chk-icon chk-neutral">-</span><span class="chk-item">Score quality</span><span class="chk-reason">Composite score unavailable</span></li><li><span class="chk-icon chk-pass">✓</span><span class="chk-item">Base quality</span><span class="chk-reason">Grade B: Tight closes (1.8% std)</span></li><li><span class="chk-icon chk-pass">✓</span><span class="chk-item">Continuation pattern</span><span class="chk-reason">NR7: today is the narrowest range in 7 days — compression event</span></li><li><span class="chk-icon chk-neutral">-</span><span class="chk-item">Clean air above pivot</span><span class="chk-reason">2.4 ATR to nearest resistance (Pivot)</span></li></ul></div></details><div class="export-links"><span style="color:var(--fg3);font-size:.72rem">Export: </span><a href="artifacts/KVUE_packet.json" style="font-size:.72rem">JSON packet</a></div><details style="margin-top:.5rem"><summary style="font-size:.73rem;color:var(--fg3)">Raw packet (JSON)</summary><div class="details-body"><pre style="font-size:.7rem;overflow:auto;max-height:180px">{
+  "symbol": "KVUE",
+  "provider_symbol": "KVUE",
+  "state": "BASE",
+  "groups": "custom_watchlist",
+  "is_portfolio": false,
+  "is_watchlist": true,
+  "is_non_equity": false,
+  "eligible": true,
+  "rejection_reasons": "",
+  "rejection_reasons_list": [],
+  "eligibility_warnings": "aging_base",
+  "eligibility_warnings_list": [
+    "aging_base"
+  ],
+  "freshness_label": "stale",
+  "is_fresh": false,
+  "is_extended": false,
+  "is_stale_confirmed": false,
+  "extension_state": "not_extended",
+  "extension_reasons": "",
+  "days_in_state": 65,
+  "bucket": "pullback_long",
+  "action_label": "Actionable on pullback",
+  "setup_classification": "Constructive pullback",
+  "setup_key": "constructive_pullback",
+  "promotion_reason": "Trend remains constructive while price works through a pullback",
+  "demotion_reason": "far_from_pivot (2.4 ATR from trigger zone)",
+  "route_reason": "not in a clean breakout trigger zone today",
+  "operational_readiness": "watch_pullback_zone",
+  "daily_trend_state": "above_sma50_flat",
+  "weekly_trend_state": "weekly_uptrend",
+  "trend_health": "constructive",
+  "freshness_maturity": "aging",
+  "pullback_quality": "constructive",
+  "composite_score": "\u2014",
+  "setup_score": "\u2014",
+  "trade_score": "\u2014",
+  "failure_risk": "\u2014",
+  "percentile_rank": "\u2014",
+  "close": "18.07",
+  "pivot": "18.95",
+  "atr14": "0.37",
+  "dist_to_pivot_atr": "-2.4",
+  "base_length": 120,
+  "entry_lo": "18.95",
+  "entry_hi": "18.99",
+  "stop": "18.58",
+  "t1": "19.70",
+  "t2": "20.25",
+  "t3": "20.81",
+  "s1": "18.59",
+  "s2": "18.58",
+  "s3": "18.21",
+  "r1": "18.95",
+  "r2": "19.70",
+  "r3": "20.25",
+  "risk_reward_t1": "1.9x",
+  "trade_plan": {
+    "actionability_code": "WAIT_PULLBACK",
+    "actionable_now": false,
+    "entry_style": "pullback",
+    "best_entry_style": "pullback",
+    "entry_condition": "Treat as a pullback setup, not a breakout chase. Preferred add zone is near $18.59; confirm support before entry.",
+    "entry_trigger": "$18.59",
+    "entry_range": "$18.95-$18.99",
+    "alternate_pullback_entry": "$18.59",
+    "stop": "$18.58",
+    "stop_basis": "Daily close below $18.58 invalidates the setup.",
+    "stop_risk_pct": "2.1%",
+    "target_1": "$19.70",
+    "target_2": "$20.25",
+    "target_3": "$20.81",
+    "risk_reward_t1": "1.9:1",
+    "time_stop": "Let support prove itself; no fresh-entry time stop until the pullback resolves.",
+    "key_risk": "Pullback can deepen if support does not hold on the first test.",
+    "invalidation": "Daily close below $18.58 invalidates the idea.",
+    "why_now": [
+      "Above SMA50 by 4.6%",
+      "Volume dry-up score 0.45 supports absorption",
+      "Accepted above YTD AVWAP by 1.7 ATR",
+      "2.8 ATR above swing-low AVWAP support"
+    ],
+    "why_not_now": [
+      "Not in a clean breakout trigger zone today",
+      "RS-63 is weak at -5% vs SPY",
+      "ATR is elevated at the 88th percentile"
+    ],
+    "setup_improves_if": [
+      "Holds support around $18.59 and turns back toward $18.95",
+      "Shows lighter downside volume on the pullback"
+    ],
+    "setup_weakens_if": [
+      "Loses support near $18.59",
+      "Closes below stop $18.58"
+    ],
+    "what_improves_tomorrow": [
+      "Holds support around $18.59 and turns back toward $18.95",
+      "Shows lighter downside volume on the pullback"
+    ],
+    "what_weakens_tomorrow": [
+      "Loses support near $18.59",
+      "Closes below stop $18.58"
+    ]
+  },
+  "portfolio_health": {},
+  "portfolio_guidance": "",
+  "atr_compression_pct": "88",
+  "volume_dryup": "0.45",
+  "daily_rs_63": "-0.055",
+  "rs_class": "underperforming",
+  "close_vs_sma50": "0.046",
+  "ma_slope_direction": "rising",
+  "ytd_dist_atr": "1.7",
+  "swing_low_dist_atr": "2.8",
+  "regime_spy_trend": "1",
+  "operational_fresh_entry": true,
+  "final_verdict": "Constructive pullback watch. Treat this as a pullback plan, not a breakout card. Treat as a pullback setup, not a breakout chase. Preferred add zone is near $18.59; confirm support before entry.",
+  "coherence_ok": true,
+  "coherence_issues": [],
+  "packet_complete_for_surface": true,
+  "packet_completeness_issues": [],
+  "assessments": {
+    "base_quality": {
+      "grade": "B",
+      "score": 0.66,
+      "label": "Base quality: B (0.66)",
+      "notes": [
+        "Tight closes (1.8% std)",
+        "ATR expanding \u2014 base still volatile",
+        "5 NR days in last 15 \u2014 coiling"
+      ],
+      "components": {
+        "tightness_score": 1.0,
+        "atr_score": 0.0,
+        "nr_score": 1.0,
+        "down_score": 0.4,
+        "age_score": 1.0,
+        "close_std_pct": 1.8,
+        "nr_days": 5,
+        "down_ratio": 0.5
+      }
+    },
+    "continuation": {
+      "grade": "B",
+      "score": 0.65,
+      "strongest_pattern": "NR7",
+      "patterns": [
+        "NR7"
+      ],
+      "notes": [
+        "NR7: today is the narrowest range in 7 days \u2014 compression event"
+      ]
+    },
+    "overhead_supply": {
+      "grade": "A",
+      "score": 0.17,
+      "supply_pct": 0.308,
+      "supply_zone": "moderate supply",
+      "notes": []
+    },
+    "breakout_integrity": {
+      "grade": "C",
+      "score": 0.35,
+      "volume_ratio": 1.96,
+      "close_location": 0.019,
+      "close_location_score": 0.0,
+      "volume_label": "Elevated (2.0x avg)",
+      "notes": [
+        "Closed in lower third of range \u2014 rejection risk"
+      ]
+    },
+    "clean_air": {
+      "grade": "B",
+      "score": 0.685,
+      "clean_air_atrs": 2.37,
+      "nearest_resistance_atrs": 2.37,
+      "nearest_resistance_label": "Pivot",
+      "notes": [
+        "2.4 ATR to nearest resistance (Pivot)"
+      ]
+    },
+    "chart_quality": {
+      "grade": "D",
+      "score": 0.067,
+      "ter": 0.079,
+      "up_close_pct": 0.4,
+      "notes": [
+        "Choppy chart: TER 0.08 \u2014 whipsaw risk"
+      ]
+    }
+  },
+  "ma_table": [
+    {
+      "name": "SMA5",
+      "value": 17.86,
+      "pct_dist": 1.16,
+      "slope": "rising",
+      "bias": "Stays rising if close > 17.71",
+      "need_tomorrow": 17.71,
+      "tomorrow_bias": "tailwind"
+    },
+    {
+      "name": "SMA10",
+      "value": 17.5,
+      "pct_dist": 3.18,
+      "slope": "rising",
+      "bias": "Stays rising if close > 17.28",
+      "need_tomorrow": 17.28,
+      "tomorrow_bias": "tailwind"
+    },
+    {
+      "name": "SMA20",
+      "value": 17.44,
+      "pct_dist": 3.51,
+      "slope": "rising",
+      "bias": "Stays rising if close > 17.19",
+      "need_tomorrow": 17.19,
+      "tomorrow_bias": "tailwind"
+    },
+    {
+      "name": "SMA50",
+      "value": 17.28,
+      "pct_dist": 4.35,
+      "slope": "rising",
+      "bias": "Stays rising if close > 17.17",
+      "need_tomorrow": 17.17,
+      "tomorrow_bias": "tailwind"
+    },
+    {
+      "name": "SMA200",
+      "value": 16.98,
+      "pct_dist": 6.02,
+      "slope": "falling",
+      "bias": "Stays falling unless close > 20.06",
+      "need_tomorrow": 20.06,
+      "tomorrow_bias": "headwind"
+    },
+    {
+      "name": "EMA20",
+      "value": 17.51,
+      "pct_dist": 3.13,
+      "slope": "rising",
+      "bias": "Stays rising if close > 17.51",
+      "need_tomorrow": 17.51,
+      "tomorrow_bias": "tailwind"
+    }
+  ],
+  "avwap_table": [
+    {
+      "anchor": "YTD",
+      "anchor_key": "ytd",
+      "family": "ytd",
+      "anchor_date": "2026-01-02",
+      "priority": "primary",
+      "significance": "calendar",
+      "supported": true,
+      "unavailable_reason": null,
+      "avwap": 17.43,
+      "pct_dist": 3.53,
+      "distance_from_price_pct": 3.53,
+      "dist_atr": 1.716,
+      "distance_from_price_atr": 1.716,
+      "role": "support",
+      "status": "Accepted above",
+      "reclaim": true,
+      "stretch_atr": 1.716,
+      "slope_20": -0.0309,
+      "slope_label": "flat",
+      "closes_above_20": 0.5
+    },
+    {
+      "anchor": "Swing Low",
+      "anchor_key": "swing_low",
+      "family": "swing_low",
+      "anchor_date": "2025-10-30",
+      "priority": "primary",
+      "significance": "structural",
+      "supported": true,
+      "unavailable_reason": null,
+      "avwap": 17.02,
+      "pct_dist": 5.78,
+      "distance_from_price_pct": 5.78,
+      "dist_atr": 2.81,
+      "distance_from_price_atr": 2.81,
+      "role": "support",
+      "status": "Accepted above",
+      "reclaim": true,
+      "stretch_atr": 2.81,
+      "slope_20": 0.1671,
+      "slope_label": "flat",
+      "closes_above_20": 0.9
+    },
+    {
+      "anchor": "WTD",
+      "anchor_key": "wtd",
+      "family": "wtd",
+      "anchor_date": "2026-06-08",
+      "priority": "secondary",
+      "significance": "calendar",
+      "supported": true,
+      "unavailable_reason": null,
+      "avwap": 17.81,
+      "pct_dist": 1.45,
+      "distance_from_price_pct": 1.45,
+      "dist_atr": 0.706,
+      "distance_from_price_atr": 0.706,
+      "role": "support",
+      "status": "Accepted above",
+      "reclaim": null,
+      "stretch_atr": 0.706,
+      "slope_20": 1.2094,
+      "slope_label": "rising",
+      "closes_above_20": null
+    },
+    {
+      "anchor": "Breakout Day",
+      "anchor_key": "breakout_day",
+      "family": "breakout_day",
+      "anchor_date": "2026-02-11",
+      "priority": "secondary",
+      "significance": "lifecycle",
+      "supported": true,
+      "unavailable_reason": null,
+      "avwap": 17.67,
+      "pct_dist": 2.23,
+      "distance_from_price_pct": 2.23,
+      "dist_atr": 1.082,
+      "distance_from_price_atr": 1.082,
+      "role": "support",
+      "status": "Accepted above",
+      "reclaim": true,
+      "stretch_atr": 1.082,
+      "slope_20": -0.3789,
+      "slope_label": "falling",
+      "closes_above_20": 0.2
+    },
+    {
+      "anchor": "MTD",
+      "anchor_key": "mtd",
+      "family": "mtd",
+      "anchor_date": "2026-06-01",
+      "priority": "secondary",
+      "significance": "calendar",
+      "supported": true,
+      "unavailable_reason": null,
+      "avwap": 17.38,
+      "pct_dist": 3.83,
+      "distance_from_price_pct": 3.83,
+      "dist_atr": 1.862,
+      "distance_from_price_atr": 1.862,
+      "role": "support",
+      "status": "Accepted above",
+      "reclaim": true,
+      "stretch_atr": 1.862,
+      "slope_20": 0.0827,
+      "slope_label": "flat",
+      "closes_above_20": null
+    },
+    {
+      "anchor": "Swing High",
+      "anchor_key": "swing_high",
+      "family": "swing_high",
+      "anchor_date": "2025-07-25",
+      "priority": "secondary",
+      "significance": "structural",
+      "supported": true,
+      "unavailable_reason": null,
+      "avwap": 17.08,
+      "pct_dist": 5.46,
+      "distance_from_price_pct": 5.46,
+      "dist_atr": 2.651,
+      "distance_from_price_atr": 2.651,
+      "role": "support",
+      "status": "Accepted above",
+      "reclaim": true,
+      "stretch_atr": 2.651,
+      "slope_20": 0.0991,
+      "slope_label": "flat",
+      "closes_above_20": 0.9
+    },
+    {
+      "anchor": "War Start",
+      "anchor_key": "war_start",
+      "family": "global_event",
+      "anchor_date": "2026-03-10",
+      "priority": "macro",
+      "significance": "event",
+      "supported": true,
+      "unavailable_reason": null,
+      "avwap": 17.29,
+      "pct_dist": 4.32,
+      "distance_from_price_pct": 4.32,
+      "dist_atr": 2.1,
+      "distance_from_price_atr": 2.1,
+      "role": "support",
+      "status": "Accepted above",
+      "reclaim": true,
+      "stretch_atr": 2.1,
+      "slope_20": 0.2412,
+      "slope_label": "rising",
+      "closes_above_20": 0.7
+    },
+    {
+      "anchor": "Ceasefire",
+      "anchor_key": "ceasefire",
+      "family": "global_event",
+      "anchor_date": "2026-03-18",
+      "priority": "macro",
+      "significance": "event",
+      "supported": true,
+      "unavailable_reason": null,
+      "avwap": 17.27,
+      "pct_dist": 4.45,
+      "distance_from_price_pct": 4.45,
+      "dist_atr": 2.162,
+      "distance_from_price_atr": 2.162,
+      "role": "support",
+      "status": "Accepted above",
+      "reclaim": true,
+      "stretch_atr": 2.162,
+      "slope_20": 0.3432,
+      "slope_label": "rising",
+      "closes_above_20": 0.7
+    },
+    {
+      "anchor": "Earnings Anchor",
+      "anchor_key": "earnings",
+      "family": "earnings",
+      "anchor_date": null,
+      "avwap": null,
+      "pct_dist": null,
+      "distance_from_price_pct": null,
+      "dist_atr": null,
+      "distance_from_price_atr": null,
+      "role": "unavailable",
+      "status": "Unavailable",
+      "priority": "event",
+      "significance": "earnings",
+      "supported": false,
+      "unavailable_reason": "earnings event data is not available in v1",
+      "reclaim": null,
+      "stretch_atr": null,
+      "slope_20": null,
+      "slope_label": null,
+      "closes_above_20": null
+    },
+    {
+      "anchor": "Per-Symbol Event",
+      "anchor_key": "per_symbol_event",
+      "family": "per_symbol_event",
+      "anchor_date": null,
+      "avwap": null,
+      "pct_dist": null,
+      "distance_from_price_pct": null,
+      "dist_atr": null,
+      "distance_from_price_atr": null,
+      "role": "unavailable",
+      "status": "Unavailable",
+      "priority": "event",
+      "significance": "symbol_event",
+      "supported": false,
+      "unavailable_reason": "no per-symbol event anchor configured for this symbol",
+      "reclaim": null,
+      "stretch_atr": null,
+      "slope_20": null,
+      "slope_label": null,
+      "closes_above_20": null
+    },
+    {
+      "anchor": "COVID High",
+      "anchor_key": "covid_high",
+      "family": "global_event",
+      "anchor_date": "2020-09-02",
+      "avwap": null,
+      "pct_dist": null,
+      "distance_from_price_pct": null,
+      "dist_atr": null,
+      "distance_from_price_atr": null,
+      "role": "unavailable",
+      "status": "Unavailable",
+      "priority": "macro",
+      "significance": "secular",
+      "supported": false,
+      "unavailable_reason": "anchor predates available history (2023-05-04)",
+      "reclaim": null,
+      "stretch_atr": null,
+      "slope_20": null,
+      "slope_label": null,
+      "closes_above_20": null
+    },
+    {
+      "anchor": "COVID Low",
+      "anchor_key": "covid_low",
+      "family": "global_event",
+      "anchor_date": "2020-03-23",
+      "avwap": null,
+      "pct_dist": null,
+      "distance_from_price_pct": null,
+      "dist_atr": null,
+      "distance_from_price_atr": null,
+      "role": "unavailable",
+      "status": "Unavailable",
+      "priority": "macro",
+      "significance": "secular",
+      "supported": false,
+      "unavailable_reason": "anchor predates available history (2023-05-04)",
+      "reclaim": null,
+      "stretch_atr": null,
+      "slope_20": null,
+      "slope_label": null,
+      "closes_above_20": null
+    }
+  ],
+  "volume_block": {
+    "volume_dryup_pct": 45.3,
+    "atr_compression_pct": 87.8,
+    "range_compression": 1.167,
+    "vol_contraction_5_20": 0.651,
+    "vol_contraction_10_50": 1.537,
+    "dollar_volume_log": 8.201,
+    "breakout_thrust_atr": NaN,
+    "weekly_vol_dryup": 0.821,
+    "weekly_atr_compression": 7.7,
+    "down_close_ratio": 0.5,
+    "relative_vol_label": "Low",
+    "compression_label": "Elevated - 88th percentile"
+  },
+  "confluence": {
+    "nearby_count": 0,
+    "nearby_levels": [],
+    "cluster_role": "scattered"
+  },
+  "checklist": [
+    {
+      "item": "Higher timeframe trend",
+      "result": "pass",
+      "reason": "SPY above 200SMA"
+    },
+    {
+      "item": "Weekly trend constructive",
+      "result": "pass",
+      "reason": "Price 2.4% above 10-week WMA"
+    },
+    {
+      "item": "Daily structure",
+      "result": "neutral",
+      "reason": "State=BASE but dist_to_pivot=-2.37 ATR (out of -2 to +0.5 range)"
+    },
+    {
+      "item": "Pivot clarity",
+      "result": "fail",
+      "reason": "Only 0 touches; flatness=0.06"
+    },
+    {
+      "item": "Compression present",
+      "result": "fail",
+      "reason": "ATR at 88th percentile (not compressed)"
+    },
+    {
+      "item": "Volume dry-up",
+      "result": "pass",
+      "reason": "Volume dry-up score: 0.45"
+    },
+    {
+      "item": "Relative strength",
+      "result": "fail",
+      "reason": "RS-63: -5.5% vs SPY (underperforming)"
+    },
+    {
+      "item": "YTD AVWAP acceptance",
+      "result": "pass",
+      "reason": "Price 1.72 ATR above YTD AVWAP"
+    },
+    {
+      "item": "MA alignment (above SMA50)",
+      "result": "pass",
+      "reason": "Price 4.6% above SMA50"
+    },
+    {
+      "item": "Not overextended",
+      "result": "pass",
+      "reason": "-2.37 ATR from pivot (within 3 ATR)"
+    },
+    {
+      "item": "Failure risk acceptable",
+      "result": "neutral",
+      "reason": "Failure risk unavailable"
+    },
+    {
+      "item": "Market regime supportive",
+      "result": "pass",
+      "reason": "SPY trend score: 1.00 (positive)"
+    },
+    {
+      "item": "R/R acceptable",
+      "result": "neutral",
+      "reason": "R/R not computable (missing levels)"
+    },
+    {
+      "item": "Base freshness",
+      "result": "fail",
+      "reason": "65 days in BASE (exceeds max 60)"
+    },
+    {
+      "item": "Score quality",
+      "result": "neutral",
+      "reason": "Composite score unavailable"
+    },
+    {
+      "item": "Base quality",
+      "result": "pass",
+      "reason": "Grade B: Tight closes (1.8% std)"
+    },
+    {
+      "item": "Continuation pattern",
+      "result": "pass",
+      "reason": "NR7: today is the narrowest range in 7 days \u2014 compression event"
+    },
+    {
+      "item": "Clean air above pivot",
+      "result": "neutral",
+      "reason": "2.4 ATR to nearest resistance (Pivot)"
+    }
+  ],
+  "score_drivers": {
+    "bullish_signals": [
+      "Price 4.6% above SMA50",
+      "Volume dry-up score 0.45 - demand absorbed",
+      "YTD AVWAP +1.7 ATR - accepted above cost basis",
+      "Weekly: 0.0 ATR above 10-week WMA"
+    ],
+    "bearish_signals": [
+      "ATR elevated (88th pct) - not compressed",
+      "RS-63: -5% vs SPY - underperforming",
+      "Pivot flatness 0.06 - loose structure"
+    ],
+    "model_based": [
+      "composite_score",
+      "setup_score",
+      "trade_score",
+      "failure_risk",
+      "percentile_rank"
+    ],
+    "rule_based": [
+      "action_label",
+      "freshness_label",
+      "setup_classification",
+      "portfolio_guidance",
+      "state"
+    ],
+    "why_selected": "Selected because: Price 4.6% above SMA50; Volume dry-up score 0.45 - demand absorbed."
+  },
+  "trend_state": {
+    "daily_trend_state": "above_sma50_flat",
+    "weekly_trend_state": "weekly_uptrend",
+    "daily_detail": {
+      "close_vs_sma50": 0.0455,
+      "close_vs_sma200": 0.064,
+      "slope_50": 0.00064,
+      "ema20_note": "Above EMA20 (+3.2%)"
+    },
+    "weekly_detail": {
+      "weekly_dist_wma10": 0.0237,
+      "weekly_trend_slope_26": 0.00101,
+      "weekly_rs_26": -0.0101,
+      "wma40_note": "Above 40-week WMA (+4.5%)"
+    },
+    "trend_summary": [
+      "SMA50 dist: +4.6%",
+      "SMA200 dist: +6.4%",
+      "WMA10 wk dist: +2.4%"
+    ]
+  },
+  "ai_note": "[KVUE \u2014 Rule-based note]\n\nSetup\nTrend remains constructive while price works through a pullback\n\nWhy It Matters Now\nAbove SMA50 by 4.6%; Volume dry-up score 0.45 supports absorption; Accepted above YTD AVWAP by 1.7 ATR\n\nEntry Idea\nTreat as a pullback setup, not a breakout chase. Preferred add zone is near $18.59; confirm support before entry.\n\nRisk/Invalidation\nPullback can deepen if support does not hold on the first test.\n\nTargets\n$19.70 | $20.25 | $20.81\n\nVerdict\nConstructive pullback watch. Treat this as a pullback plan, not a breakout card. Treat as a pullback setup, not a breakout chase. Preferred add zone is near $18.59; confirm support before entry.",
+  "chart_weekly": "charts/KVUE_weekly.png",
+  "chart_daily": "charts/KVUE_daily.png",
+  "chart_intraday": null,
+  "intraday_policy": "daily_only",
+  "intraday_available": false,
+  "intraday_used_in_qualification": false,
+  "intraday_note": "Intraday confirmation is not part of v1 qualification; surfaced setup truth is daily/weekly only.",
+  "surfaced_in_top": true,
+  "surface_section": "pullback",
+  "not_surfaced_reason": "",
+  "selector_blockers": []
+}</pre></div></details></div></div></div>
+<div class="card"><div class="card-header"><span class="rank-num">#2</span><span class="badge badge-pullback">Actionable on pullback</span><span class="card-symbol">SMA</span><span class="s-BASE">BASE</span><span class="setup-class sc-building">Constructive pullback</span><span class="bucket-tag bt-pullback">PULLBACK</span><small style="color:var(--green);margin-left:.3rem">[fresh]</small><span class="card-score">Score: <span class="">—</span> &nbsp;|&nbsp; Fail: — &nbsp;|&nbsp; Rank: —</span></div><div class="card-body"><div class="card-charts"><div style="font-size:.75rem;color:var(--fg3);margin-bottom:.3rem">Weekly</div><img src="charts/SMA_weekly.png" alt="SMA Weekly" loading="lazy"><div style="font-size:.75rem;color:var(--fg3);margin:.4rem 0 .3rem">Daily</div><img src="charts/SMA_daily.png" alt="SMA Daily" loading="lazy"><div class="chart-na-inline">Intraday confirmation is not part of v1 qualification; surfaced setup truth is daily/weekly only.</div></div><div class="card-detail"><div class="trade-plan"><div class="tp-label">Why Qualified</div><div>Trend remains constructive while price works through a pullback</div></div><div><h3>Trade Levels</h3><div class="levels-grid"><div><div class="lvl-row"><span class="lvl-label">Pivot</span><span class="lvl-value lvl-pivot">34.88</span></div><div class="lvl-row"><span class="lvl-label">Entry lo</span><span class="lvl-value lvl-entry">34.88</span></div><div class="lvl-row"><span class="lvl-label">Entry hi</span><span class="lvl-value lvl-entry">34.96</span></div><div class="lvl-row"><span class="lvl-label">Stop</span><span class="lvl-value lvl-stop">34.03</span></div><div class="lvl-row"><span class="lvl-label">T1</span><span class="lvl-value lvl-target">36.58</span></div><div class="lvl-row"><span class="lvl-label">T2</span><span class="lvl-value lvl-target">37.85</span></div><div class="lvl-row"><span class="lvl-label">T3</span><span class="lvl-value lvl-target">39.12</span></div><div class="lvl-row"><span class="lvl-label">R/R T1</span><span class="lvl-value lvl-rs">1.9x</span></div></div><div><div class="lvl-row"><span class="lvl-label">R1</span><span class="lvl-value lvl-rs">34.88</span></div><div class="lvl-row"><span class="lvl-label">R2</span><span class="lvl-value lvl-rs">36.58</span></div><div class="lvl-row"><span class="lvl-label">R3</span><span class="lvl-value lvl-rs">37.85</span></div><div class="lvl-row"><span class="lvl-label">S1</span><span class="lvl-value lvl-sp">34.04</span></div><div class="lvl-row"><span class="lvl-label">S2</span><span class="lvl-value lvl-sp">34.03</span></div><div class="lvl-row"><span class="lvl-label">S3</span><span class="lvl-value lvl-sp">33.18</span></div><div class="lvl-row"><span class="lvl-label">ATR14</span><span class="lvl-value lvl-rs">0.85</span></div><div class="lvl-row"><span class="lvl-label">Base len</span><span class="lvl-value lvl-rs">120</span></div></div></div></div><div class="confluence-box conf-resistance"><strong>3 nearby levels — resistance cluster</strong><br><small style="color:var(--fg3)">AVWAP WTD @ 32.47, AVWAP Swing High @ 32.20, AVWAP Breakout Day @ 32.83</small></div><div class="score-drivers"><div class="driver-why">Selected because: Price 3.4% above SMA50; ATR compressed to 16th pct - coiled.</div><div class="driver-row"><span class="driver-bull">▲</span><span class="driver-text">Price 3.4% above SMA50</span></div><div class="driver-row"><span class="driver-bull">▲</span><span class="driver-text">ATR compressed to 16th pct - coiled</span></div><div class="driver-row"><span class="driver-bull">▲</span><span class="driver-text">Volume dry-up score 0.98 - demand absorbed</span></div><div class="driver-row"><span class="driver-bull">▲</span><span class="driver-text">YTD AVWAP +1.1 ATR - accepted above cost basis</span></div><div class="driver-row"><span class="driver-bear">▼</span><span class="driver-text">RS-63: -6% vs SPY - underperforming</span></div><div class="driver-row"><span class="driver-bear">▼</span><span class="driver-text">Pivot flatness 0.25 - loose structure</span></div></div><div><h3>Narrative</h3><div><div class="ma-brief"><span class="ma-brief-label">MA direction:</span><span class="ma-pill ma-rising">▲ SMA5</span><span class="ma-pill ma-rising">▲ SMA10</span><span class="ma-pill ma-rising">▲ SMA20</span></div><div class="ma-bias-note"><strong>SMA20:</strong> Stays rising if close > 30.63 &nbsp;·&nbsp; <strong>SMA50:</strong> Stays rising if close > 30.17</div></div><dl class="narrative"><dt>Setup</dt><dd>Trend remains constructive while price works through a pullback</dd><dt>Why now</dt><dd>Above SMA50 by 3.4%; ATR compression is supportive at the 16th percentile; Volume dry-up score 0.98 supports absorption</dd><dt>Why not now</dt><dd>Not in a clean breakout trigger zone today; RS-63 is weak at -6% vs SPY</dd><dt>Entry</dt><dd>Treat as a pullback setup, not a breakout chase. Preferred add zone is near $34.04; confirm support before entry.</dd><dt>Risk / invalidation</dt><dd>Pullback can deepen if support does not hold on the first test.</dd><dt>Targets</dt><dd>$36.58 | $37.85 | $39.12</dd><dt>MA &amp; AVWAP context</dt><dd>SMA10 rising (tailwind); SMA20 rising (tailwind); SMA50 rising (tailwind) &nbsp;|&nbsp; YTD: Accepted above (+1.1 ATR); Swing Low: Accepted above (+1.4 ATR); WTD: Testing (-0.1 ATR)</dd></dl><div class="verdict-box">Constructive pullback watch. Treat this as a pullback plan, not a breakout card. Treat as a pullback setup, not a breakout chase. Preferred add zone is near $34.04; confirm support before entry.</div></div><div class="trade-plan"><div class="tp-label">Trade Plan</div><div><strong>Actionability:</strong> WAIT_PULLBACK</div><div><strong>Best entry:</strong> pullback</div><div><strong>Entry condition:</strong> Treat as a pullback setup, not a breakout chase. Preferred add zone is near $34.04; confirm support before entry.</div><div><strong>Entry trigger:</strong> $34.04</div><div><strong>Entry range:</strong> $34.88-$34.96</div><div><strong>Alternate pullback entry:</strong> $34.04</div><div><strong>Stop:</strong> $34.03</div><div><strong>Invalidation:</strong> Daily close below $34.03 invalidates the idea.</div><div><strong>Targets:</strong> $36.58 | $37.85 | $39.12</div><div><strong>R/R to T1:</strong> 1.9:1</div><div><strong>Why now:</strong> Above SMA50 by 3.4%; ATR compression is supportive at the 16th percentile; Volume dry-up score 0.98 supports absorption; Accepted above YTD AVWAP by 1.1 ATR; 1.4 ATR above swing-low AVWAP support</div><div><strong>Why not now:</strong> Not in a clean breakout trigger zone today; RS-63 is weak at -6% vs SPY</div><div><strong>Improves tomorrow:</strong> Holds support around $34.04 and turns back toward $34.88; Shows lighter downside volume on the pullback</div><div><strong>Weakens tomorrow:</strong> Loses support near $34.04; Closes below stop $34.03</div></div><div class="ai-note"><div class="ai-note-label">AI Analysis</div>[SMA — Rule-based note]
+
+Setup
+Trend remains constructive while price works through a pullback
+
+Why It Matters Now
+Above SMA50 by 3.4%; ATR compression is supportive at the 16th percentile; Volume dry-up score 0.98 supports absorption
+
+Entry Idea
+Treat as a pullback setup, not a breakout chase. Preferred add zone is near $34.04; confirm support before entry.
+
+Risk/Invalidation
+Pullback can deepen if support does not hold on the first test.
+
+Targets
+$36.58 | $37.85 | $39.12
+
+Verdict
+Constructive pullback watch. Treat this as a pullback plan, not a breakout card. Treat as a pullback setup, not a breakout chase. Preferred add zone is near $34.04; confirm support before entry.</div><details style="margin-top:.4rem"><summary style="font-size:.78rem">Full MA Table</summary><div class="details-body"><div class="ma-table"><table><tr><th>MA</th><th>Value</th><th>Dist%</th><th>Slope</th><th>Bias note</th></tr><tr><td><strong>SMA5</strong></td><td style='font-family:monospace'>32.11</td><td>+0.94%</td><td class='slope-rising'>rising</td><td style='font-size:.7rem;color:var(--fg3)'>Stays rising if close > 30.91</td></tr><tr><td><strong>SMA10</strong></td><td style='font-family:monospace'>31.42</td><td>+3.05%</td><td class='slope-rising'>rising</td><td style='font-size:.7rem;color:var(--fg3)'>Stays rising if close > 31.25</td></tr><tr><td><strong>SMA20</strong></td><td style='font-family:monospace'>30.97</td><td>+4.44%</td><td class='slope-rising'>rising</td><td style='font-size:.7rem;color:var(--fg3)'>Stays rising if close > 30.63</td></tr><tr><td><strong>SMA50</strong></td><td style='font-family:monospace'>31.34</td><td>+3.31%</td><td class='slope-rising'>rising</td><td style='font-size:.7rem;color:var(--fg3)'>Stays rising if close > 30.17</td></tr><tr><td><strong>SMA200</strong></td><td style='font-family:monospace'>32.48</td><td>-0.21%</td><td class='slope-falling'>falling</td><td style='font-size:.7rem;color:var(--fg3)'>Stays falling unless close > 34.67</td></tr><tr><td><strong>EMA20</strong></td><td style='font-family:monospace'>31.41</td><td>+3.09%</td><td class='slope-rising'>rising</td><td style='font-size:.7rem;color:var(--fg3)'>Stays rising if close > 31.41</td></tr></table></div></div></details><details style="margin-top:.4rem"><summary style="font-size:.78rem">AVWAP Map</summary><div class="details-body"><table><tr><th>Anchor</th><th>Date</th><th>AVWAP</th><th>Dist%</th><th>ATR Dist</th><th>Role</th><th>Status</th><th>Priority</th></tr><tr><td><strong>YTD</strong></td><td style='font-family:monospace'>2026-01-02</td><td style='font-family:monospace'>31.50</td><td>+2.82%</td><td style='font-family:monospace'>+1.07 ATR</td><td class='avwap-support'>support</td><td>Accepted above</td><td style='color:var(--fg2)'>primary</td></tr><tr><td><strong>Swing Low</strong></td><td style='font-family:monospace'>2026-03-30</td><td style='font-family:monospace'>31.25</td><td>+3.59%</td><td style='font-family:monospace'>+1.37 ATR</td><td class='avwap-support'>support</td><td>Accepted above</td><td style='color:var(--fg2)'>primary</td></tr><tr><td><strong>WTD</strong></td><td style='font-family:monospace'>2026-06-08</td><td style='font-family:monospace'>32.47</td><td>-0.19%</td><td style='font-family:monospace'>-0.07 ATR</td><td class='avwap-testing'>testing</td><td>Testing</td><td style='color:var(--fg2)'>secondary</td></tr><tr><td><strong>Swing High</strong></td><td style='font-family:monospace'>2025-09-15</td><td style='font-family:monospace'>32.20</td><td>+0.65%</td><td style='font-family:monospace'>+0.25 ATR</td><td class='avwap-testing'>testing</td><td>Testing</td><td style='color:var(--fg2)'>secondary</td></tr><tr><td><strong>Breakout Day</strong></td><td style='font-family:monospace'>2025-04-30</td><td style='font-family:monospace'>32.83</td><td>-1.29%</td><td style='font-family:monospace'>-0.49 ATR</td><td class='avwap-resistance'>resistance</td><td>Accepted below</td><td style='color:var(--fg2)'>secondary</td></tr><tr><td><strong>MTD</strong></td><td style='font-family:monospace'>2026-06-01</td><td style='font-family:monospace'>31.50</td><td>+2.80%</td><td style='font-family:monospace'>+1.07 ATR</td><td class='avwap-support'>support</td><td>Accepted above</td><td style='color:var(--fg2)'>secondary</td></tr><tr><td><strong>War Start</strong></td><td style='font-family:monospace'>2026-03-10</td><td style='font-family:monospace'>31.19</td><td>+3.78%</td><td style='font-family:monospace'>+1.44 ATR</td><td class='avwap-support'>support</td><td>Accepted above</td><td style='color:var(--fg2)'>macro</td></tr><tr><td><strong>Ceasefire</strong></td><td style='font-family:monospace'>2026-03-18</td><td style='font-family:monospace'>31.07</td><td>+4.14%</td><td style='font-family:monospace'>+1.58 ATR</td><td class='avwap-support'>support</td><td>Accepted above</td><td style='color:var(--fg2)'>macro</td></tr><tr><td><strong>Earnings Anchor</strong></td><td style='font-family:monospace'>—</td><td colspan='6' style='color:var(--fg3)'>Unavailable: earnings event data is not available in v1</td></tr><tr><td><strong>Per-Symbol Event</strong></td><td style='font-family:monospace'>—</td><td colspan='6' style='color:var(--fg3)'>Unavailable: no per-symbol event anchor configured for this symbol</td></tr><tr><td><strong>COVID High</strong></td><td style='font-family:monospace'>2020-09-02</td><td colspan='6' style='color:var(--fg3)'>Unavailable: anchor predates available history (2025-04-02)</td></tr><tr><td><strong>COVID Low</strong></td><td style='font-family:monospace'>2020-03-23</td><td colspan='6' style='color:var(--fg3)'>Unavailable: anchor predates available history (2025-04-02)</td></tr></table></div></details><details style="margin-top:.4rem"><summary style="font-size:.78rem">Volume &amp; Efficiency</summary><div class="details-body"><div class="vol-block"><div><div class="vol-row"><span class="vol-label">Compression</span><span class="vol-value">Tight (<30th pct) - 16th percentile</span></div><div class="vol-row"><span class="vol-label">Rel volume</span><span class="vol-value">Very Low</span></div><div class="vol-row"><span class="vol-label">Vol dry-up</span><span class="vol-value">98.4%</span></div></div><div><div class="vol-row"><span class="vol-label">ATR pct</span><span class="vol-value">16th pct</span></div><div class="vol-row"><span class="vol-label">Thrust ATR</span><span class="vol-value">—</span></div><div class="vol-row"><span class="vol-label">VC 5/20</span><span class="vol-value">0.882</span></div></div></div></div></details><details style="margin-top:.4rem"><summary style="font-size:.78rem">Trade Checklist</summary><div class="details-body"><div style="font-size:.74rem;color:var(--fg2);margin-bottom:.2rem"><span class="chk-pass">✓ 9</span> / 18 pass &nbsp;<span class="chk-fail">✗ 4</span> fail</div><ul class="checklist"><li><span class="chk-icon chk-pass">✓</span><span class="chk-item">Higher timeframe trend</span><span class="chk-reason">SPY above 200SMA</span></li><li><span class="chk-icon chk-fail">✗</span><span class="chk-item">Weekly trend constructive</span><span class="chk-reason">Price 1.4% below 10-week WMA</span></li><li><span class="chk-icon chk-neutral">-</span><span class="chk-item">Daily structure</span><span class="chk-reason">State=BASE but dist_to_pivot=-2.91 ATR (out of -2 to +0.5 range)</span></li><li><span class="chk-icon chk-fail">✗</span><span class="chk-item">Pivot clarity</span><span class="chk-reason">Only 0 touches; flatness=0.25</span></li><li><span class="chk-icon chk-pass">✓</span><span class="chk-item">Compression present</span><span class="chk-reason">ATR at 16th percentile (tight)</span></li><li><span class="chk-icon chk-pass">✓</span><span class="chk-item">Volume dry-up</span><span class="chk-reason">Volume dry-up score: 0.98</span></li><li><span class="chk-icon chk-fail">✗</span><span class="chk-item">Relative strength</span><span class="chk-reason">RS-63: -6.3% vs SPY (underperforming)</span></li><li><span class="chk-icon chk-pass">✓</span><span class="chk-item">YTD AVWAP acceptance</span><span class="chk-reason">Price 1.08 ATR above YTD AVWAP</span></li><li><span class="chk-icon chk-pass">✓</span><span class="chk-item">MA alignment (above SMA50)</span><span class="chk-reason">Price 3.4% above SMA50</span></li><li><span class="chk-icon chk-pass">✓</span><span class="chk-item">Not overextended</span><span class="chk-reason">-2.91 ATR from pivot (within 3 ATR)</span></li><li><span class="chk-icon chk-neutral">-</span><span class="chk-item">Failure risk acceptable</span><span class="chk-reason">Failure risk unavailable</span></li><li><span class="chk-icon chk-pass">✓</span><span class="chk-item">Market regime supportive</span><span class="chk-reason">SPY trend score: 1.00 (positive)</span></li><li><span class="chk-icon chk-neutral">-</span><span class="chk-item">R/R acceptable</span><span class="chk-reason">R/R not computable (missing levels)</span></li><li><span class="chk-icon chk-pass">✓</span><span class="chk-item">Base freshness</span><span class="chk-reason">24 days in BASE (max 60)</span></li><li><span class="chk-icon chk-neutral">-</span><span class="chk-item">Score quality</span><span class="chk-reason">Composite score unavailable</span></li><li><span class="chk-icon chk-pass">✓</span><span class="chk-item">Base quality</span><span class="chk-reason">Grade B: Base quality: B (0.61)</span></li><li><span class="chk-icon chk-neutral">-</span><span class="chk-item">Continuation pattern</span><span class="chk-reason">No tight continuation pattern detected (NR7/3WT/tight5d)</span></li><li><span class="chk-icon chk-fail">✗</span><span class="chk-item">Clean air above pivot</span><span class="chk-reason">Resistance close: only 0.1 ATR to WTD</span></li></ul></div></details><div class="export-links"><span style="color:var(--fg3);font-size:.72rem">Export: </span><a href="artifacts/SMA_packet.json" style="font-size:.72rem">JSON packet</a></div><details style="margin-top:.5rem"><summary style="font-size:.73rem;color:var(--fg3)">Raw packet (JSON)</summary><div class="details-body"><pre style="font-size:.7rem;overflow:auto;max-height:180px">{
+  "symbol": "SMA",
+  "provider_symbol": "SMA",
+  "state": "BASE",
+  "groups": "custom_watchlist",
+  "is_portfolio": false,
+  "is_watchlist": true,
+  "is_non_equity": false,
+  "eligible": true,
+  "rejection_reasons": "",
+  "rejection_reasons_list": [],
+  "eligibility_warnings": "",
+  "eligibility_warnings_list": [],
+  "freshness_label": "fresh",
+  "is_fresh": true,
+  "is_extended": false,
+  "is_stale_confirmed": false,
+  "extension_state": "not_extended",
+  "extension_reasons": "",
+  "days_in_state": 24,
+  "bucket": "pullback_long",
+  "action_label": "Actionable on pullback",
+  "setup_classification": "Constructive pullback",
+  "setup_key": "constructive_pullback",
+  "promotion_reason": "Trend remains constructive while price works through a pullback",
+  "demotion_reason": "far_from_pivot (2.9 ATR from trigger zone)",
+  "route_reason": "not in a clean breakout trigger zone today",
+  "operational_readiness": "watch_pullback_zone",
+  "daily_trend_state": "below_200sma",
+  "weekly_trend_state": "neutral_weekly",
+  "trend_health": "constructive",
+  "freshness_maturity": "primed",
+  "pullback_quality": "constructive",
+  "composite_score": "\u2014",
+  "setup_score": "\u2014",
+  "trade_score": "\u2014",
+  "failure_risk": "\u2014",
+  "percentile_rank": "\u2014",
+  "close": "32.41",
+  "pivot": "34.88",
+  "atr14": "0.85",
+  "dist_to_pivot_atr": "-2.9",
+  "base_length": 120,
+  "entry_lo": "34.88",
+  "entry_hi": "34.96",
+  "stop": "34.03",
+  "t1": "36.58",
+  "t2": "37.85",
+  "t3": "39.12",
+  "s1": "34.04",
+  "s2": "34.03",
+  "s3": "33.18",
+  "r1": "34.88",
+  "r2": "36.58",
+  "r3": "37.85",
+  "risk_reward_t1": "1.9x",
+  "trade_plan": {
+    "actionability_code": "WAIT_PULLBACK",
+    "actionable_now": false,
+    "entry_style": "pullback",
+    "best_entry_style": "pullback",
+    "entry_condition": "Treat as a pullback setup, not a breakout chase. Preferred add zone is near $34.04; confirm support before entry.",
+    "entry_trigger": "$34.04",
+    "entry_range": "$34.88-$34.96",
+    "alternate_pullback_entry": "$34.04",
+    "stop": "$34.03",
+    "stop_basis": "Daily close below $34.03 invalidates the setup.",
+    "stop_risk_pct": "2.5%",
+    "target_1": "$36.58",
+    "target_2": "$37.85",
+    "target_3": "$39.12",
+    "risk_reward_t1": "1.9:1",
+    "time_stop": "Let support prove itself; no fresh-entry time stop until the pullback resolves.",
+    "key_risk": "Pullback can deepen if support does not hold on the first test.",
+    "invalidation": "Daily close below $34.03 invalidates the idea.",
+    "why_now": [
+      "Above SMA50 by 3.4%",
+      "ATR compression is supportive at the 16th percentile",
+      "Volume dry-up score 0.98 supports absorption",
+      "Accepted above YTD AVWAP by 1.1 ATR",
+      "1.4 ATR above swing-low AVWAP support"
+    ],
+    "why_not_now": [
+      "Not in a clean breakout trigger zone today",
+      "RS-63 is weak at -6% vs SPY"
+    ],
+    "setup_improves_if": [
+      "Holds support around $34.04 and turns back toward $34.88",
+      "Shows lighter downside volume on the pullback"
+    ],
+    "setup_weakens_if": [
+      "Loses support near $34.04",
+      "Closes below stop $34.03"
+    ],
+    "what_improves_tomorrow": [
+      "Holds support around $34.04 and turns back toward $34.88",
+      "Shows lighter downside volume on the pullback"
+    ],
+    "what_weakens_tomorrow": [
+      "Loses support near $34.04",
+      "Closes below stop $34.03"
+    ]
+  },
+  "portfolio_health": {},
+  "portfolio_guidance": "",
+  "atr_compression_pct": "16",
+  "volume_dryup": "0.98",
+  "daily_rs_63": "-0.063",
+  "rs_class": "underperforming",
+  "close_vs_sma50": "0.034",
+  "ma_slope_direction": "rising",
+  "ytd_dist_atr": "1.1",
+  "swing_low_dist_atr": "1.4",
+  "regime_spy_trend": "1",
+  "operational_fresh_entry": true,
+  "final_verdict": "Constructive pullback watch. Treat this as a pullback plan, not a breakout card. Treat as a pullback setup, not a breakout chase. Preferred add zone is near $34.04; confirm support before entry.",
+  "coherence_ok": true,
+  "coherence_issues": [],
+  "packet_complete_for_surface": true,
+  "packet_completeness_issues": [],
+  "assessments": {
+    "base_quality": {
+      "grade": "B",
+      "score": 0.613,
+      "label": "Base quality: B (0.61)",
+      "notes": [],
+      "components": {
+        "tightness_score": 0.654,
+        "atr_score": 0.548,
+        "nr_score": 0.6,
+        "down_score": 0.4,
+        "age_score": 1.0,
+        "close_std_pct": 3.04,
+        "nr_days": 3,
+        "down_ratio": 0.5
+      }
+    },
+    "continuation": {
+      "grade": "D",
+      "score": 0.0,
+      "strongest_pattern": "none",
+      "patterns": [],
+      "notes": []
+    },
+    "overhead_supply": {
+      "grade": "B",
+      "score": 0.296,
+      "supply_pct": 0.498,
+      "supply_zone": "moderate supply",
+      "notes": []
+    },
+    "breakout_integrity": {
+      "grade": "D",
+      "score": 0.298,
+      "volume_ratio": 1.59,
+      "close_location": 0.455,
+      "close_location_score": 0.182,
+      "volume_label": "Elevated (1.6x avg)",
+      "notes": []
+    },
+    "clean_air": {
+      "grade": "D",
+      "score": 0.0,
+      "clean_air_atrs": 0.07,
+      "nearest_resistance_atrs": 0.07,
+      "nearest_resistance_label": "WTD",
+      "notes": [
+        "Resistance close: only 0.1 ATR to WTD"
+      ]
+    },
+    "chart_quality": {
+      "grade": "D",
+      "score": 0.333,
+      "ter": 0.029,
+      "up_close_pct": 0.6,
+      "notes": [
+        "Choppy chart: TER 0.03 \u2014 whipsaw risk"
+      ]
+    }
+  },
+  "ma_table": [
+    {
+      "name": "SMA5",
+      "value": 32.11,
+      "pct_dist": 0.94,
+      "slope": "rising",
+      "bias": "Stays rising if close > 30.91",
+      "need_tomorrow": 30.91,
+      "tomorrow_bias": "tailwind"
+    },
+    {
+      "name": "SMA10",
+      "value": 31.42,
+      "pct_dist": 3.05,
+      "slope": "rising",
+      "bias": "Stays rising if close > 31.25",
+      "need_tomorrow": 31.25,
+      "tomorrow_bias": "tailwind"
+    },
+    {
+      "name": "SMA20",
+      "value": 30.97,
+      "pct_dist": 4.44,
+      "slope": "rising",
+      "bias": "Stays rising if close > 30.63",
+      "need_tomorrow": 30.63,
+      "tomorrow_bias": "tailwind"
+    },
+    {
+      "name": "SMA50",
+      "value": 31.34,
+      "pct_dist": 3.31,
+      "slope": "rising",
+      "bias": "Stays rising if close > 30.17",
+      "need_tomorrow": 30.17,
+      "tomorrow_bias": "tailwind"
+    },
+    {
+      "name": "SMA200",
+      "value": 32.48,
+      "pct_dist": -0.21,
+      "slope": "falling",
+      "bias": "Stays falling unless close > 34.67",
+      "need_tomorrow": 34.67,
+      "tomorrow_bias": "headwind"
+    },
+    {
+      "name": "EMA20",
+      "value": 31.41,
+      "pct_dist": 3.09,
+      "slope": "rising",
+      "bias": "Stays rising if close > 31.41",
+      "need_tomorrow": 31.41,
+      "tomorrow_bias": "tailwind"
+    }
+  ],
+  "avwap_table": [
+    {
+      "anchor": "YTD",
+      "anchor_key": "ytd",
+      "family": "ytd",
+      "anchor_date": "2026-01-02",
+      "priority": "primary",
+      "significance": "calendar",
+      "supported": true,
+      "unavailable_reason": null,
+      "avwap": 31.5,
+      "pct_dist": 2.82,
+      "distance_from_price_pct": 2.82,
+      "dist_atr": 1.075,
+      "distance_from_price_atr": 1.075,
+      "role": "support",
+      "status": "Accepted above",
+      "reclaim": true,
+      "stretch_atr": 1.075,
+      "slope_20": -0.2347,
+      "slope_label": "falling",
+      "closes_above_20": 0.2
+    },
+    {
+      "anchor": "Swing Low",
+      "anchor_key": "swing_low",
+      "family": "swing_low",
+      "anchor_date": "2026-03-30",
+      "priority": "primary",
+      "significance": "structural",
+      "supported": true,
+      "unavailable_reason": null,
+      "avwap": 31.25,
+      "pct_dist": 3.59,
+      "distance_from_price_pct": 3.59,
+      "dist_atr": 1.369,
+      "distance_from_price_atr": 1.369,
+      "role": "support",
+      "status": "Accepted above",
+      "reclaim": true,
+      "stretch_atr": 1.369,
+      "slope_20": -0.3677,
+      "slope_label": "falling",
+      "closes_above_20": 0.35
+    },
+    {
+      "anchor": "WTD",
+      "anchor_key": "wtd",
+      "family": "wtd",
+      "anchor_date": "2026-06-08",
+      "priority": "secondary",
+      "significance": "calendar",
+      "supported": true,
+      "unavailable_reason": null,
+      "avwap": 32.47,
+      "pct_dist": -0.19,
+      "distance_from_price_pct": -0.19,
+      "dist_atr": -0.071,
+      "distance_from_price_atr": -0.071,
+      "role": "testing",
+      "status": "Testing",
+      "reclaim": null,
+      "stretch_atr": 0.071,
+      "slope_20": 3.2899,
+      "slope_label": "rising",
+      "closes_above_20": null
+    },
+    {
+      "anchor": "Swing High",
+      "anchor_key": "swing_high",
+      "family": "swing_high",
+      "anchor_date": "2025-09-15",
+      "priority": "secondary",
+      "significance": "structural",
+      "supported": true,
+      "unavailable_reason": null,
+      "avwap": 32.2,
+      "pct_dist": 0.65,
+      "distance_from_price_pct": 0.65,
+      "dist_atr": 0.249,
+      "distance_from_price_atr": 0.249,
+      "role": "testing",
+      "status": "Testing",
+      "reclaim": true,
+      "stretch_atr": 0.249,
+      "slope_20": -0.3426,
+      "slope_label": "falling",
+      "closes_above_20": 0.15
+    },
+    {
+      "anchor": "Breakout Day",
+      "anchor_key": "breakout_day",
+      "family": "breakout_day",
+      "anchor_date": "2025-04-30",
+      "priority": "secondary",
+      "significance": "lifecycle",
+      "supported": true,
+      "unavailable_reason": null,
+      "avwap": 32.83,
+      "pct_dist": -1.29,
+      "distance_from_price_pct": -1.29,
+      "dist_atr": -0.491,
+      "distance_from_price_atr": -0.491,
+      "role": "resistance",
+      "status": "Accepted below",
+      "reclaim": false,
+      "stretch_atr": 0.491,
+      "slope_20": -0.3684,
+      "slope_label": "falling",
+      "closes_above_20": 0.05
+    },
+    {
+      "anchor": "MTD",
+      "anchor_key": "mtd",
+      "family": "mtd",
+      "anchor_date": "2026-06-01",
+      "priority": "secondary",
+      "significance": "calendar",
+      "supported": true,
+      "unavailable_reason": null,
+      "avwap": 31.5,
+      "pct_dist": 2.8,
+      "distance_from_price_pct": 2.8,
+      "dist_atr": 1.069,
+      "distance_from_price_atr": 1.069,
+      "role": "support",
+      "status": "Accepted above",
+      "reclaim": false,
+      "stretch_atr": 1.069,
+      "slope_20": 2.1542,
+      "slope_label": "rising",
+      "closes_above_20": null
+    },
+    {
+      "anchor": "War Start",
+      "anchor_key": "war_start",
+      "family": "global_event",
+      "anchor_date": "2026-03-10",
+      "priority": "macro",
+      "significance": "event",
+      "supported": true,
+      "unavailable_reason": null,
+      "avwap": 31.19,
+      "pct_dist": 3.78,
+      "distance_from_price_pct": 3.78,
+      "dist_atr": 1.441,
+      "distance_from_price_atr": 1.441,
+      "role": "support",
+      "status": "Accepted above",
+      "reclaim": true,
+      "stretch_atr": 1.441,
+      "slope_20": -0.1328,
+      "slope_label": "flat",
+      "closes_above_20": 0.35
+    },
+    {
+      "anchor": "Ceasefire",
+      "anchor_key": "ceasefire",
+      "family": "global_event",
+      "anchor_date": "2026-03-18",
+      "priority": "macro",
+      "significance": "event",
+      "supported": true,
+      "unavailable_reason": null,
+      "avwap": 31.07,
+      "pct_dist": 4.14,
+      "distance_from_price_pct": 4.14,
+      "dist_atr": 1.58,
+      "distance_from_price_atr": 1.58,
+      "role": "support",
+      "status": "Accepted above",
+      "reclaim": true,
+      "stretch_atr": 1.58,
+      "slope_20": -0.0146,
+      "slope_label": "flat",
+      "closes_above_20": 0.35
+    },
+    {
+      "anchor": "Earnings Anchor",
+      "anchor_key": "earnings",
+      "family": "earnings",
+      "anchor_date": null,
+      "avwap": null,
+      "pct_dist": null,
+      "distance_from_price_pct": null,
+      "dist_atr": null,
+      "distance_from_price_atr": null,
+      "role": "unavailable",
+      "status": "Unavailable",
+      "priority": "event",
+      "significance": "earnings",
+      "supported": false,
+      "unavailable_reason": "earnings event data is not available in v1",
+      "reclaim": null,
+      "stretch_atr": null,
+      "slope_20": null,
+      "slope_label": null,
+      "closes_above_20": null
+    },
+    {
+      "anchor": "Per-Symbol Event",
+      "anchor_key": "per_symbol_event",
+      "family": "per_symbol_event",
+      "anchor_date": null,
+      "avwap": null,
+      "pct_dist": null,
+      "distance_from_price_pct": null,
+      "dist_atr": null,
+      "distance_from_price_atr": null,
+      "role": "unavailable",
+      "status": "Unavailable",
+      "priority": "event",
+      "significance": "symbol_event",
+      "supported": false,
+      "unavailable_reason": "no per-symbol event anchor configured for this symbol",
+      "reclaim": null,
+      "stretch_atr": null,
+      "slope_20": null,
+      "slope_label": null,
+      "closes_above_20": null
+    },
+    {
+      "anchor": "COVID High",
+      "anchor_key": "covid_high",
+      "family": "global_event",
+      "anchor_date": "2020-09-02",
+      "avwap": null,
+      "pct_dist": null,
+      "distance_from_price_pct": null,
+      "dist_atr": null,
+      "distance_from_price_atr": null,
+      "role": "unavailable",
+      "status": "Unavailable",
+      "priority": "macro",
+      "significance": "secular",
+      "supported": false,
+      "unavailable_reason": "anchor predates available history (2025-04-02)",
+      "reclaim": null,
+      "stretch_atr": null,
+      "slope_20": null,
+      "slope_label": null,
+      "closes_above_20": null
+    },
+    {
+      "anchor": "COVID Low",
+      "anchor_key": "covid_low",
+      "family": "global_event",
+      "anchor_date": "2020-03-23",
+      "avwap": null,
+      "pct_dist": null,
+      "distance_from_price_pct": null,
+      "dist_atr": null,
+      "distance_from_price_atr": null,
+      "role": "unavailable",
+      "status": "Unavailable",
+      "priority": "macro",
+      "significance": "secular",
+      "supported": false,
+      "unavailable_reason": "anchor predates available history (2025-04-02)",
+      "reclaim": null,
+      "stretch_atr": null,
+      "slope_20": null,
+      "slope_label": null,
+      "closes_above_20": null
+    }
+  ],
+  "volume_block": {
+    "volume_dryup_pct": 98.4,
+    "atr_compression_pct": 16.3,
+    "range_compression": 1.092,
+    "vol_contraction_5_20": 0.882,
+    "vol_contraction_10_50": 1.004,
+    "dollar_volume_log": 7.314,
+    "breakout_thrust_atr": NaN,
+    "weekly_vol_dryup": 0.894,
+    "weekly_atr_compression": 25.6,
+    "down_close_ratio": 0.4,
+    "relative_vol_label": "Very Low",
+    "compression_label": "Tight (<30th pct) - 16th percentile"
+  },
+  "confluence": {
+    "nearby_count": 3,
+    "nearby_levels": [
+      {
+        "name": "AVWAP WTD",
+        "value": 32.47,
+        "dist_atr": -0.071
+      },
+      {
+        "name": "AVWAP Swing High",
+        "value": 32.2,
+        "dist_atr": 0.247
+      },
+      {
+        "name": "AVWAP Breakout Day",
+        "value": 32.83,
+        "dist_atr": -0.495
+      }
+    ],
+    "cluster_role": "resistance cluster"
+  },
+  "checklist": [
+    {
+      "item": "Higher timeframe trend",
+      "result": "pass",
+      "reason": "SPY above 200SMA"
+    },
+    {
+      "item": "Weekly trend constructive",
+      "result": "fail",
+      "reason": "Price 1.4% below 10-week WMA"
+    },
+    {
+      "item": "Daily structure",
+      "result": "neutral",
+      "reason": "State=BASE but dist_to_pivot=-2.91 ATR (out of -2 to +0.5 range)"
+    },
+    {
+      "item": "Pivot clarity",
+      "result": "fail",
+      "reason": "Only 0 touches; flatness=0.25"
+    },
+    {
+      "item": "Compression present",
+      "result": "pass",
+      "reason": "ATR at 16th percentile (tight)"
+    },
+    {
+      "item": "Volume dry-up",
+      "result": "pass",
+      "reason": "Volume dry-up score: 0.98"
+    },
+    {
+      "item": "Relative strength",
+      "result": "fail",
+      "reason": "RS-63: -6.3% vs SPY (underperforming)"
+    },
+    {
+      "item": "YTD AVWAP acceptance",
+      "result": "pass",
+      "reason": "Price 1.08 ATR above YTD AVWAP"
+    },
+    {
+      "item": "MA alignment (above SMA50)",
+      "result": "pass",
+      "reason": "Price 3.4% above SMA50"
+    },
+    {
+      "item": "Not overextended",
+      "result": "pass",
+      "reason": "-2.91 ATR from pivot (within 3 ATR)"
+    },
+    {
+      "item": "Failure risk acceptable",
+      "result": "neutral",
+      "reason": "Failure risk unavailable"
+    },
+    {
+      "item": "Market regime supportive",
+      "result": "pass",
+      "reason": "SPY trend score: 1.00 (positive)"
+    },
+    {
+      "item": "R/R acceptable",
+      "result": "neutral",
+      "reason": "R/R not computable (missing levels)"
+    },
+    {
+      "item": "Base freshness",
+      "result": "pass",
+      "reason": "24 days in BASE (max 60)"
+    },
+    {
+      "item": "Score quality",
+      "result": "neutral",
+      "reason": "Composite score unavailable"
+    },
+    {
+      "item": "Base quality",
+      "result": "pass",
+      "reason": "Grade B: Base quality: B (0.61)"
+    },
+    {
+      "item": "Continuation pattern",
+      "result": "neutral",
+      "reason": "No tight continuation pattern detected (NR7/3WT/tight5d)"
+    },
+    {
+      "item": "Clean air above pivot",
+      "result": "fail",
+      "reason": "Resistance close: only 0.1 ATR to WTD"
+    }
+  ],
+  "score_drivers": {
+    "bullish_signals": [
+      "Price 3.4% above SMA50",
+      "ATR compressed to 16th pct - coiled",
+      "Volume dry-up score 0.98 - demand absorbed",
+      "YTD AVWAP +1.1 ATR - accepted above cost basis"
+    ],
+    "bearish_signals": [
+      "RS-63: -6% vs SPY - underperforming",
+      "Pivot flatness 0.25 - loose structure"
+    ],
+    "model_based": [
+      "composite_score",
+      "setup_score",
+      "trade_score",
+      "failure_risk",
+      "percentile_rank"
+    ],
+    "rule_based": [
+      "action_label",
+      "freshness_label",
+      "setup_classification",
+      "portfolio_guidance",
+      "state"
+    ],
+    "why_selected": "Selected because: Price 3.4% above SMA50; ATR compressed to 16th pct - coiled."
+  },
+  "trend_state": {
+    "daily_trend_state": "below_200sma",
+    "weekly_trend_state": "neutral_weekly",
+    "daily_detail": {
+      "close_vs_sma50": 0.0342,
+      "close_vs_sma200": -0.0021,
+      "slope_50": -0.00011,
+      "ema20_note": "Above EMA20 (+3.2%)"
+    },
+    "weekly_detail": {
+      "weekly_dist_wma10": -0.0143,
+      "weekly_trend_slope_26": -0.00042,
+      "weekly_rs_26": -0.1158,
+      "wma40_note": "Below 40-week WMA (-4.5%)"
+    },
+    "trend_summary": [
+      "SMA50 dist: +3.4%",
+      "SMA200 dist: -0.2%",
+      "WMA10 wk dist: -1.4%"
+    ]
+  },
+  "ai_note": "[SMA \u2014 Rule-based note]\n\nSetup\nTrend remains constructive while price works through a pullback\n\nWhy It Matters Now\nAbove SMA50 by 3.4%; ATR compression is supportive at the 16th percentile; Volume dry-up score 0.98 supports absorption\n\nEntry Idea\nTreat as a pullback setup, not a breakout chase. Preferred add zone is near $34.04; confirm support before entry.\n\nRisk/Invalidation\nPullback can deepen if support does not hold on the first test.\n\nTargets\n$36.58 | $37.85 | $39.12\n\nVerdict\nConstructive pullback watch. Treat this as a pullback plan, not a breakout card. Treat as a pullback setup, not a breakout chase. Preferred add zone is near $34.04; confirm support before entry.",
+  "chart_weekly": "charts/SMA_weekly.png",
+  "chart_daily": "charts/SMA_daily.png",
+  "chart_intraday": null,
+  "intraday_policy": "daily_only",
+  "intraday_available": false,
+  "intraday_used_in_qualification": false,
+  "intraday_note": "Intraday confirmation is not part of v1 qualification; surfaced setup truth is daily/weekly only.",
+  "surfaced_in_top": true,
+  "surface_section": "pullback",
+  "not_surfaced_reason": "",
+  "selector_blockers": []
+}</pre></div></details></div></div></div></div></div><div class="bucket-section"><div class="bucket-header bh-extended"><span class="bh-title">Extended Leaders</span><span class="bh-count">2 total</span><span class="bh-desc">Healthy names too extended for fresh entry. Monitor for pullback add zones.</span></div><div class="monitor-list"><div class="monitor-row"><span class="mr-sym">XLRE</span><span class="mr-state s-BASE">BASE</span><span class="mr-score">—</span><span class="mr-note">4.3 ATR above YTD AVWAP</span></div><div class="monitor-row"><span class="mr-sym">ALAB</span><span class="mr-state s-BASE">BASE</span><span class="mr-score">—</span><span class="mr-note">SMA50+59%>12%, YTD+6.0ATR>5.0; 58.7% above SMA50; 6.0 ATR above YTD AVWAP; 6.4 ATR above swing-low AVWAP</span></div></div></div><div class="bucket-section"><div class="bucket-header bh-reversal"><span class="bh-title">Speculative / Reversal Watch</span><span class="bh-count">4 total</span><span class="bh-desc">NOT in primary long list.</span></div><div class="reversal-banner"><strong>⚠ These names failed primary eligibility gates.</strong> They are shown for informational monitoring only. Do not treat these as equivalent to breakout or pullback candidates. They require separate discretionary judgment and should not be read as primary long ideas.</div><div class="monitor-list"><div class="monitor-row"><span class="mr-sym">CNXC</span><span class="mr-state s-BASE">BASE</span><span class="mr-score">—</span><span class="mr-warn">failed: poor_rs</span><span class="mr-note">speculative only; failed primary long eligibility</span></div><div class="monitor-row"><span class="mr-sym">OCUL</span><span class="mr-state s-BASE">BASE</span><span class="mr-score">—</span><span class="mr-warn">failed: poor_rs</span><span class="mr-note">speculative only; failed primary long eligibility</span></div><div class="monitor-row"><span class="mr-sym">PHR</span><span class="mr-state s-BASE">BASE</span><span class="mr-score">—</span><span class="mr-warn">failed: poor_rs</span><span class="mr-note">speculative only; failed primary long eligibility</span></div></div></div>
+
+
+
+<h2>Full Research Tables</h2>
+<p style="font-size:.82rem;color:var(--fg3);margin-bottom:.5rem">
+  Expand a state to see all symbols. Sorted by composite score descending.
+</p>
+<details><summary class="s-BASE">BASE — 8 symbols</summary><div class="details-body"><table><tr><th>user_symbol</th><th>state</th><th>close</th><th>pivot</th><th>atr14</th><th>dist_to_pivot_atr</th><th>base_length</th><th>days_in_state</th><th>atr_compression_pct</th><th>volume_dryup</th><th>daily_rs_63</th><th>composite_score</th><th>percentile_rank</th></tr><tr><td>XLRE</td><td><span class="s-BASE">BASE</span></td><td>44.92</td><td>45.27</td><td>0.62</td><td>-0.56</td><td>120.00</td><td>3.00</td><td>71.43</td><td>1.05</td><td>-0.03</td><td class="">—</td><td>—</td></tr><tr><td>ALAB</td><td><span class="s-BASE">BASE</span></td><td>367.47</td><td>372.37</td><td>30.12</td><td>-0.16</td><td>15.00</td><td>1.00</td><td>100.00</td><td>0.92</td><td>1.02</td><td class="">—</td><td>—</td></tr><tr><td>CNXC</td><td><span class="s-BASE">BASE</span></td><td>26.27</td><td>30.24</td><td>1.64</td><td>-2.42</td><td>20.00</td><td>2.00</td><td>36.73</td><td>0.64</td><td>-0.28</td><td class="">—</td><td>—</td></tr><tr><td>KVUE</td><td><span class="s-BASE">BASE</span></td><td>18.07</td><td>18.95</td><td>0.37</td><td>-2.37</td><td>120.00</td><td>65.00</td><td>87.76</td><td>0.45</td><td>-0.05</td><td class="">—</td><td>—</td></tr><tr><td>OCUL</td><td><span class="s-BASE">BASE</span></td><td>8.70</td><td>9.98</td><td>0.47</td><td>-2.74</td><td>51.00</td><td>10.00</td><td>12.24</td><td>0.95</td><td>-0.12</td><td class="">—</td><td>—</td></tr><tr><td>PHR</td><td><span class="s-BASE">BASE</span></td><td>9.05</td><td>10.96</td><td>0.55</td><td>-3.45</td><td>42.00</td><td>9.00</td><td>32.65</td><td>0.44</td><td>-0.30</td><td class="">—</td><td>—</td></tr><tr><td>PYPL</td><td><span class="s-BASE">BASE</span></td><td>41.24</td><td>52.13</td><td>1.23</td><td>-8.82</td><td>81.00</td><td>26.00</td><td>4.08</td><td>0.97</td><td>-0.17</td><td class="">—</td><td>—</td></tr><tr><td>SMA</td><td><span class="s-BASE">BASE</span></td><td>32.41</td><td>34.88</td><td>0.85</td><td>-2.91</td><td>120.00</td><td>24.00</td><td>16.33</td><td>0.98</td><td>-0.06</td><td class="">—</td><td>—</td></tr></table></div></details><details><summary class="s-CONFIRMED">CONFIRMED — 134 symbols</summary><div class="details-body"><table><tr><th>user_symbol</th><th>state</th><th>close</th><th>pivot</th><th>atr14</th><th>dist_to_pivot_atr</th><th>base_length</th><th>days_in_state</th><th>atr_compression_pct</th><th>volume_dryup</th><th>daily_rs_63</th><th>composite_score</th><th>percentile_rank</th></tr><tr><td>SPY</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>737.76</td><td>760.40</td><td>9.58</td><td>-2.36</td><td>120.00</td><td>4285.00</td><td>81.63</td><td>1.36</td><td>0.00</td><td class="">—</td><td>—</td></tr><tr><td>QQQ</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>717.12</td><td>748.65</td><td>15.28</td><td>-2.06</td><td>51.00</td><td>4304.00</td><td>100.00</td><td>1.52</td><td>0.08</td><td class="">—</td><td>—</td></tr><tr><td>IWM</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>290.41</td><td>292.88</td><td>6.16</td><td>-0.40</td><td>120.00</td><td>4304.00</td><td>100.00</td><td>1.45</td><td>0.06</td><td class="">—</td><td>—</td></tr><tr><td>DIA</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>509.36</td><td>517.75</td><td>6.57</td><td>-1.28</td><td>120.00</td><td>4243.00</td><td>75.51</td><td>1.32</td><td>-0.02</td><td class="">—</td><td>—</td></tr><tr><td>MDY</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>688.85</td><td>690.03</td><td>10.68</td><td>-0.11</td><td>120.00</td><td>4304.00</td><td>67.35</td><td>2.03</td><td>0.02</td><td class="">—</td><td>—</td></tr><tr><td>RSP</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>209.75</td><td>210.95</td><td>2.40</td><td>-0.50</td><td>120.00</td><td>4315.00</td><td>65.31</td><td>1.68</td><td>-0.02</td><td class="">—</td><td>—</td></tr><tr><td>XLK</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>183.21</td><td>198.73</td><td>5.74</td><td>-2.71</td><td>40.00</td><td>4249.00</td><td>100.00</td><td>1.43</td><td>0.18</td><td class="">—</td><td>—</td></tr><tr><td>XLF</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>52.62</td><td>56.23</td><td>0.68</td><td>-5.28</td><td>120.00</td><td>4315.00</td><td>20.41</td><td>1.15</td><td>-0.03</td><td class="">—</td><td>—</td></tr><tr><td>XLE</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>57.12</td><td>63.46</td><td>1.38</td><td>-4.60</td><td>99.00</td><td>1333.00</td><td>40.82</td><td>0.95</td><td>-0.11</td><td class="">—</td><td>—</td></tr><tr><td>XLV</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>154.09</td><td>159.93</td><td>2.32</td><td>-2.52</td><td>120.00</td><td>4229.00</td><td>91.84</td><td>1.07</td><td>-0.08</td><td class="">—</td><td>—</td></tr><tr><td>XLI</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>175.15</td><td>178.81</td><td>3.21</td><td>-1.14</td><td>120.00</td><td>4310.00</td><td>69.39</td><td>1.27</td><td>-0.04</td><td class="">—</td><td>—</td></tr><tr><td>XLY</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>116.30</td><td>124.76</td><td>2.16</td><td>-3.92</td><td>120.00</td><td>4315.00</td><td>63.27</td><td>1.04</td><td>-0.06</td><td class="">—</td><td>—</td></tr><tr><td>XLP</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>85.27</td><td>89.64</td><td>1.25</td><td>-3.49</td><td>120.00</td><td>4244.00</td><td>81.63</td><td>1.44</td><td>-0.09</td><td class="">—</td><td>—</td></tr><tr><td>XLB</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>51.22</td><td>53.90</td><td>0.95</td><td>-2.82</td><td>120.00</td><td>4304.00</td><td>91.84</td><td>1.07</td><td>-0.07</td><td class="">—</td><td>—</td></tr><tr><td>XLU</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>44.05</td><td>47.71</td><td>0.69</td><td>-5.33</td><td>120.00</td><td>3966.00</td><td>8.16</td><td>0.90</td><td>-0.15</td><td class="">—</td><td>—</td></tr><tr><td>XLC</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>112.12</td><td>120.02</td><td>1.65</td><td>-4.79</td><td>120.00</td><td>767.00</td><td>77.55</td><td>1.17</td><td>-0.13</td><td class="">—</td><td>—</td></tr><tr><td>XBI</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>132.74</td><td>139.19</td><td>3.94</td><td>-1.64</td><td>120.00</td><td>3616.00</td><td>100.00</td><td>1.20</td><td>-0.03</td><td class="">—</td><td>—</td></tr><tr><td>SMH</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>609.45</td><td>642.77</td><td>27.68</td><td>-1.20</td><td>34.00</td><td>4252.00</td><td>100.00</td><td>1.23</td><td>0.35</td><td class="">—</td><td>—</td></tr><tr><td>IGV</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>90.92</td><td>108.06</td><td>3.31</td><td>-5.17</td><td>40.00</td><td>4248.00</td><td>93.88</td><td>0.88</td><td>-0.04</td><td class="">—</td><td>—</td></tr><tr><td>ITB</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>97.74</td><td>112.34</td><td>2.46</td><td>-5.94</td><td>79.00</td><td>3626.00</td><td>24.49</td><td>0.95</td><td>-0.05</td><td class="">—</td><td>—</td></tr><tr><td>KRE</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>72.35</td><td>73.65</td><td>1.35</td><td>-0.97</td><td>120.00</td><td>3626.00</td><td>28.57</td><td>1.08</td><td>0.03</td><td class="">—</td><td>—</td></tr><tr><td>XOP</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>163.41</td><td>190.36</td><td>5.12</td><td>-5.26</td><td>80.00</td><td>1360.00</td><td>40.82</td><td>1.38</td><td>-0.12</td><td class="">—</td><td>—</td></tr><tr><td>XRT</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>87.67</td><td>91.40</td><td>1.86</td><td>-2.01</td><td>120.00</td><td>4325.00</td><td>79.59</td><td>0.99</td><td>-0.01</td><td class="">—</td><td>—</td></tr><tr><td>XHB</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>107.83</td><td>122.76</td><td>2.64</td><td>-5.66</td><td>120.00</td><td>3621.00</td><td>26.53</td><td>1.78</td><td>-0.03</td><td class="">—</td><td>—</td></tr><tr><td>VOO</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>678.23</td><td>699.15</td><td>8.80</td><td>-2.38</td><td>120.00</td><td>3365.00</td><td>81.63</td><td>1.02</td><td>0.00</td><td class="">—</td><td>—</td></tr><tr><td>VXUS</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>85.34</td><td>87.06</td><td>1.49</td><td>-1.15</td><td>120.00</td><td>1514.00</td><td>81.63</td><td>0.93</td><td>-0.01</td><td class="">—</td><td>—</td></tr><tr><td>GEV</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>906.79</td><td>1140.00</td><td>45.94</td><td>-5.08</td><td>33.00</td><td>479.00</td><td>71.43</td><td>1.53</td><td>-0.02</td><td class="">—</td><td>—</td></tr><tr><td>ETN</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>393.64</td><td>434.23</td><td>16.56</td><td>-2.45</td><td>95.00</td><td>4315.00</td><td>100.00</td><td>1.02</td><td>0.02</td><td class="">—</td><td>—</td></tr><tr><td>PWR</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>683.29</td><td>788.75</td><td>29.79</td><td>-3.54</td><td>38.00</td><td>2556.00</td><td>100.00</td><td>0.69</td><td>0.08</td><td class="">—</td><td>—</td></tr><tr><td>VRT</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>297.88</td><td>345.18</td><td>18.98</td><td>-2.49</td><td>17.00</td><td>764.00</td><td>93.88</td><td>0.88</td><td>0.01</td><td class="">—</td><td>—</td></tr><tr><td>ASML</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>1899.48</td><td>1903.50</td><td>85.89</td><td>-0.05</td><td>26.00</td><td>4249.00</td><td>100.00</td><td>1.61</td><td>0.24</td><td class="">—</td><td>—</td></tr><tr><td>SOXX</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>586.93</td><td>618.84</td><td>30.93</td><td>-1.03</td><td>27.00</td><td>4249.00</td><td>100.00</td><td>1.39</td><td>0.47</td><td class="">—</td><td>—</td></tr><tr><td>CEG</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>246.71</td><td>317.25</td><td>11.55</td><td>-6.10</td><td>24.00</td><td>1048.00</td><td>0.00</td><td>1.43</td><td>-0.30</td><td class="">—</td><td>—</td></tr><tr><td>VST</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>146.38</td><td>176.28</td><td>6.84</td><td>-4.37</td><td>72.00</td><td>726.00</td><td>32.65</td><td>1.11</td><td>-0.19</td><td class="">—</td><td>—</td></tr><tr><td>CCJ</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>98.97</td><td>124.81</td><td>6.10</td><td>-4.24</td><td>33.00</td><td>732.00</td><td>73.47</td><td>1.30</td><td>-0.26</td><td class="">—</td><td>—</td></tr><tr><td>LEU</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>158.68</td><td>—</td><td>14.49</td><td>—</td><td>0.00</td><td>1680.00</td><td>32.65</td><td>0.92</td><td>-0.41</td><td class="">—</td><td>—</td></tr><tr><td>RTX</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>184.21</td><td>213.61</td><td>4.64</td><td>-6.34</td><td>120.00</td><td>4285.00</td><td>55.10</td><td>1.19</td><td>-0.20</td><td class="">—</td><td>—</td></tr><tr><td>CRS</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>562.45</td><td>—</td><td>20.98</td><td>—</td><td>0.00</td><td>4310.00</td><td>93.88</td><td>1.12</td><td>0.30</td><td class="">—</td><td>—</td></tr><tr><td>MP</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>57.18</td><td>—</td><td>4.52</td><td>—</td><td>0.00</td><td>1482.00</td><td>69.39</td><td>0.74</td><td>-0.15</td><td class="">—</td><td>—</td></tr><tr><td>NVDA</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>204.87</td><td>236.26</td><td>8.36</td><td>-3.75</td><td>46.00</td><td>4330.00</td><td>93.88</td><td>0.96</td><td>0.01</td><td class="">—</td><td>—</td></tr><tr><td>GOOGL</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>357.77</td><td>408.37</td><td>10.59</td><td>-4.78</td><td>46.00</td><td>4300.00</td><td>100.00</td><td>1.21</td><td>0.06</td><td class="">—</td><td>—</td></tr><tr><td>AAPL</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>295.63</td><td>317.40</td><td>7.30</td><td>-2.98</td><td>120.00</td><td>4999.00</td><td>100.00</td><td>0.89</td><td>0.04</td><td class="">—</td><td>—</td></tr><tr><td>ABBV</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>224.77</td><td>235.16</td><td>5.36</td><td>-1.94</td><td>120.00</td><td>3321.00</td><td>32.65</td><td>0.74</td><td>-0.10</td><td class="">—</td><td>—</td></tr><tr><td>ABT</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>89.65</td><td>109.26</td><td>2.06</td><td>-9.51</td><td>60.00</td><td>5006.00</td><td>12.24</td><td>0.71</td><td>-0.29</td><td class="">—</td><td>—</td></tr><tr><td>ACN</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>167.52</td><td>206.86</td><td>7.54</td><td>-5.21</td><td>66.00</td><td>3893.00</td><td>51.02</td><td>0.97</td><td>-0.25</td><td class="">—</td><td>—</td></tr><tr><td>ADP</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>225.77</td><td>250.36</td><td>6.12</td><td>-4.02</td><td>93.00</td><td>3931.00</td><td>83.67</td><td>0.96</td><td>-0.01</td><td class="">—</td><td>—</td></tr><tr><td>AMCR</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>39.92</td><td>47.47</td><td>1.13</td><td>-6.70</td><td>72.00</td><td>1515.00</td><td>6.12</td><td>0.73</td><td>-0.10</td><td class="">—</td><td>—</td></tr><tr><td>AMZN</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>241.51</td><td>278.56</td><td>7.28</td><td>-5.09</td><td>48.00</td><td>4363.00</td><td>87.76</td><td>0.91</td><td>0.04</td><td class="">—</td><td>—</td></tr><tr><td>APD</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>278.12</td><td>307.96</td><td>6.32</td><td>-4.72</td><td>120.00</td><td>4306.00</td><td>46.94</td><td>0.68</td><td>-0.14</td><td class="">—</td><td>—</td></tr><tr><td>ARES</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>132.82</td><td>133.39</td><td>5.16</td><td>-0.11</td><td>42.00</td><td>2484.00</td><td>30.61</td><td>0.62</td><td>0.23</td><td class="">—</td><td>—</td></tr><tr><td>AVGO</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>385.57</td><td>—</td><td>22.85</td><td>—</td><td>0.00</td><td>3917.00</td><td>95.92</td><td>1.36</td><td>0.03</td><td class="">—</td><td>—</td></tr><tr><td>AXP</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>318.49</td><td>385.04</td><td>7.35</td><td>-9.05</td><td>120.00</td><td>4237.00</td><td>42.86</td><td>0.61</td><td>-0.05</td><td class="">—</td><td>—</td></tr><tr><td>AXTI</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>88.34</td><td>—</td><td>14.54</td><td>—</td><td>0.00</td><td>253.00</td><td>73.47</td><td>0.77</td><td>0.53</td><td class="">—</td><td>—</td></tr><tr><td>BBEU</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>78.39</td><td>79.29</td><td>1.22</td><td>-0.74</td><td>120.00</td><td>1515.00</td><td>55.10</td><td>0.35</td><td>-0.03</td><td class="">—</td><td>—</td></tr><tr><td>BDX</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>147.35</td><td>184.86</td><td>3.74</td><td>-10.03</td><td>120.00</td><td>3377.00</td><td>44.90</td><td>0.46</td><td>-0.18</td><td class="">—</td><td>—</td></tr><tr><td>BE</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>248.88</td><td>—</td><td>25.01</td><td>—</td><td>0.00</td><td>249.00</td><td>93.88</td><td>0.84</td><td>0.35</td><td class="">—</td><td>—</td></tr><tr><td>BLK</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>1016.58</td><td>1168.24</td><td>24.45</td><td>-6.20</td><td>120.00</td><td>3395.00</td><td>22.45</td><td>0.67</td><td>-0.00</td><td class="">—</td><td>—</td></tr><tr><td>BP</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>42.68</td><td>47.72</td><td>1.14</td><td>-4.43</td><td>84.00</td><td>208.00</td><td>40.82</td><td>0.68</td><td>-0.08</td><td class="">—</td><td>—</td></tr><tr><td>BRK.B</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>485.79</td><td>512.13</td><td>6.87</td><td>-3.83</td><td>120.00</td><td>4241.00</td><td>89.80</td><td>0.81</td><td>-0.12</td><td class="">—</td><td>—</td></tr><tr><td>CAR</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>189.61</td><td>191.17</td><td>17.86</td><td>-0.09</td><td>16.00</td><td>4256.00</td><td>10.20</td><td>0.16</td><td>0.54</td><td class="">—</td><td>—</td></tr><tr><td>CAT</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>897.63</td><td>946.83</td><td>34.84</td><td>-1.41</td><td>46.00</td><td>4324.00</td><td>100.00</td><td>1.33</td><td>0.14</td><td class="">—</td><td>—</td></tr><tr><td>CB</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>327.93</td><td>344.65</td><td>6.42</td><td>-2.61</td><td>120.00</td><td>4319.00</td><td>93.88</td><td>0.65</td><td>-0.11</td><td class="">—</td><td>—</td></tr><tr><td>CBZ</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>33.94</td><td>36.42</td><td>1.58</td><td>-1.57</td><td>42.00</td><td>3252.00</td><td>28.57</td><td>0.81</td><td>0.18</td><td class="">—</td><td>—</td></tr><tr><td>CIEN</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>445.22</td><td>—</td><td>40.20</td><td>—</td><td>0.00</td><td>4310.00</td><td>89.80</td><td>1.12</td><td>0.17</td><td class="">—</td><td>—</td></tr><tr><td>CLS</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>385.86</td><td>—</td><td>30.06</td><td>—</td><td>0.00</td><td>748.00</td><td>93.88</td><td>0.65</td><td>0.27</td><td class="">—</td><td>—</td></tr><tr><td>CMCSA</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>23.97</td><td>28.31</td><td>0.66</td><td>-6.53</td><td>33.00</td><td>3928.00</td><td>2.04</td><td>0.81</td><td>-0.32</td><td class="">—</td><td>—</td></tr><tr><td>COHR</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>363.58</td><td>440.00</td><td>34.30</td><td>-2.23</td><td>23.00</td><td>4315.00</td><td>95.92</td><td>0.98</td><td>0.31</td><td class="">—</td><td>—</td></tr><tr><td>CRDO</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>264.76</td><td>—</td><td>23.82</td><td>—</td><td>0.00</td><td>418.00</td><td>100.00</td><td>1.64</td><td>0.76</td><td class="">—</td><td>—</td></tr><tr><td>CTSH</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>51.18</td><td>60.03</td><td>2.11</td><td>-4.19</td><td>36.00</td><td>4304.00</td><td>83.67</td><td>1.02</td><td>-0.28</td><td class="">—</td><td>—</td></tr><tr><td>DOCN</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>174.75</td><td>184.46</td><td>13.16</td><td>-0.74</td><td>26.00</td><td>147.00</td><td>97.96</td><td>0.49</td><td>0.87</td><td class="">—</td><td>—</td></tr><tr><td>EME</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>811.53</td><td>951.96</td><td>32.07</td><td>-4.38</td><td>50.00</td><td>3627.00</td><td>97.96</td><td>0.64</td><td>0.03</td><td class="">—</td><td>—</td></tr><tr><td>ERIE</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>226.01</td><td>269.38</td><td>7.42</td><td>-5.84</td><td>68.00</td><td>4144.00</td><td>18.37</td><td>0.91</td><td>-0.17</td><td class="">—</td><td>—</td></tr><tr><td>EYPT</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>12.50</td><td>14.68</td><td>0.75</td><td>-2.92</td><td>36.00</td><td>193.00</td><td>36.73</td><td>1.34</td><td>-0.22</td><td class="">—</td><td>—</td></tr><tr><td>EZPW</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>30.75</td><td>37.13</td><td>1.44</td><td>-4.42</td><td>44.00</td><td>591.00</td><td>100.00</td><td>1.42</td><td>0.06</td><td class="">—</td><td>—</td></tr><tr><td>FCNCA</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>2117.01</td><td>2227.54</td><td>52.10</td><td>-2.12</td><td>120.00</td><td>3336.00</td><td>65.31</td><td>0.88</td><td>0.05</td><td class="">—</td><td>—</td></tr><tr><td>FDS</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>236.64</td><td>272.40</td><td>11.81</td><td>-3.03</td><td>18.00</td><td>4310.00</td><td>89.80</td><td>1.02</td><td>0.05</td><td class="">—</td><td>—</td></tr><tr><td>FTGC</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>27.92</td><td>30.65</td><td>0.31</td><td>-8.85</td><td>110.00</td><td>1379.00</td><td>0.00</td><td>2.37</td><td>-0.13</td><td class="">—</td><td>—</td></tr><tr><td>GLW</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>176.55</td><td>211.47</td><td>14.02</td><td>-2.49</td><td>27.00</td><td>4385.00</td><td>95.92</td><td>0.76</td><td>0.20</td><td class="">—</td><td>—</td></tr><tr><td>GNRC</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>257.33</td><td>294.18</td><td>14.83</td><td>-2.49</td><td>31.00</td><td>3672.00</td><td>100.00</td><td>1.19</td><td>0.13</td><td class="">—</td><td>—</td></tr><tr><td>GOOG</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>356.56</td><td>404.23</td><td>10.61</td><td>-4.49</td><td>46.00</td><td>4300.00</td><td>100.00</td><td>1.42</td><td>0.06</td><td class="">—</td><td>—</td></tr><tr><td>HD</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>326.01</td><td>376.83</td><td>8.01</td><td>-6.34</td><td>75.00</td><td>3648.00</td><td>18.37</td><td>1.02</td><td>-0.14</td><td class="">—</td><td>—</td></tr><tr><td>HROW</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>37.65</td><td>38.21</td><td>2.04</td><td>-0.27</td><td>20.00</td><td>2030.00</td><td>77.55</td><td>1.14</td><td>-0.05</td><td class="">—</td><td>—</td></tr><tr><td>IBM</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>274.85</td><td>—</td><td>13.21</td><td>—</td><td>0.00</td><td>4286.00</td><td>87.76</td><td>0.51</td><td>0.01</td><td class="">—</td><td>—</td></tr><tr><td>IBP</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>207.50</td><td>224.93</td><td>10.61</td><td>-1.64</td><td>24.00</td><td>2565.00</td><td>6.12</td><td>0.65</td><td>-0.37</td><td class="">—</td><td>—</td></tr><tr><td>ICLR</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>149.92</td><td>—</td><td>7.39</td><td>—</td><td>0.00</td><td>5001.00</td><td>93.88</td><td>0.65</td><td>0.33</td><td class="">—</td><td>—</td></tr><tr><td>IFNNY</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>86.22</td><td>—</td><td>5.15</td><td>—</td><td>0.00</td><td>4221.00</td><td>97.96</td><td>1.22</td><td>0.51</td><td class="">—</td><td>—</td></tr><tr><td>IONQ</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>57.99</td><td>—</td><td>5.83</td><td>—</td><td>0.00</td><td>847.00</td><td>95.92</td><td>0.67</td><td>0.46</td><td class="">—</td><td>—</td></tr><tr><td>IQV</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>181.06</td><td>206.00</td><td>6.81</td><td>-3.66</td><td>89.00</td><td>2484.00</td><td>55.10</td><td>0.84</td><td>0.00</td><td class="">—</td><td>—</td></tr><tr><td>IVZ</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>28.29</td><td>28.80</td><td>0.92</td><td>-0.56</td><td>97.00</td><td>1425.00</td><td>77.55</td><td>0.69</td><td>0.11</td><td class="">—</td><td>—</td></tr><tr><td>JNJ</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>238.33</td><td>250.27</td><td>4.44</td><td>-2.69</td><td>120.00</td><td>4248.00</td><td>69.39</td><td>0.64</td><td>-0.11</td><td class="">—</td><td>—</td></tr><tr><td>KOD</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>33.97</td><td>37.97</td><td>2.81</td><td>-1.42</td><td>19.00</td><td>231.00</td><td>14.29</td><td>0.75</td><td>0.25</td><td class="">—</td><td>—</td></tr><tr><td>KR</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>64.12</td><td>76.18</td><td>1.72</td><td>-6.99</td><td>120.00</td><td>3431.00</td><td>24.49</td><td>0.99</td><td>-0.26</td><td class="">—</td><td>—</td></tr><tr><td>LHX</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>312.17</td><td>376.39</td><td>7.39</td><td>-8.69</td><td>118.00</td><td>3240.00</td><td>20.41</td><td>0.72</td><td>-0.24</td><td class="">—</td><td>—</td></tr><tr><td>LIN</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>515.44</td><td>522.89</td><td>10.59</td><td>-0.70</td><td>120.00</td><td>3933.00</td><td>97.96</td><td>0.89</td><td>-0.05</td><td class="">—</td><td>—</td></tr><tr><td>LITE</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>889.59</td><td>—</td><td>86.29</td><td>—</td><td>0.00</td><td>2484.00</td><td>91.84</td><td>0.76</td><td>0.26</td><td class="">—</td><td>—</td></tr><tr><td>LWLG</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>10.04</td><td>—</td><td>1.54</td><td>—</td><td>0.00</td><td>229.00</td><td>42.86</td><td>0.44</td><td>0.24</td><td class="">—</td><td>—</td></tr><tr><td>LZB</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>38.99</td><td>39.49</td><td>1.05</td><td>-0.48</td><td>120.00</td><td>3679.00</td><td>81.63</td><td>0.66</td><td>0.07</td><td class="">—</td><td>—</td></tr><tr><td>MA</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>486.51</td><td>587.78</td><td>11.23</td><td>-9.02</td><td>120.00</td><td>4993.00</td><td>34.69</td><td>0.69</td><td>-0.13</td><td class="">—</td><td>—</td></tr><tr><td>MDT</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>80.33</td><td>96.94</td><td>1.92</td><td>-8.67</td><td>71.00</td><td>3472.00</td><td>87.76</td><td>0.82</td><td>-0.18</td><td class="">—</td><td>—</td></tr><tr><td>META</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>568.43</td><td>691.52</td><td>18.83</td><td>-6.54</td><td>89.00</td><td>3213.00</td><td>44.90</td><td>0.98</td><td>-0.22</td><td class="">—</td><td>—</td></tr><tr><td>MLM</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>565.54</td><td>682.00</td><td>17.16</td><td>-6.78</td><td>74.00</td><td>3454.00</td><td>83.67</td><td>1.03</td><td>-0.14</td><td class="">—</td><td>—</td></tr><tr><td>MMM</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>157.91</td><td>175.71</td><td>4.10</td><td>-4.34</td><td>120.00</td><td>4302.00</td><td>93.88</td><td>1.16</td><td>-0.04</td><td class="">—</td><td>—</td></tr><tr><td>MRVL</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>280.71</td><td>—</td><td>26.59</td><td>—</td><td>0.00</td><td>2486.00</td><td>97.96</td><td>1.48</td><td>1.06</td><td class="">—</td><td>—</td></tr><tr><td>MSFT</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>390.34</td><td>466.32</td><td>12.38</td><td>-6.14</td><td>93.00</td><td>4278.00</td><td>87.76</td><td>1.32</td><td>-0.13</td><td class="">—</td><td>—</td></tr><tr><td>MU</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>995.87</td><td>—</td><td>75.29</td><td>—</td><td>0.00</td><td>3374.00</td><td>100.00</td><td>1.13</td><td>0.79</td><td class="">—</td><td>—</td></tr><tr><td>MUA</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>10.74</td><td>11.09</td><td>0.10</td><td>-3.49</td><td>120.00</td><td>4350.00</td><td>0.00</td><td>1.14</td><td>-0.09</td><td class="">—</td><td>—</td></tr><tr><td>NDAQ</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>86.74</td><td>101.47</td><td>2.09</td><td>-7.06</td><td>120.00</td><td>3388.00</td><td>10.20</td><td>0.72</td><td>-0.07</td><td class="">—</td><td>—</td></tr><tr><td>NFLX</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>81.27</td><td>98.74</td><td>2.11</td><td>-8.28</td><td>39.00</td><td>4359.00</td><td>0.00</td><td>0.89</td><td>-0.25</td><td class="">—</td><td>—</td></tr><tr><td>NVT</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>164.52</td><td>178.00</td><td>8.12</td><td>-1.66</td><td>37.00</td><td>1392.00</td><td>100.00</td><td>0.76</td><td>0.32</td><td class="">—</td><td>—</td></tr><tr><td>ORLY</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>90.10</td><td>102.11</td><td>2.25</td><td>-5.33</td><td>120.00</td><td>4340.00</td><td>40.82</td><td>1.12</td><td>-0.14</td><td class="">—</td><td>—</td></tr><tr><td>PEP</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>143.73</td><td>168.19</td><td>3.02</td><td>-8.11</td><td>120.00</td><td>4189.00</td><td>8.16</td><td>1.22</td><td>-0.19</td><td class="">—</td><td>—</td></tr><tr><td>PKG</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>224.40</td><td>248.05</td><td>6.77</td><td>-3.50</td><td>120.00</td><td>4310.00</td><td>85.71</td><td>1.01</td><td>-0.05</td><td class="">—</td><td>—</td></tr><tr><td>PLD</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>147.19</td><td>148.46</td><td>2.96</td><td>-0.43</td><td>120.00</td><td>4239.00</td><td>48.98</td><td>0.55</td><td>0.01</td><td class="">—</td><td>—</td></tr><tr><td>PNC</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>233.94</td><td>242.08</td><td>4.62</td><td>-1.76</td><td>120.00</td><td>4200.00</td><td>22.45</td><td>1.26</td><td>0.05</td><td class="">—</td><td>—</td></tr><tr><td>PPG</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>118.24</td><td>126.35</td><td>3.43</td><td>-2.37</td><td>79.00</td><td>4324.00</td><td>36.73</td><td>0.75</td><td>0.06</td><td class="">—</td><td>—</td></tr><tr><td>PRGS</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>31.59</td><td>35.38</td><td>1.52</td><td>-2.49</td><td>19.00</td><td>4310.00</td><td>24.49</td><td>0.42</td><td>-0.23</td><td class="">—</td><td>—</td></tr><tr><td>REGN</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>611.48</td><td>787.51</td><td>19.33</td><td>-9.11</td><td>69.00</td><td>4144.00</td><td>20.41</td><td>0.93</td><td>-0.30</td><td class="">—</td><td>—</td></tr><tr><td>ROL</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>47.05</td><td>58.46</td><td>1.34</td><td>-8.54</td><td>69.00</td><td>4995.00</td><td>81.63</td><td>0.83</td><td>-0.27</td><td class="">—</td><td>—</td></tr><tr><td>SE</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>85.69</td><td>99.97</td><td>4.38</td><td>-3.26</td><td>71.00</td><td>1843.00</td><td>67.35</td><td>0.56</td><td>-0.10</td><td class="">—</td><td>—</td></tr><tr><td>SGI</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>72.32</td><td>80.21</td><td>3.06</td><td>-2.58</td><td>34.00</td><td>4210.00</td><td>12.24</td><td>0.65</td><td>-0.16</td><td class="">—</td><td>—</td></tr><tr><td>T</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>23.00</td><td>29.14</td><td>0.60</td><td>-10.25</td><td>120.00</td><td>3968.00</td><td>24.49</td><td>0.96</td><td>-0.27</td><td class="">—</td><td>—</td></tr><tr><td>TROW</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>108.27</td><td>109.10</td><td>2.34</td><td>-0.35</td><td>120.00</td><td>4333.00</td><td>91.84</td><td>1.00</td><td>0.12</td><td class="">—</td><td>—</td></tr><tr><td>TSCO</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>31.26</td><td>37.64</td><td>1.16</td><td>-5.49</td><td>34.00</td><td>4252.00</td><td>0.00</td><td>1.06</td><td>-0.53</td><td class="">—</td><td>—</td></tr><tr><td>TTD</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>18.90</td><td>23.57</td><td>1.30</td><td>-3.60</td><td>24.00</td><td>2340.00</td><td>30.61</td><td>0.95</td><td>-0.44</td><td class="">—</td><td>—</td></tr><tr><td>TXN</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>297.10</td><td>331.51</td><td>13.12</td><td>-2.62</td><td>35.00</td><td>4279.00</td><td>100.00</td><td>1.21</td><td>0.35</td><td class="">—</td><td>—</td></tr><tr><td>VEA</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>71.31</td><td>72.32</td><td>1.26</td><td>-0.80</td><td>120.00</td><td>4304.00</td><td>81.63</td><td>1.38</td><td>-0.00</td><td class="">—</td><td>—</td></tr><tr><td>VIAV</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>50.24</td><td>57.01</td><td>4.09</td><td>-1.65</td><td>29.00</td><td>413.00</td><td>95.92</td><td>0.59</td><td>0.42</td><td class="">—</td><td>—</td></tr><tr><td>VICI</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>28.09</td><td>30.00</td><td>0.53</td><td>-3.58</td><td>120.00</td><td>1328.00</td><td>85.71</td><td>0.85</td><td>-0.11</td><td class="">—</td><td>—</td></tr><tr><td>VRSN</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>279.57</td><td>312.48</td><td>8.45</td><td>-3.89</td><td>62.00</td><td>4093.00</td><td>85.71</td><td>0.82</td><td>0.07</td><td class="">—</td><td>—</td></tr><tr><td>WAT</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>359.74</td><td>385.29</td><td>13.01</td><td>-1.96</td><td>30.00</td><td>4304.00</td><td>67.35</td><td>0.67</td><td>0.13</td><td class="">—</td><td>—</td></tr><tr><td>WDAY</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>130.53</td><td>158.64</td><td>7.77</td><td>-3.62</td><td>19.00</td><td>2281.00</td><td>81.63</td><td>1.13</td><td>-0.13</td><td class="">—</td><td>—</td></tr><tr><td>WFC</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>82.40</td><td>96.73</td><td>1.88</td><td>-7.63</td><td>120.00</td><td>1364.00</td><td>22.45</td><td>0.65</td><td>-0.01</td><td class="">—</td><td>—</td></tr><tr><td>WMB</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>71.62</td><td>80.08</td><td>1.59</td><td>-5.33</td><td>100.00</td><td>734.00</td><td>2.04</td><td>0.70</td><td>-0.12</td><td class="">—</td><td>—</td></tr><tr><td>XNGSY</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>26.34</td><td>32.32</td><td>0.74</td><td>-8.06</td><td>55.00</td><td>2246.00</td><td>20.41</td><td>4.33</td><td>-0.32</td><td class="">—</td><td>—</td></tr></table></div></details><details><summary class="s-NONE">NONE — 6 symbols</summary><div class="details-body"><table><tr><th>user_symbol</th><th>state</th><th>close</th><th>pivot</th><th>atr14</th><th>dist_to_pivot_atr</th><th>base_length</th><th>days_in_state</th><th>atr_compression_pct</th><th>volume_dryup</th><th>daily_rs_63</th><th>composite_score</th><th>percentile_rank</th></tr><tr><td>AAOI</td><td><span class="s-NONE">NONE</span></td><td>172.78</td><td>—</td><td>24.90</td><td>—</td><td>0.00</td><td>94.00</td><td>95.92</td><td>1.09</td><td>0.38</td><td class="">—</td><td>—</td></tr><tr><td>ALMU</td><td><span class="s-NONE">NONE</span></td><td>24.84</td><td>—</td><td>3.36</td><td>—</td><td>0.00</td><td>47.00</td><td>65.31</td><td>0.45</td><td>0.41</td><td class="">—</td><td>—</td></tr><tr><td>BW</td><td><span class="s-NONE">NONE</span></td><td>15.86</td><td>—</td><td>1.74</td><td>—</td><td>0.00</td><td>5.00</td><td>67.35</td><td>0.60</td><td>0.09</td><td class="">—</td><td>—</td></tr><tr><td>EOSE</td><td><span class="s-NONE">NONE</span></td><td>6.20</td><td>—</td><td>0.80</td><td>—</td><td>0.00</td><td>23.00</td><td>73.47</td><td>0.75</td><td>-0.09</td><td class="">—</td><td>—</td></tr><tr><td>POET</td><td><span class="s-NONE">NONE</span></td><td>11.25</td><td>—</td><td>1.99</td><td>—</td><td>0.00</td><td>67.00</td><td>63.27</td><td>0.57</td><td>0.31</td><td class="">—</td><td>—</td></tr><tr><td>STIM</td><td><span class="s-NONE">NONE</span></td><td>1.31</td><td>—</td><td>0.15</td><td>—</td><td>0.00</td><td>61.00</td><td>0.00</td><td>0.29</td><td>-0.07</td><td class="">—</td><td>—</td></tr></table></div></details>
+<details><summary>Portfolio detail</summary><div class="details-body"><table><tr><th>user_symbol</th><th>state</th><th>close</th><th>pivot</th><th>dist_to_pivot_atr</th><th>days_in_state</th><th>composite_score</th></tr><tr><td>QQQ</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>717.12</td><td>748.65</td><td>-2.06</td><td>4304.00</td><td class="">—</td></tr><tr><td>SPAXX</td><td><span class="s-SKIPPED">SKIPPED</span></td><td>—</td><td>—</td><td>—</td><td>0.00</td><td class="">—</td></tr><tr><td>VOO</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>678.23</td><td>699.15</td><td>-2.38</td><td>3365.00</td><td class="">—</td></tr><tr><td>VXUS</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>85.34</td><td>87.06</td><td>-1.15</td><td>1514.00</td><td class="">—</td></tr><tr><td>GEV</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>906.79</td><td>1140.00</td><td>-5.08</td><td>479.00</td><td class="">—</td></tr><tr><td>ETN</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>393.64</td><td>434.23</td><td>-2.45</td><td>4315.00</td><td class="">—</td></tr><tr><td>PWR</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>683.29</td><td>788.75</td><td>-3.54</td><td>2556.00</td><td class="">—</td></tr><tr><td>VRT</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>297.88</td><td>345.18</td><td>-2.49</td><td>764.00</td><td class="">—</td></tr><tr><td>ASML</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>1899.48</td><td>1903.50</td><td>-0.05</td><td>4249.00</td><td class="">—</td></tr><tr><td>SOXX</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>586.93</td><td>618.84</td><td>-1.03</td><td>4249.00</td><td class="">—</td></tr><tr><td>CEG</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>246.71</td><td>317.25</td><td>-6.10</td><td>1048.00</td><td class="">—</td></tr><tr><td>VST</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>146.38</td><td>176.28</td><td>-4.37</td><td>726.00</td><td class="">—</td></tr><tr><td>CCJ</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>98.97</td><td>124.81</td><td>-4.24</td><td>732.00</td><td class="">—</td></tr><tr><td>LEU</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>158.68</td><td>—</td><td>—</td><td>1680.00</td><td class="">—</td></tr><tr><td>RTX</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>184.21</td><td>213.61</td><td>-6.34</td><td>4285.00</td><td class="">—</td></tr><tr><td>CRS</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>562.45</td><td>—</td><td>—</td><td>4310.00</td><td class="">—</td></tr><tr><td>MP</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>57.18</td><td>—</td><td>—</td><td>1482.00</td><td class="">—</td></tr><tr><td>NVDA</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>204.87</td><td>236.26</td><td>-3.75</td><td>4330.00</td><td class="">—</td></tr><tr><td>GOOGL</td><td><span class="s-CONFIRMED">CONFIRMED</span></td><td>357.77</td><td>408.37</td><td>-4.78</td><td>4300.00</td><td class="">—</td></tr></table></div></details>
+<details><summary>Skipped symbols — 3</summary><div class="details-body"><table><tr><th>Symbol</th><th>Reason</th><th>Non-equity</th></tr><tr><td>SPAXX</td><td>non_equity</td><td>Y</td></tr><tr><td>EXAS</td><td>ingest_failed</td><td>N</td></tr><tr><td>ZT</td><td>ingest_failed</td><td>N</td></tr></table></div></details>
+
+<footer>
+  Generated 2026-06-11 23:24 UTC &nbsp;|&nbsp;
+  <a href="snapshot.md">Markdown version</a> &nbsp;|&nbsp;
+  swingtrader v0.1
+</footer>
+
+</body>
+</html>
