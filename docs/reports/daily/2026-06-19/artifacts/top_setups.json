@@ -1,0 +1,2341 @@
+[
+  {
+    "symbol": "XLRE",
+    "provider_symbol": "XLRE",
+    "as_of": "2026-06-19",
+    "identity": {
+      "state": "BASE",
+      "bucket": "pullback_long",
+      "action_label": "Actionable on pullback",
+      "setup_classification": "Constructive pullback",
+      "freshness_label": "fresh",
+      "days_in_state": 1,
+      "eligible": true,
+      "rejection_reasons": null,
+      "eligibility_warnings": null,
+      "daily_trend_state": "near_sma50",
+      "weekly_trend_state": "strong_weekly_uptrend",
+      "pullback_quality": "constructive",
+      "promotion_reason": "Trend remains constructive while price works through a pullback",
+      "demotion_reason": "far_from_pivot (2.7 ATR from trigger zone)",
+      "route_reason": "not in a clean breakout trigger zone today",
+      "operational_readiness": "watch_pullback_zone"
+    },
+    "model_scores": {
+      "composite_score": null,
+      "setup_score": null,
+      "trade_score": null,
+      "failure_risk": null,
+      "percentile_rank": null,
+      "note": "Model-calibrated probabilities from fitted classifiers"
+    },
+    "price_and_levels": {
+      "close": 43.86,
+      "pivot": 45.65,
+      "atr14": 0.66,
+      "dist_to_pivot_atr": -2.7,
+      "entry_lo": 45.65,
+      "entry_hi": 45.72,
+      "stop": 44.99,
+      "t1": 46.97,
+      "t2": 47.95,
+      "t3": 48.94,
+      "s1": 45.0,
+      "s2": 44.99,
+      "r1": 45.65,
+      "r2": 46.97,
+      "risk_reward_t1": "1.9x",
+      "level_method": "ATR-pivot: entry=pivot+0.10*ATR, stop=pivot-1.0*ATR, T1=pivot+2.0*ATR"
+    },
+    "trade_plan": {
+      "actionability_code": "WAIT_PULLBACK",
+      "actionable_now": false,
+      "entry_style": "pullback",
+      "best_entry_style": "pullback",
+      "entry_condition": "Treat as a pullback setup, not a breakout chase. Preferred add zone is near $45.00; confirm support before entry.",
+      "entry_trigger": "$45.00",
+      "entry_range": "$45.65-$45.72",
+      "alternate_pullback_entry": "$45.00",
+      "stop": "$44.99",
+      "stop_basis": "Daily close below $44.99 invalidates the setup.",
+      "stop_risk_pct": "1.5%",
+      "target_1": "$46.97",
+      "target_2": "$47.95",
+      "target_3": "$48.94",
+      "risk_reward_t1": "1.9:1",
+      "time_stop": "Let support prove itself; no fresh-entry time stop until the pullback resolves.",
+      "key_risk": "Pullback can deepen if support does not hold on the first test.",
+      "invalidation": "Daily close below $44.99 invalidates the idea.",
+      "why_now": [
+        "Volume dry-up score 1.12 supports absorption",
+        "Accepted above YTD AVWAP by 2.3 ATR",
+        "2.5 ATR above swing-low AVWAP support"
+      ],
+      "why_not_now": [
+        "Not in a clean breakout trigger zone today",
+        "RS-63 is weak at -8% vs SPY",
+        "ATR is elevated at the 96th percentile"
+      ],
+      "setup_improves_if": [
+        "Holds support around $45.00 and turns back toward $45.65",
+        "Shows lighter downside volume on the pullback"
+      ],
+      "setup_weakens_if": [
+        "Loses support near $45.00",
+        "Closes below stop $44.99"
+      ],
+      "what_improves_tomorrow": [
+        "Holds support around $45.00 and turns back toward $45.65",
+        "Shows lighter downside volume on the pullback"
+      ],
+      "what_weakens_tomorrow": [
+        "Loses support near $45.00",
+        "Closes below stop $44.99"
+      ]
+    },
+    "context": {
+      "ma_table": [
+        {
+          "name": "SMA5",
+          "value": 44.66,
+          "pct_dist": -1.81,
+          "slope": "falling",
+          "bias": "Stays falling unless close > 45.36",
+          "need_tomorrow": 45.36,
+          "tomorrow_bias": "headwind"
+        },
+        {
+          "name": "SMA10",
+          "value": 44.69,
+          "pct_dist": -1.89,
+          "slope": "rising",
+          "bias": "Stays rising if close > 44.70",
+          "need_tomorrow": 44.7,
+          "tomorrow_bias": "headwind"
+        },
+        {
+          "name": "SMA20",
+          "value": 44.42,
+          "pct_dist": -1.27,
+          "slope": "rising",
+          "bias": "Stays rising if close > 44.50",
+          "need_tomorrow": 44.5,
+          "tomorrow_bias": "neutral"
+        },
+        {
+          "name": "SMA50",
+          "value": 44.12,
+          "pct_dist": -0.59,
+          "slope": "rising",
+          "bias": "Stays rising if close > 42.73",
+          "need_tomorrow": 42.73,
+          "tomorrow_bias": "tailwind"
+        },
+        {
+          "name": "SMA200",
+          "value": 41.84,
+          "pct_dist": 4.62,
+          "slope": "rising",
+          "bias": "Stays rising if close > 40.45",
+          "need_tomorrow": 40.45,
+          "tomorrow_bias": "tailwind"
+        },
+        {
+          "name": "EMA20",
+          "value": 44.41,
+          "pct_dist": -1.25,
+          "slope": "falling",
+          "bias": "Stays falling if close < 44.41",
+          "need_tomorrow": 44.41,
+          "tomorrow_bias": "headwind"
+        }
+      ],
+      "avwap_table": [
+        {
+          "anchor": "YTD",
+          "anchor_key": "ytd",
+          "family": "ytd",
+          "anchor_date": "2026-01-02",
+          "priority": "primary",
+          "significance": "calendar",
+          "supported": true,
+          "unavailable_reason": null,
+          "avwap": 42.34,
+          "pct_dist": 3.46,
+          "distance_from_price_pct": 3.46,
+          "dist_atr": 2.306,
+          "distance_from_price_atr": 2.306,
+          "role": "support",
+          "status": "Accepted above",
+          "reclaim": false,
+          "stretch_atr": 2.306,
+          "slope_20": 0.6187,
+          "slope_label": "rising",
+          "closes_above_20": 1.0
+        },
+        {
+          "anchor": "Swing Low",
+          "anchor_key": "swing_low",
+          "family": "swing_low",
+          "anchor_date": "2025-12-22",
+          "priority": "primary",
+          "significance": "structural",
+          "supported": true,
+          "unavailable_reason": null,
+          "avwap": 42.23,
+          "pct_dist": 3.72,
+          "distance_from_price_pct": 3.72,
+          "dist_atr": 2.475,
+          "distance_from_price_atr": 2.475,
+          "role": "support",
+          "status": "Accepted above",
+          "reclaim": false,
+          "stretch_atr": 2.475,
+          "slope_20": 0.617,
+          "slope_label": "rising",
+          "closes_above_20": 1.0
+        },
+        {
+          "anchor": "MTD",
+          "anchor_key": "mtd",
+          "family": "mtd",
+          "anchor_date": "2026-06-01",
+          "priority": "secondary",
+          "significance": "calendar",
+          "supported": true,
+          "unavailable_reason": null,
+          "avwap": 44.38,
+          "pct_dist": -1.18,
+          "distance_from_price_pct": -1.18,
+          "dist_atr": -0.787,
+          "distance_from_price_atr": -0.787,
+          "role": "resistance",
+          "status": "Accepted below",
+          "reclaim": false,
+          "stretch_atr": 0.787,
+          "slope_20": 2.1066,
+          "slope_label": "rising",
+          "closes_above_20": null
+        },
+        {
+          "anchor": "Swing High",
+          "anchor_key": "swing_high",
+          "family": "swing_high",
+          "anchor_date": "2026-06-15",
+          "priority": "secondary",
+          "significance": "structural",
+          "supported": true,
+          "unavailable_reason": null,
+          "avwap": 44.54,
+          "pct_dist": -1.55,
+          "distance_from_price_pct": -1.55,
+          "dist_atr": -1.035,
+          "distance_from_price_atr": -1.035,
+          "role": "resistance",
+          "status": "Accepted below",
+          "reclaim": null,
+          "stretch_atr": 1.035,
+          "slope_20": -1.3997,
+          "slope_label": "falling",
+          "closes_above_20": null
+        },
+        {
+          "anchor": "WTD",
+          "anchor_key": "wtd",
+          "family": "wtd",
+          "anchor_date": "2026-06-15",
+          "priority": "secondary",
+          "significance": "calendar",
+          "supported": true,
+          "unavailable_reason": null,
+          "avwap": 44.54,
+          "pct_dist": -1.55,
+          "distance_from_price_pct": -1.55,
+          "dist_atr": -1.035,
+          "distance_from_price_atr": -1.035,
+          "role": "resistance",
+          "status": "Accepted below",
+          "reclaim": null,
+          "stretch_atr": 1.035,
+          "slope_20": -1.3997,
+          "slope_label": "falling",
+          "closes_above_20": null
+        },
+        {
+          "anchor": "Breakout Day",
+          "anchor_key": "breakout_day",
+          "family": "breakout_day",
+          "anchor_date": "2026-06-12",
+          "priority": "secondary",
+          "significance": "lifecycle",
+          "supported": true,
+          "unavailable_reason": null,
+          "avwap": 44.64,
+          "pct_dist": -1.78,
+          "distance_from_price_pct": -1.78,
+          "dist_atr": -1.187,
+          "distance_from_price_atr": -1.187,
+          "role": "resistance",
+          "status": "Accepted below",
+          "reclaim": null,
+          "stretch_atr": 1.187,
+          "slope_20": -1.4627,
+          "slope_label": "falling",
+          "closes_above_20": null
+        },
+        {
+          "anchor": "Ceasefire",
+          "anchor_key": "ceasefire",
+          "family": "global_event",
+          "anchor_date": "2026-03-18",
+          "priority": "macro",
+          "significance": "event",
+          "supported": true,
+          "unavailable_reason": null,
+          "avwap": 42.91,
+          "pct_dist": 2.17,
+          "distance_from_price_pct": 2.17,
+          "dist_atr": 1.443,
+          "distance_from_price_atr": 1.443,
+          "role": "support",
+          "status": "Accepted above",
+          "reclaim": false,
+          "stretch_atr": 1.443,
+          "slope_20": 1.1669,
+          "slope_label": "rising",
+          "closes_above_20": 1.0
+        },
+        {
+          "anchor": "War Start",
+          "anchor_key": "war_start",
+          "family": "global_event",
+          "anchor_date": "2026-03-10",
+          "priority": "macro",
+          "significance": "event",
+          "supported": true,
+          "unavailable_reason": null,
+          "avwap": 42.85,
+          "pct_dist": 2.31,
+          "distance_from_price_pct": 2.31,
+          "dist_atr": 1.536,
+          "distance_from_price_atr": 1.536,
+          "role": "support",
+          "status": "Accepted above",
+          "reclaim": false,
+          "stretch_atr": 1.536,
+          "slope_20": 1.0533,
+          "slope_label": "rising",
+          "closes_above_20": 1.0
+        },
+        {
+          "anchor": "COVID High",
+          "anchor_key": "covid_high",
+          "family": "global_event",
+          "anchor_date": "2020-09-02",
+          "priority": "macro",
+          "significance": "secular",
+          "supported": true,
+          "unavailable_reason": null,
+          "avwap": 37.49,
+          "pct_dist": 14.53,
+          "distance_from_price_pct": 14.53,
+          "dist_atr": 9.677,
+          "distance_from_price_atr": 9.677,
+          "role": "support",
+          "status": "Accepted above",
+          "reclaim": false,
+          "stretch_atr": 9.677,
+          "slope_20": 0.2122,
+          "slope_label": "rising",
+          "closes_above_20": 1.0
+        },
+        {
+          "anchor": "COVID Low",
+          "anchor_key": "covid_low",
+          "family": "global_event",
+          "anchor_date": "2020-03-23",
+          "priority": "macro",
+          "significance": "secular",
+          "supported": true,
+          "unavailable_reason": null,
+          "avwap": 36.68,
+          "pct_dist": 16.37,
+          "distance_from_price_pct": 16.37,
+          "dist_atr": 10.907,
+          "distance_from_price_atr": 10.907,
+          "role": "support",
+          "status": "Accepted above",
+          "reclaim": false,
+          "stretch_atr": 10.907,
+          "slope_20": 0.2228,
+          "slope_label": "rising",
+          "closes_above_20": 1.0
+        },
+        {
+          "anchor": "Earnings Anchor",
+          "anchor_key": "earnings",
+          "family": "earnings",
+          "anchor_date": null,
+          "avwap": null,
+          "pct_dist": null,
+          "distance_from_price_pct": null,
+          "dist_atr": null,
+          "distance_from_price_atr": null,
+          "role": "unavailable",
+          "status": "Unavailable",
+          "priority": "event",
+          "significance": "earnings",
+          "supported": false,
+          "unavailable_reason": "earnings event data is not available in v1",
+          "reclaim": null,
+          "stretch_atr": null,
+          "slope_20": null,
+          "slope_label": null,
+          "closes_above_20": null
+        },
+        {
+          "anchor": "Per-Symbol Event",
+          "anchor_key": "per_symbol_event",
+          "family": "per_symbol_event",
+          "anchor_date": null,
+          "avwap": null,
+          "pct_dist": null,
+          "distance_from_price_pct": null,
+          "dist_atr": null,
+          "distance_from_price_atr": null,
+          "role": "unavailable",
+          "status": "Unavailable",
+          "priority": "event",
+          "significance": "symbol_event",
+          "supported": false,
+          "unavailable_reason": "no per-symbol event anchor configured for this symbol",
+          "reclaim": null,
+          "stretch_atr": null,
+          "slope_20": null,
+          "slope_label": null,
+          "closes_above_20": null
+        }
+      ],
+      "volume_block": {
+        "volume_dryup_pct": 112.5,
+        "atr_compression_pct": 95.9,
+        "range_compression": 1.166,
+        "vol_contraction_5_20": 1.168,
+        "vol_contraction_10_50": 0.876,
+        "dollar_volume_log": 8.4,
+        "breakout_thrust_atr": null,
+        "weekly_vol_dryup": 0.665,
+        "weekly_atr_compression": 100.0,
+        "down_close_ratio": 0.65,
+        "relative_vol_label": "Very Low",
+        "compression_label": "Elevated - 96th percentile"
+      },
+      "checklist": [
+        {
+          "item": "Higher timeframe trend",
+          "result": "pass",
+          "reason": "SPY above 200SMA"
+        },
+        {
+          "item": "Weekly trend constructive",
+          "result": "pass",
+          "reason": "Price 2.7% above 10-week WMA"
+        },
+        {
+          "item": "Daily structure",
+          "result": "neutral",
+          "reason": "State=BASE but dist_to_pivot=-2.72 ATR (out of -2 to +0.5 range)"
+        },
+        {
+          "item": "Pivot clarity",
+          "result": "pass",
+          "reason": "2 resistance touches at pivot"
+        },
+        {
+          "item": "Compression present",
+          "result": "fail",
+          "reason": "ATR at 96th percentile (not compressed)"
+        },
+        {
+          "item": "Volume dry-up",
+          "result": "pass",
+          "reason": "Volume dry-up score: 1.12"
+        },
+        {
+          "item": "Relative strength",
+          "result": "fail",
+          "reason": "RS-63: -7.7% vs SPY (underperforming)"
+        },
+        {
+          "item": "YTD AVWAP acceptance",
+          "result": "pass",
+          "reason": "Price 2.31 ATR above YTD AVWAP"
+        },
+        {
+          "item": "MA alignment (above SMA50)",
+          "result": "neutral",
+          "reason": "Price near SMA50 (-0.6%)"
+        },
+        {
+          "item": "Not overextended",
+          "result": "pass",
+          "reason": "-2.72 ATR from pivot (within 3 ATR)"
+        },
+        {
+          "item": "Failure risk acceptable",
+          "result": "neutral",
+          "reason": "Failure risk unavailable"
+        },
+        {
+          "item": "Market regime supportive",
+          "result": "pass",
+          "reason": "SPY trend score: 1.00 (positive)"
+        },
+        {
+          "item": "R/R acceptable",
+          "result": "neutral",
+          "reason": "R/R not computable (missing levels)"
+        },
+        {
+          "item": "Base freshness",
+          "result": "pass",
+          "reason": "1 days in BASE (max 60)"
+        },
+        {
+          "item": "Score quality",
+          "result": "neutral",
+          "reason": "Composite score unavailable"
+        },
+        {
+          "item": "Base quality",
+          "result": "neutral",
+          "reason": "Grade C: Tight closes (1.2% std)"
+        },
+        {
+          "item": "Continuation pattern",
+          "result": "neutral",
+          "reason": "No tight continuation pattern detected (NR7/3WT/tight5d)"
+        },
+        {
+          "item": "Clean air above pivot",
+          "result": "fail",
+          "reason": "Resistance close: only 0.8 ATR to MTD"
+        }
+      ],
+      "confluence": {
+        "nearby_count": 0,
+        "nearby_levels": [],
+        "cluster_role": "scattered"
+      },
+      "ma_context": "SMA10 rising (headwind); SMA20 rising (neutral); SMA50 rising (tailwind)",
+      "avwap_context": "YTD: Accepted above (+2.3 ATR); Swing Low: Accepted above (+2.5 ATR); MTD: Accepted below (-0.8 ATR)"
+    },
+    "narrative": {
+      "setup": "Trend remains constructive while price works through a pullback",
+      "why": "Volume dry-up score 1.12 supports absorption; Accepted above YTD AVWAP by 2.3 ATR; 2.5 ATR above swing-low AVWAP support",
+      "why_not_now": "Not in a clean breakout trigger zone today; RS-63 is weak at -8% vs SPY; ATR is elevated at the 96th percentile",
+      "entry": "Treat as a pullback setup, not a breakout chase. Preferred add zone is near $45.00; confirm support before entry.",
+      "risk": "Pullback can deepen if support does not hold on the first test.",
+      "targets": "$46.97 | $47.95 | $48.94",
+      "verdict": "Constructive pullback watch. Treat this as a pullback plan, not a breakout card. Treat as a pullback setup, not a breakout chase. Preferred add zone is near $45.00; confirm support before entry."
+    },
+    "coherence": {
+      "coherence_ok": true,
+      "coherence_issues": [],
+      "packet_complete_for_surface": true,
+      "packet_completeness_issues": []
+    },
+    "surfacing": {
+      "surfaced_in_top": true,
+      "surface_section": "pullback",
+      "not_surfaced_reason": null,
+      "selector_blockers": []
+    },
+    "intraday": {
+      "policy": "daily_only",
+      "available": false,
+      "used_in_qualification": false,
+      "note": "Intraday confirmation is not part of v1 qualification; surfaced setup truth is daily/weekly only."
+    },
+    "ai_note": "[XLRE \u2014 Rule-based note]\n\nSetup\nTrend remains constructive while price works through a pullback\n\nWhy It Matters Now\nVolume dry-up score 1.12 supports absorption; Accepted above YTD AVWAP by 2.3 ATR; 2.5 ATR above swing-low AVWAP support\n\nEntry Idea\nTreat as a pullback setup, not a breakout chase. Preferred add zone is near $45.00; confirm support before entry.\n\nRisk/Invalidation\nPullback can deepen if support does not hold on the first test.\n\nTargets\n$46.97 | $47.95 | $48.94\n\nVerdict\nConstructive pullback watch. Treat this as a pullback plan, not a breakout card. Treat as a pullback setup, not a breakout chase. Preferred add zone is near $45.00; confirm support before entry.",
+    "chart_paths": {
+      "daily": "charts/XLRE_daily.png",
+      "weekly": "charts/XLRE_weekly.png",
+      "intraday": null
+    },
+    "freshness_metadata": {
+      "is_fresh": true,
+      "is_extended": false,
+      "is_stale_confirmed": false,
+      "days_since_trigger": null,
+      "days_since_confirmation": null,
+      "last_actionable_check": "2026-06-19"
+    }
+  },
+  {
+    "symbol": "BW",
+    "provider_symbol": "BW",
+    "as_of": "2026-06-19",
+    "identity": {
+      "state": "BASE",
+      "bucket": "pullback_long",
+      "action_label": "Actionable on pullback",
+      "setup_classification": "Constructive pullback",
+      "freshness_label": "fresh",
+      "days_in_state": 1,
+      "eligible": true,
+      "rejection_reasons": null,
+      "eligibility_warnings": null,
+      "daily_trend_state": "above_sma50_flat",
+      "weekly_trend_state": "below_wma10_weekly",
+      "pullback_quality": "near_pivot",
+      "promotion_reason": "Trend remains constructive while price works through a pullback",
+      "demotion_reason": "far_from_pivot (1.1 ATR from trigger zone)",
+      "route_reason": "not in a clean breakout trigger zone today",
+      "operational_readiness": "watch_pullback_zone"
+    },
+    "model_scores": {
+      "composite_score": null,
+      "setup_score": null,
+      "trade_score": null,
+      "failure_risk": null,
+      "percentile_rank": null,
+      "note": "Model-calibrated probabilities from fitted classifiers"
+    },
+    "price_and_levels": {
+      "close": 17.38,
+      "pivot": 19.18,
+      "atr14": 1.57,
+      "dist_to_pivot_atr": -1.1,
+      "entry_lo": 19.18,
+      "entry_hi": 19.34,
+      "stop": 17.61,
+      "t1": 22.31,
+      "t2": 24.66,
+      "t3": 27.01,
+      "s1": 17.62,
+      "s2": 17.61,
+      "r1": 19.18,
+      "r2": 22.31,
+      "risk_reward_t1": "1.9x",
+      "level_method": "ATR-pivot: entry=pivot+0.10*ATR, stop=pivot-1.0*ATR, T1=pivot+2.0*ATR"
+    },
+    "trade_plan": {
+      "actionability_code": "WAIT_PULLBACK",
+      "actionable_now": false,
+      "entry_style": "pullback",
+      "best_entry_style": "pullback",
+      "entry_condition": "Treat as a pullback setup, not a breakout chase. Preferred add zone is near $17.62; confirm support before entry.",
+      "entry_trigger": "$17.62",
+      "entry_range": "$19.18-$19.34",
+      "alternate_pullback_entry": "$17.62",
+      "stop": "$17.61",
+      "stop_basis": "Daily close below $17.61 invalidates the setup.",
+      "stop_risk_pct": "8.6%",
+      "target_1": "$22.31",
+      "target_2": "$24.66",
+      "target_3": "$27.01",
+      "risk_reward_t1": "1.9:1",
+      "time_stop": "Let support prove itself; no fresh-entry time stop until the pullback resolves.",
+      "key_risk": "Pullback can deepen if support does not hold on the first test.",
+      "invalidation": "Daily close below $17.61 invalidates the idea.",
+      "why_now": [
+        "Volume dry-up score 1.07 supports absorption",
+        "Accepted above YTD AVWAP by 2.2 ATR",
+        "5.0 ATR above swing-low AVWAP support"
+      ],
+      "why_not_now": [
+        "Not in a clean breakout trigger zone today",
+        "RS-63 is weak at -3% vs SPY"
+      ],
+      "setup_improves_if": [
+        "Holds support around $17.62 and turns back toward $19.18",
+        "Shows lighter downside volume on the pullback"
+      ],
+      "setup_weakens_if": [
+        "Loses support near $17.62",
+        "Closes below stop $17.61"
+      ],
+      "what_improves_tomorrow": [
+        "Holds support around $17.62 and turns back toward $19.18",
+        "Shows lighter downside volume on the pullback"
+      ],
+      "what_weakens_tomorrow": [
+        "Loses support near $17.62",
+        "Closes below stop $17.61"
+      ]
+    },
+    "context": {
+      "ma_table": [
+        {
+          "name": "SMA5",
+          "value": 16.72,
+          "pct_dist": 3.82,
+          "slope": "rising",
+          "bias": "Stays rising if close > 16.08",
+          "need_tomorrow": 16.08,
+          "tomorrow_bias": "tailwind"
+        },
+        {
+          "name": "SMA10",
+          "value": 16.18,
+          "pct_dist": 6.9,
+          "slope": "falling",
+          "bias": "Stays falling unless close > 16.36",
+          "need_tomorrow": 16.36,
+          "tomorrow_bias": "tailwind"
+        },
+        {
+          "name": "SMA20",
+          "value": 17.47,
+          "pct_dist": -0.53,
+          "slope": "falling",
+          "bias": "Stays falling unless close > 20.54",
+          "need_tomorrow": 20.54,
+          "tomorrow_bias": "headwind"
+        },
+        {
+          "name": "SMA50",
+          "value": 17.3,
+          "pct_dist": 0.48,
+          "slope": "rising",
+          "bias": "Stays rising if close > 18.02",
+          "need_tomorrow": 18.02,
+          "tomorrow_bias": "headwind"
+        },
+        {
+          "name": "SMA200",
+          "value": 9.8,
+          "pct_dist": 43.62,
+          "slope": "rising",
+          "bias": "Stays rising if close > 2.54",
+          "need_tomorrow": 2.54,
+          "tomorrow_bias": "tailwind"
+        },
+        {
+          "name": "EMA20",
+          "value": 17.07,
+          "pct_dist": 1.77,
+          "slope": "rising",
+          "bias": "Stays rising if close > 17.07",
+          "need_tomorrow": 17.07,
+          "tomorrow_bias": "tailwind"
+        }
+      ],
+      "avwap_table": [
+        {
+          "anchor": "YTD",
+          "anchor_key": "ytd",
+          "family": "ytd",
+          "anchor_date": "2026-01-02",
+          "priority": "primary",
+          "significance": "calendar",
+          "supported": true,
+          "unavailable_reason": null,
+          "avwap": 13.89,
+          "pct_dist": 20.1,
+          "distance_from_price_pct": 20.1,
+          "dist_atr": 2.229,
+          "distance_from_price_atr": 2.229,
+          "role": "support",
+          "status": "Accepted above",
+          "reclaim": false,
+          "stretch_atr": 2.229,
+          "slope_20": 4.0785,
+          "slope_label": "rising",
+          "closes_above_20": 1.0
+        },
+        {
+          "anchor": "Swing Low",
+          "anchor_key": "swing_low",
+          "family": "swing_low",
+          "anchor_date": "2025-07-30",
+          "priority": "primary",
+          "significance": "structural",
+          "supported": true,
+          "unavailable_reason": null,
+          "avwap": 9.61,
+          "pct_dist": 44.73,
+          "distance_from_price_pct": 44.73,
+          "dist_atr": 4.962,
+          "distance_from_price_atr": 4.962,
+          "role": "support",
+          "status": "Accepted above",
+          "reclaim": false,
+          "stretch_atr": 4.962,
+          "slope_20": 6.6077,
+          "slope_label": "rising",
+          "closes_above_20": 1.0
+        },
+        {
+          "anchor": "WTD",
+          "anchor_key": "wtd",
+          "family": "wtd",
+          "anchor_date": "2026-06-15",
+          "priority": "secondary",
+          "significance": "calendar",
+          "supported": true,
+          "unavailable_reason": null,
+          "avwap": 17.01,
+          "pct_dist": 2.13,
+          "distance_from_price_pct": 2.13,
+          "dist_atr": 0.237,
+          "distance_from_price_atr": 0.237,
+          "role": "testing",
+          "status": "Testing",
+          "reclaim": null,
+          "stretch_atr": 0.237,
+          "slope_20": 3.6688,
+          "slope_label": "rising",
+          "closes_above_20": null
+        },
+        {
+          "anchor": "MTD",
+          "anchor_key": "mtd",
+          "family": "mtd",
+          "anchor_date": "2026-06-01",
+          "priority": "secondary",
+          "significance": "calendar",
+          "supported": true,
+          "unavailable_reason": null,
+          "avwap": 16.88,
+          "pct_dist": 2.85,
+          "distance_from_price_pct": 2.85,
+          "dist_atr": 0.316,
+          "distance_from_price_atr": 0.316,
+          "role": "support",
+          "status": "Accepted above",
+          "reclaim": true,
+          "stretch_atr": 0.316,
+          "slope_20": -3.9575,
+          "slope_label": "falling",
+          "closes_above_20": null
+        },
+        {
+          "anchor": "Swing High",
+          "anchor_key": "swing_high",
+          "family": "swing_high",
+          "anchor_date": "2026-05-15",
+          "priority": "secondary",
+          "significance": "structural",
+          "supported": true,
+          "unavailable_reason": null,
+          "avwap": 18.53,
+          "pct_dist": -6.59,
+          "distance_from_price_pct": -6.59,
+          "dist_atr": -0.731,
+          "distance_from_price_atr": -0.731,
+          "role": "resistance",
+          "status": "Accepted below",
+          "reclaim": false,
+          "stretch_atr": 0.731,
+          "slope_20": -9.535,
+          "slope_label": "falling",
+          "closes_above_20": 0.05
+        },
+        {
+          "anchor": "Breakout Day",
+          "anchor_key": "breakout_day",
+          "family": "breakout_day",
+          "anchor_date": "2024-06-10",
+          "priority": "secondary",
+          "significance": "lifecycle",
+          "supported": true,
+          "unavailable_reason": null,
+          "avwap": 6.66,
+          "pct_dist": 61.69,
+          "distance_from_price_pct": 61.69,
+          "dist_atr": 6.842,
+          "distance_from_price_atr": 6.842,
+          "role": "support",
+          "status": "Accepted above",
+          "reclaim": false,
+          "stretch_atr": 6.842,
+          "slope_20": 8.2198,
+          "slope_label": "rising",
+          "closes_above_20": 1.0
+        },
+        {
+          "anchor": "Ceasefire",
+          "anchor_key": "ceasefire",
+          "family": "global_event",
+          "anchor_date": "2026-03-18",
+          "priority": "macro",
+          "significance": "event",
+          "supported": true,
+          "unavailable_reason": null,
+          "avwap": 16.99,
+          "pct_dist": 2.23,
+          "distance_from_price_pct": 2.23,
+          "dist_atr": 0.248,
+          "distance_from_price_atr": 0.248,
+          "role": "testing",
+          "status": "Testing",
+          "reclaim": true,
+          "stretch_atr": 0.248,
+          "slope_20": 1.2327,
+          "slope_label": "rising",
+          "closes_above_20": 0.55
+        },
+        {
+          "anchor": "War Start",
+          "anchor_key": "war_start",
+          "family": "global_event",
+          "anchor_date": "2026-03-10",
+          "priority": "macro",
+          "significance": "event",
+          "supported": true,
+          "unavailable_reason": null,
+          "avwap": 16.32,
+          "pct_dist": 6.13,
+          "distance_from_price_pct": 6.13,
+          "dist_atr": 0.679,
+          "distance_from_price_atr": 0.679,
+          "role": "support",
+          "status": "Accepted above",
+          "reclaim": true,
+          "stretch_atr": 0.679,
+          "slope_20": 2.1022,
+          "slope_label": "rising",
+          "closes_above_20": 0.75
+        },
+        {
+          "anchor": "COVID High",
+          "anchor_key": "covid_high",
+          "family": "global_event",
+          "anchor_date": "2020-09-02",
+          "priority": "macro",
+          "significance": "secular",
+          "supported": true,
+          "unavailable_reason": null,
+          "avwap": 6.08,
+          "pct_dist": 65.02,
+          "distance_from_price_pct": 65.02,
+          "dist_atr": 7.212,
+          "distance_from_price_atr": 7.212,
+          "role": "support",
+          "status": "Accepted above",
+          "reclaim": false,
+          "stretch_atr": 7.212,
+          "slope_20": 5.904,
+          "slope_label": "rising",
+          "closes_above_20": 1.0
+        },
+        {
+          "anchor": "COVID Low",
+          "anchor_key": "covid_low",
+          "family": "global_event",
+          "anchor_date": "2020-03-23",
+          "priority": "macro",
+          "significance": "secular",
+          "supported": true,
+          "unavailable_reason": null,
+          "avwap": 6.01,
+          "pct_dist": 65.39,
+          "distance_from_price_pct": 65.39,
+          "dist_atr": 7.253,
+          "distance_from_price_atr": 7.253,
+          "role": "support",
+          "status": "Accepted above",
+          "reclaim": false,
+          "stretch_atr": 7.253,
+          "slope_20": 5.9052,
+          "slope_label": "rising",
+          "closes_above_20": 1.0
+        },
+        {
+          "anchor": "Earnings Anchor",
+          "anchor_key": "earnings",
+          "family": "earnings",
+          "anchor_date": null,
+          "avwap": null,
+          "pct_dist": null,
+          "distance_from_price_pct": null,
+          "dist_atr": null,
+          "distance_from_price_atr": null,
+          "role": "unavailable",
+          "status": "Unavailable",
+          "priority": "event",
+          "significance": "earnings",
+          "supported": false,
+          "unavailable_reason": "earnings event data is not available in v1",
+          "reclaim": null,
+          "stretch_atr": null,
+          "slope_20": null,
+          "slope_label": null,
+          "closes_above_20": null
+        },
+        {
+          "anchor": "Per-Symbol Event",
+          "anchor_key": "per_symbol_event",
+          "family": "per_symbol_event",
+          "anchor_date": null,
+          "avwap": null,
+          "pct_dist": null,
+          "distance_from_price_pct": null,
+          "dist_atr": null,
+          "distance_from_price_atr": null,
+          "role": "unavailable",
+          "status": "Unavailable",
+          "priority": "event",
+          "significance": "symbol_event",
+          "supported": false,
+          "unavailable_reason": "no per-symbol event anchor configured for this symbol",
+          "reclaim": null,
+          "stretch_atr": null,
+          "slope_20": null,
+          "slope_label": null,
+          "closes_above_20": null
+        }
+      ],
+      "volume_block": {
+        "volume_dryup_pct": 106.8,
+        "atr_compression_pct": 44.9,
+        "range_compression": 0.762,
+        "vol_contraction_5_20": 0.343,
+        "vol_contraction_10_50": 0.405,
+        "dollar_volume_log": 7.801,
+        "breakout_thrust_atr": null,
+        "weekly_vol_dryup": 0.633,
+        "weekly_atr_compression": 89.7,
+        "down_close_ratio": 0.6,
+        "relative_vol_label": "Very Low",
+        "compression_label": "Moderate - 45th percentile"
+      },
+      "checklist": [
+        {
+          "item": "Higher timeframe trend",
+          "result": "pass",
+          "reason": "SPY above 200SMA"
+        },
+        {
+          "item": "Weekly trend constructive",
+          "result": "fail",
+          "reason": "Price 5.8% below 10-week WMA"
+        },
+        {
+          "item": "Daily structure",
+          "result": "pass",
+          "reason": "State=BASE, -1.15 ATR from pivot"
+        },
+        {
+          "item": "Pivot clarity",
+          "result": "pass",
+          "reason": "4 resistance touches at pivot"
+        },
+        {
+          "item": "Compression present",
+          "result": "fail",
+          "reason": "ATR at 45th percentile (not compressed)"
+        },
+        {
+          "item": "Volume dry-up",
+          "result": "pass",
+          "reason": "Volume dry-up score: 1.07"
+        },
+        {
+          "item": "Relative strength",
+          "result": "neutral",
+          "reason": "RS-63: -2.6% vs SPY (near flat)"
+        },
+        {
+          "item": "YTD AVWAP acceptance",
+          "result": "pass",
+          "reason": "Price 2.23 ATR above YTD AVWAP"
+        },
+        {
+          "item": "MA alignment (above SMA50)",
+          "result": "pass",
+          "reason": "Price 0.5% above SMA50"
+        },
+        {
+          "item": "Not overextended",
+          "result": "pass",
+          "reason": "-1.15 ATR from pivot (within 3 ATR)"
+        },
+        {
+          "item": "Failure risk acceptable",
+          "result": "neutral",
+          "reason": "Failure risk unavailable"
+        },
+        {
+          "item": "Market regime supportive",
+          "result": "pass",
+          "reason": "SPY trend score: 1.00 (positive)"
+        },
+        {
+          "item": "R/R acceptable",
+          "result": "neutral",
+          "reason": "R/R not computable (missing levels)"
+        },
+        {
+          "item": "Base freshness",
+          "result": "pass",
+          "reason": "1 days in BASE (max 60)"
+        },
+        {
+          "item": "Score quality",
+          "result": "neutral",
+          "reason": "Composite score unavailable"
+        },
+        {
+          "item": "Base quality",
+          "result": "fail",
+          "reason": "Grade D: Loose closes (11.1% std) \u2014 wide base"
+        },
+        {
+          "item": "Continuation pattern",
+          "result": "neutral",
+          "reason": "No tight continuation pattern detected (NR7/3WT/tight5d)"
+        },
+        {
+          "item": "Clean air above pivot",
+          "result": "fail",
+          "reason": "Resistance close: only 0.7 ATR to Swing High"
+        }
+      ],
+      "confluence": {
+        "nearby_count": 6,
+        "nearby_levels": [
+          {
+            "name": "Stop",
+            "value": 17.61,
+            "dist_atr": -0.147
+          },
+          {
+            "name": "S1",
+            "value": 17.62,
+            "dist_atr": -0.153
+          },
+          {
+            "name": "S2",
+            "value": 17.61,
+            "dist_atr": -0.147
+          },
+          {
+            "name": "AVWAP WTD",
+            "value": 17.01,
+            "dist_atr": 0.236
+          },
+          {
+            "name": "AVWAP MTD",
+            "value": 16.88,
+            "dist_atr": 0.319
+          },
+          {
+            "name": "AVWAP Ceasefire",
+            "value": 16.99,
+            "dist_atr": 0.249
+          }
+        ],
+        "cluster_role": "trigger zone"
+      },
+      "ma_context": "SMA10 falling (tailwind); SMA20 falling (headwind); SMA50 rising (headwind)",
+      "avwap_context": "YTD: Accepted above (+2.2 ATR); Swing Low: Accepted above (+5.0 ATR); WTD: Testing (+0.2 ATR)"
+    },
+    "narrative": {
+      "setup": "Trend remains constructive while price works through a pullback",
+      "why": "Volume dry-up score 1.07 supports absorption; Accepted above YTD AVWAP by 2.2 ATR; 5.0 ATR above swing-low AVWAP support",
+      "why_not_now": "Not in a clean breakout trigger zone today; RS-63 is weak at -3% vs SPY",
+      "entry": "Treat as a pullback setup, not a breakout chase. Preferred add zone is near $17.62; confirm support before entry.",
+      "risk": "Pullback can deepen if support does not hold on the first test.",
+      "targets": "$22.31 | $24.66 | $27.01",
+      "verdict": "Constructive pullback watch. Treat this as a pullback plan, not a breakout card. Treat as a pullback setup, not a breakout chase. Preferred add zone is near $17.62; confirm support before entry."
+    },
+    "coherence": {
+      "coherence_ok": true,
+      "coherence_issues": [],
+      "packet_complete_for_surface": true,
+      "packet_completeness_issues": []
+    },
+    "surfacing": {
+      "surfaced_in_top": true,
+      "surface_section": "pullback",
+      "not_surfaced_reason": null,
+      "selector_blockers": []
+    },
+    "intraday": {
+      "policy": "daily_only",
+      "available": false,
+      "used_in_qualification": false,
+      "note": "Intraday confirmation is not part of v1 qualification; surfaced setup truth is daily/weekly only."
+    },
+    "ai_note": "[BW \u2014 Rule-based note]\n\nSetup\nTrend remains constructive while price works through a pullback\n\nWhy It Matters Now\nVolume dry-up score 1.07 supports absorption; Accepted above YTD AVWAP by 2.2 ATR; 5.0 ATR above swing-low AVWAP support\n\nEntry Idea\nTreat as a pullback setup, not a breakout chase. Preferred add zone is near $17.62; confirm support before entry.\n\nRisk/Invalidation\nPullback can deepen if support does not hold on the first test.\n\nTargets\n$22.31 | $24.66 | $27.01\n\nVerdict\nConstructive pullback watch. Treat this as a pullback plan, not a breakout card. Treat as a pullback setup, not a breakout chase. Preferred add zone is near $17.62; confirm support before entry.",
+    "chart_paths": {
+      "daily": "charts/BW_daily.png",
+      "weekly": "charts/BW_weekly.png",
+      "intraday": null
+    },
+    "freshness_metadata": {
+      "is_fresh": true,
+      "is_extended": false,
+      "is_stale_confirmed": false,
+      "days_since_trigger": null,
+      "days_since_confirmation": null,
+      "last_actionable_check": "2026-06-19"
+    }
+  },
+  {
+    "symbol": "KVUE",
+    "provider_symbol": "KVUE",
+    "as_of": "2026-06-19",
+    "identity": {
+      "state": "BASE",
+      "bucket": "pullback_long",
+      "action_label": "Actionable on pullback",
+      "setup_classification": "Constructive pullback",
+      "freshness_label": "fresh",
+      "days_in_state": 2,
+      "eligible": true,
+      "rejection_reasons": null,
+      "eligibility_warnings": null,
+      "daily_trend_state": "above_sma50_flat",
+      "weekly_trend_state": "weekly_uptrend",
+      "pullback_quality": "constructive",
+      "promotion_reason": "Trend remains constructive while price works through a pullback",
+      "demotion_reason": "far_from_pivot (2.3 ATR from trigger zone)",
+      "route_reason": "not in a clean breakout trigger zone today",
+      "operational_readiness": "watch_pullback_zone"
+    },
+    "model_scores": {
+      "composite_score": null,
+      "setup_score": null,
+      "trade_score": null,
+      "failure_risk": null,
+      "percentile_rank": null,
+      "note": "Model-calibrated probabilities from fitted classifiers"
+    },
+    "price_and_levels": {
+      "close": 18.12,
+      "pivot": 18.95,
+      "atr14": 0.37,
+      "dist_to_pivot_atr": -2.3,
+      "entry_lo": 18.95,
+      "entry_hi": 18.99,
+      "stop": 18.58,
+      "t1": 19.69,
+      "t2": 20.24,
+      "t3": 20.79,
+      "s1": 18.59,
+      "s2": 18.58,
+      "r1": 18.95,
+      "r2": 19.69,
+      "risk_reward_t1": "1.9x",
+      "level_method": "ATR-pivot: entry=pivot+0.10*ATR, stop=pivot-1.0*ATR, T1=pivot+2.0*ATR"
+    },
+    "trade_plan": {
+      "actionability_code": "WAIT_PULLBACK",
+      "actionable_now": false,
+      "entry_style": "pullback",
+      "best_entry_style": "pullback",
+      "entry_condition": "Treat as a pullback setup, not a breakout chase. Preferred add zone is near $18.59; confirm support before entry.",
+      "entry_trigger": "$18.59",
+      "entry_range": "$18.95-$18.99",
+      "alternate_pullback_entry": "$18.59",
+      "stop": "$18.58",
+      "stop_basis": "Daily close below $18.58 invalidates the setup.",
+      "stop_risk_pct": "2.1%",
+      "target_1": "$19.69",
+      "target_2": "$20.24",
+      "target_3": "$20.79",
+      "risk_reward_t1": "1.9:1",
+      "time_stop": "Let support prove itself; no fresh-entry time stop until the pullback resolves.",
+      "key_risk": "Pullback can deepen if support does not hold on the first test.",
+      "invalidation": "Daily close below $18.58 invalidates the idea.",
+      "why_now": [
+        "Above SMA50 by 4.1%",
+        "Volume dry-up score 1.66 supports absorption",
+        "Accepted above YTD AVWAP by 1.8 ATR",
+        "2.9 ATR above swing-low AVWAP support"
+      ],
+      "why_not_now": [
+        "Not in a clean breakout trigger zone today",
+        "RS-63 is weak at -8% vs SPY",
+        "ATR is elevated at the 88th percentile"
+      ],
+      "setup_improves_if": [
+        "Holds support around $18.59 and turns back toward $18.95",
+        "Shows lighter downside volume on the pullback"
+      ],
+      "setup_weakens_if": [
+        "Loses support near $18.59",
+        "Closes below stop $18.58"
+      ],
+      "what_improves_tomorrow": [
+        "Holds support around $18.59 and turns back toward $18.95",
+        "Shows lighter downside volume on the pullback"
+      ],
+      "what_weakens_tomorrow": [
+        "Loses support near $18.59",
+        "Closes below stop $18.58"
+      ]
+    },
+    "context": {
+      "ma_table": [
+        {
+          "name": "SMA5",
+          "value": 18.19,
+          "pct_dist": -0.39,
+          "slope": "rising",
+          "bias": "Stays rising if close > 18.14",
+          "need_tomorrow": 18.14,
+          "tomorrow_bias": "neutral"
+        },
+        {
+          "name": "SMA10",
+          "value": 18.02,
+          "pct_dist": 0.52,
+          "slope": "rising",
+          "bias": "Stays rising if close > 17.71",
+          "need_tomorrow": 17.71,
+          "tomorrow_bias": "tailwind"
+        },
+        {
+          "name": "SMA20",
+          "value": 17.69,
+          "pct_dist": 2.4,
+          "slope": "rising",
+          "bias": "Stays rising if close > 17.46",
+          "need_tomorrow": 17.46,
+          "tomorrow_bias": "tailwind"
+        },
+        {
+          "name": "SMA50",
+          "value": 17.4,
+          "pct_dist": 3.95,
+          "slope": "rising",
+          "bias": "Stays rising if close > 17.22",
+          "need_tomorrow": 17.22,
+          "tomorrow_bias": "tailwind"
+        },
+        {
+          "name": "SMA200",
+          "value": 16.94,
+          "pct_dist": 6.52,
+          "slope": "falling",
+          "bias": "Stays falling unless close > 19.73",
+          "need_tomorrow": 19.73,
+          "tomorrow_bias": "headwind"
+        },
+        {
+          "name": "EMA20",
+          "value": 17.77,
+          "pct_dist": 1.92,
+          "slope": "rising",
+          "bias": "Stays rising if close > 17.77",
+          "need_tomorrow": 17.77,
+          "tomorrow_bias": "tailwind"
+        }
+      ],
+      "avwap_table": [
+        {
+          "anchor": "YTD",
+          "anchor_key": "ytd",
+          "family": "ytd",
+          "anchor_date": "2026-01-02",
+          "priority": "primary",
+          "significance": "calendar",
+          "supported": true,
+          "unavailable_reason": null,
+          "avwap": 17.45,
+          "pct_dist": 3.69,
+          "distance_from_price_pct": 3.69,
+          "dist_atr": 1.817,
+          "distance_from_price_atr": 1.817,
+          "role": "support",
+          "status": "Accepted above",
+          "reclaim": false,
+          "stretch_atr": 1.817,
+          "slope_20": 0.1196,
+          "slope_label": "flat",
+          "closes_above_20": 0.75
+        },
+        {
+          "anchor": "Swing Low",
+          "anchor_key": "swing_low",
+          "family": "swing_low",
+          "anchor_date": "2025-10-30",
+          "priority": "primary",
+          "significance": "structural",
+          "supported": true,
+          "unavailable_reason": null,
+          "avwap": 17.05,
+          "pct_dist": 5.93,
+          "distance_from_price_pct": 5.93,
+          "dist_atr": 2.923,
+          "distance_from_price_atr": 2.923,
+          "role": "support",
+          "status": "Accepted above",
+          "reclaim": false,
+          "stretch_atr": 2.923,
+          "slope_20": 0.2587,
+          "slope_label": "rising",
+          "closes_above_20": 0.9
+        },
+        {
+          "anchor": "WTD",
+          "anchor_key": "wtd",
+          "family": "wtd",
+          "anchor_date": "2026-06-15",
+          "priority": "secondary",
+          "significance": "calendar",
+          "supported": true,
+          "unavailable_reason": null,
+          "avwap": 18.22,
+          "pct_dist": -0.58,
+          "distance_from_price_pct": -0.58,
+          "dist_atr": -0.284,
+          "distance_from_price_atr": -0.284,
+          "role": "resistance",
+          "status": "Accepted below",
+          "reclaim": null,
+          "stretch_atr": 0.284,
+          "slope_20": -0.0766,
+          "slope_label": "flat",
+          "closes_above_20": null
+        },
+        {
+          "anchor": "Breakout Day",
+          "anchor_key": "breakout_day",
+          "family": "breakout_day",
+          "anchor_date": "2026-02-11",
+          "priority": "secondary",
+          "significance": "lifecycle",
+          "supported": true,
+          "unavailable_reason": null,
+          "avwap": 17.69,
+          "pct_dist": 2.36,
+          "distance_from_price_pct": 2.36,
+          "dist_atr": 1.165,
+          "distance_from_price_atr": 1.165,
+          "role": "support",
+          "status": "Accepted above",
+          "reclaim": false,
+          "stretch_atr": 1.165,
+          "slope_20": -0.0785,
+          "slope_label": "flat",
+          "closes_above_20": 0.45
+        },
+        {
+          "anchor": "MTD",
+          "anchor_key": "mtd",
+          "family": "mtd",
+          "anchor_date": "2026-06-01",
+          "priority": "secondary",
+          "significance": "calendar",
+          "supported": true,
+          "unavailable_reason": null,
+          "avwap": 17.65,
+          "pct_dist": 2.57,
+          "distance_from_price_pct": 2.57,
+          "dist_atr": 1.269,
+          "distance_from_price_atr": 1.269,
+          "role": "support",
+          "status": "Accepted above",
+          "reclaim": false,
+          "stretch_atr": 1.269,
+          "slope_20": 1.671,
+          "slope_label": "rising",
+          "closes_above_20": null
+        },
+        {
+          "anchor": "Swing High",
+          "anchor_key": "swing_high",
+          "family": "swing_high",
+          "anchor_date": "2025-07-25",
+          "priority": "secondary",
+          "significance": "structural",
+          "supported": true,
+          "unavailable_reason": null,
+          "avwap": 17.1,
+          "pct_dist": 5.64,
+          "distance_from_price_pct": 5.64,
+          "dist_atr": 2.779,
+          "distance_from_price_atr": 2.779,
+          "role": "support",
+          "status": "Accepted above",
+          "reclaim": false,
+          "stretch_atr": 2.779,
+          "slope_20": 0.1677,
+          "slope_label": "flat",
+          "closes_above_20": 0.9
+        },
+        {
+          "anchor": "War Start",
+          "anchor_key": "war_start",
+          "family": "global_event",
+          "anchor_date": "2026-03-10",
+          "priority": "macro",
+          "significance": "event",
+          "supported": true,
+          "unavailable_reason": null,
+          "avwap": 17.35,
+          "pct_dist": 4.25,
+          "distance_from_price_pct": 4.25,
+          "dist_atr": 2.094,
+          "distance_from_price_atr": 2.094,
+          "role": "support",
+          "status": "Accepted above",
+          "reclaim": false,
+          "stretch_atr": 2.094,
+          "slope_20": 0.6007,
+          "slope_label": "rising",
+          "closes_above_20": 0.9
+        },
+        {
+          "anchor": "Ceasefire",
+          "anchor_key": "ceasefire",
+          "family": "global_event",
+          "anchor_date": "2026-03-18",
+          "priority": "macro",
+          "significance": "event",
+          "supported": true,
+          "unavailable_reason": null,
+          "avwap": 17.33,
+          "pct_dist": 4.33,
+          "distance_from_price_pct": 4.33,
+          "dist_atr": 2.136,
+          "distance_from_price_atr": 2.136,
+          "role": "support",
+          "status": "Accepted above",
+          "reclaim": false,
+          "stretch_atr": 2.136,
+          "slope_20": 0.7215,
+          "slope_label": "rising",
+          "closes_above_20": 0.9
+        },
+        {
+          "anchor": "Earnings Anchor",
+          "anchor_key": "earnings",
+          "family": "earnings",
+          "anchor_date": null,
+          "avwap": null,
+          "pct_dist": null,
+          "distance_from_price_pct": null,
+          "dist_atr": null,
+          "distance_from_price_atr": null,
+          "role": "unavailable",
+          "status": "Unavailable",
+          "priority": "event",
+          "significance": "earnings",
+          "supported": false,
+          "unavailable_reason": "earnings event data is not available in v1",
+          "reclaim": null,
+          "stretch_atr": null,
+          "slope_20": null,
+          "slope_label": null,
+          "closes_above_20": null
+        },
+        {
+          "anchor": "Per-Symbol Event",
+          "anchor_key": "per_symbol_event",
+          "family": "per_symbol_event",
+          "anchor_date": null,
+          "avwap": null,
+          "pct_dist": null,
+          "distance_from_price_pct": null,
+          "dist_atr": null,
+          "distance_from_price_atr": null,
+          "role": "unavailable",
+          "status": "Unavailable",
+          "priority": "event",
+          "significance": "symbol_event",
+          "supported": false,
+          "unavailable_reason": "no per-symbol event anchor configured for this symbol",
+          "reclaim": null,
+          "stretch_atr": null,
+          "slope_20": null,
+          "slope_label": null,
+          "closes_above_20": null
+        },
+        {
+          "anchor": "COVID High",
+          "anchor_key": "covid_high",
+          "family": "global_event",
+          "anchor_date": "2020-09-02",
+          "avwap": null,
+          "pct_dist": null,
+          "distance_from_price_pct": null,
+          "dist_atr": null,
+          "distance_from_price_atr": null,
+          "role": "unavailable",
+          "status": "Unavailable",
+          "priority": "macro",
+          "significance": "secular",
+          "supported": false,
+          "unavailable_reason": "anchor predates available history (2023-05-04)",
+          "reclaim": null,
+          "stretch_atr": null,
+          "slope_20": null,
+          "slope_label": null,
+          "closes_above_20": null
+        },
+        {
+          "anchor": "COVID Low",
+          "anchor_key": "covid_low",
+          "family": "global_event",
+          "anchor_date": "2020-03-23",
+          "avwap": null,
+          "pct_dist": null,
+          "distance_from_price_pct": null,
+          "dist_atr": null,
+          "distance_from_price_atr": null,
+          "role": "unavailable",
+          "status": "Unavailable",
+          "priority": "macro",
+          "significance": "secular",
+          "supported": false,
+          "unavailable_reason": "anchor predates available history (2023-05-04)",
+          "reclaim": null,
+          "stretch_atr": null,
+          "slope_20": null,
+          "slope_label": null,
+          "closes_above_20": null
+        }
+      ],
+      "volume_block": {
+        "volume_dryup_pct": 165.7,
+        "atr_compression_pct": 87.8,
+        "range_compression": 0.945,
+        "vol_contraction_5_20": 0.363,
+        "vol_contraction_10_50": 0.677,
+        "dollar_volume_log": 8.764,
+        "breakout_thrust_atr": null,
+        "weekly_vol_dryup": 0.535,
+        "weekly_atr_compression": 10.3,
+        "down_close_ratio": 0.5,
+        "relative_vol_label": "Very Low",
+        "compression_label": "Elevated - 88th percentile"
+      },
+      "checklist": [
+        {
+          "item": "Higher timeframe trend",
+          "result": "pass",
+          "reason": "SPY above 200SMA"
+        },
+        {
+          "item": "Weekly trend constructive",
+          "result": "pass",
+          "reason": "Price 4.1% above 10-week WMA"
+        },
+        {
+          "item": "Daily structure",
+          "result": "neutral",
+          "reason": "State=BASE but dist_to_pivot=-2.26 ATR (out of -2 to +0.5 range)"
+        },
+        {
+          "item": "Pivot clarity",
+          "result": "fail",
+          "reason": "Only 0 touches; flatness=0.15"
+        },
+        {
+          "item": "Compression present",
+          "result": "fail",
+          "reason": "ATR at 88th percentile (not compressed)"
+        },
+        {
+          "item": "Volume dry-up",
+          "result": "pass",
+          "reason": "Volume dry-up score: 1.66"
+        },
+        {
+          "item": "Relative strength",
+          "result": "fail",
+          "reason": "RS-63: -7.8% vs SPY (underperforming)"
+        },
+        {
+          "item": "YTD AVWAP acceptance",
+          "result": "pass",
+          "reason": "Price 1.82 ATR above YTD AVWAP"
+        },
+        {
+          "item": "MA alignment (above SMA50)",
+          "result": "pass",
+          "reason": "Price 4.1% above SMA50"
+        },
+        {
+          "item": "Not overextended",
+          "result": "pass",
+          "reason": "-2.26 ATR from pivot (within 3 ATR)"
+        },
+        {
+          "item": "Failure risk acceptable",
+          "result": "neutral",
+          "reason": "Failure risk unavailable"
+        },
+        {
+          "item": "Market regime supportive",
+          "result": "pass",
+          "reason": "SPY trend score: 1.00 (positive)"
+        },
+        {
+          "item": "R/R acceptable",
+          "result": "neutral",
+          "reason": "R/R not computable (missing levels)"
+        },
+        {
+          "item": "Base freshness",
+          "result": "pass",
+          "reason": "2 days in BASE (max 60)"
+        },
+        {
+          "item": "Score quality",
+          "result": "neutral",
+          "reason": "Composite score unavailable"
+        },
+        {
+          "item": "Base quality",
+          "result": "pass",
+          "reason": "Grade B: Tight closes (2.4% std)"
+        },
+        {
+          "item": "Continuation pattern",
+          "result": "pass",
+          "reason": "Inside day: range fully within prior bar"
+        },
+        {
+          "item": "Clean air above pivot",
+          "result": "fail",
+          "reason": "Resistance close: only 0.3 ATR to WTD"
+        }
+      ],
+      "confluence": {
+        "nearby_count": 1,
+        "nearby_levels": [
+          {
+            "name": "AVWAP WTD",
+            "value": 18.22,
+            "dist_atr": -0.272
+          }
+        ],
+        "cluster_role": "scattered"
+      },
+      "ma_context": "SMA10 rising (tailwind); SMA20 rising (tailwind); SMA50 rising (tailwind)",
+      "avwap_context": "YTD: Accepted above (+1.8 ATR); Swing Low: Accepted above (+2.9 ATR); WTD: Accepted below (-0.3 ATR)"
+    },
+    "narrative": {
+      "setup": "Trend remains constructive while price works through a pullback",
+      "why": "Above SMA50 by 4.1%; Volume dry-up score 1.66 supports absorption; Accepted above YTD AVWAP by 1.8 ATR",
+      "why_not_now": "Not in a clean breakout trigger zone today; RS-63 is weak at -8% vs SPY; ATR is elevated at the 88th percentile",
+      "entry": "Treat as a pullback setup, not a breakout chase. Preferred add zone is near $18.59; confirm support before entry.",
+      "risk": "Pullback can deepen if support does not hold on the first test.",
+      "targets": "$19.69 | $20.24 | $20.79",
+      "verdict": "Constructive pullback watch. Treat this as a pullback plan, not a breakout card. Treat as a pullback setup, not a breakout chase. Preferred add zone is near $18.59; confirm support before entry."
+    },
+    "coherence": {
+      "coherence_ok": true,
+      "coherence_issues": [],
+      "packet_complete_for_surface": true,
+      "packet_completeness_issues": []
+    },
+    "surfacing": {
+      "surfaced_in_top": true,
+      "surface_section": "pullback",
+      "not_surfaced_reason": null,
+      "selector_blockers": []
+    },
+    "intraday": {
+      "policy": "daily_only",
+      "available": false,
+      "used_in_qualification": false,
+      "note": "Intraday confirmation is not part of v1 qualification; surfaced setup truth is daily/weekly only."
+    },
+    "ai_note": "[KVUE \u2014 Rule-based note]\n\nSetup\nTrend remains constructive while price works through a pullback\n\nWhy It Matters Now\nAbove SMA50 by 4.1%; Volume dry-up score 1.66 supports absorption; Accepted above YTD AVWAP by 1.8 ATR\n\nEntry Idea\nTreat as a pullback setup, not a breakout chase. Preferred add zone is near $18.59; confirm support before entry.\n\nRisk/Invalidation\nPullback can deepen if support does not hold on the first test.\n\nTargets\n$19.69 | $20.24 | $20.79\n\nVerdict\nConstructive pullback watch. Treat this as a pullback plan, not a breakout card. Treat as a pullback setup, not a breakout chase. Preferred add zone is near $18.59; confirm support before entry.",
+    "chart_paths": {
+      "daily": "charts/KVUE_daily.png",
+      "weekly": "charts/KVUE_weekly.png",
+      "intraday": null
+    },
+    "freshness_metadata": {
+      "is_fresh": true,
+      "is_extended": false,
+      "is_stale_confirmed": false,
+      "days_since_trigger": null,
+      "days_since_confirmation": null,
+      "last_actionable_check": "2026-06-19"
+    }
+  },
+  {
+    "symbol": "OCUL",
+    "provider_symbol": "OCUL",
+    "as_of": "2026-06-19",
+    "identity": {
+      "state": "BASE",
+      "bucket": "pullback_long",
+      "action_label": "Actionable on pullback",
+      "setup_classification": "Constructive pullback",
+      "freshness_label": "fresh",
+      "days_in_state": 1,
+      "eligible": true,
+      "rejection_reasons": null,
+      "eligibility_warnings": null,
+      "daily_trend_state": "broken",
+      "weekly_trend_state": "neutral_weekly",
+      "pullback_quality": "near_pivot",
+      "promotion_reason": "Trend remains constructive while price works through a pullback",
+      "demotion_reason": "far_from_pivot (1.8 ATR from trigger zone)",
+      "route_reason": "not in a clean breakout trigger zone today",
+      "operational_readiness": "watch_pullback_zone"
+    },
+    "model_scores": {
+      "composite_score": null,
+      "setup_score": null,
+      "trade_score": null,
+      "failure_risk": null,
+      "percentile_rank": null,
+      "note": "Model-calibrated probabilities from fitted classifiers"
+    },
+    "price_and_levels": {
+      "close": 9.43,
+      "pivot": 10.39,
+      "atr14": 0.54,
+      "dist_to_pivot_atr": -1.8,
+      "entry_lo": 10.39,
+      "entry_hi": 10.44,
+      "stop": 9.85,
+      "t1": 11.47,
+      "t2": 12.29,
+      "t3": 13.1,
+      "s1": 9.86,
+      "s2": 9.85,
+      "r1": 10.39,
+      "r2": 11.47,
+      "risk_reward_t1": "1.9x",
+      "level_method": "ATR-pivot: entry=pivot+0.10*ATR, stop=pivot-1.0*ATR, T1=pivot+2.0*ATR"
+    },
+    "trade_plan": {
+      "actionability_code": "WAIT_PULLBACK",
+      "actionable_now": false,
+      "entry_style": "pullback",
+      "best_entry_style": "pullback",
+      "entry_condition": "Treat as a pullback setup, not a breakout chase. Preferred add zone is near $9.86; confirm support before entry.",
+      "entry_trigger": "$9.86",
+      "entry_range": "$10.39-$10.44",
+      "alternate_pullback_entry": "$9.86",
+      "stop": "$9.85",
+      "stop_basis": "Daily close below $9.85 invalidates the setup.",
+      "stop_risk_pct": "5.4%",
+      "target_1": "$11.47",
+      "target_2": "$12.29",
+      "target_3": "$13.10",
+      "risk_reward_t1": "1.9:1",
+      "time_stop": "Let support prove itself; no fresh-entry time stop until the pullback resolves.",
+      "key_risk": "Pullback can deepen if support does not hold on the first test.",
+      "invalidation": "Daily close below $9.85 invalidates the idea.",
+      "why_now": [
+        "Above SMA50 by 4.5%",
+        "Volume dry-up score 2.08 supports absorption",
+        "1.4 ATR above swing-low AVWAP support"
+      ],
+      "why_not_now": [
+        "Not in a clean breakout trigger zone today",
+        "ATR is elevated at the 78th percentile"
+      ],
+      "setup_improves_if": [
+        "Holds support around $9.86 and turns back toward $10.39",
+        "Shows lighter downside volume on the pullback"
+      ],
+      "setup_weakens_if": [
+        "Loses support near $9.86",
+        "Closes below stop $9.85"
+      ],
+      "what_improves_tomorrow": [
+        "Holds support around $9.86 and turns back toward $10.39",
+        "Shows lighter downside volume on the pullback"
+      ],
+      "what_weakens_tomorrow": [
+        "Loses support near $9.86",
+        "Closes below stop $9.85"
+      ]
+    },
+    "context": {
+      "ma_table": [
+        {
+          "name": "SMA5",
+          "value": 9.19,
+          "pct_dist": 2.57,
+          "slope": "rising",
+          "bias": "Stays rising if close > 8.94",
+          "need_tomorrow": 8.94,
+          "tomorrow_bias": "tailwind"
+        },
+        {
+          "name": "SMA10",
+          "value": 8.83,
+          "pct_dist": 6.41,
+          "slope": "rising",
+          "bias": "Stays rising if close > 8.25",
+          "need_tomorrow": 8.25,
+          "tomorrow_bias": "tailwind"
+        },
+        {
+          "name": "SMA20",
+          "value": 8.7,
+          "pct_dist": 7.69,
+          "slope": "rising",
+          "bias": "Stays rising if close > 8.22",
+          "need_tomorrow": 8.22,
+          "tomorrow_bias": "tailwind"
+        },
+        {
+          "name": "SMA50",
+          "value": 9.02,
+          "pct_dist": 4.33,
+          "slope": "rising",
+          "bias": "Stays rising if close > 9.30",
+          "need_tomorrow": 9.3,
+          "tomorrow_bias": "neutral"
+        },
+        {
+          "name": "SMA200",
+          "value": 10.51,
+          "pct_dist": -11.49,
+          "slope": "falling",
+          "bias": "Stays falling unless close > 12.94",
+          "need_tomorrow": 12.94,
+          "tomorrow_bias": "headwind"
+        },
+        {
+          "name": "EMA20",
+          "value": 8.88,
+          "pct_dist": 5.84,
+          "slope": "rising",
+          "bias": "Stays rising if close > 8.88",
+          "need_tomorrow": 8.88,
+          "tomorrow_bias": "tailwind"
+        }
+      ],
+      "avwap_table": [
+        {
+          "anchor": "YTD",
+          "anchor_key": "ytd",
+          "family": "ytd",
+          "anchor_date": "2026-01-02",
+          "priority": "primary",
+          "significance": "calendar",
+          "supported": true,
+          "unavailable_reason": null,
+          "avwap": 9.16,
+          "pct_dist": 2.85,
+          "distance_from_price_pct": 2.85,
+          "dist_atr": 0.496,
+          "distance_from_price_atr": 0.496,
+          "role": "support",
+          "status": "Accepted above",
+          "reclaim": true,
+          "stretch_atr": 0.496,
+          "slope_20": -0.3517,
+          "slope_label": "falling",
+          "closes_above_20": 0.1
+        },
+        {
+          "anchor": "Swing Low",
+          "anchor_key": "swing_low",
+          "family": "swing_low",
+          "anchor_date": "2026-02-17",
+          "priority": "primary",
+          "significance": "structural",
+          "supported": true,
+          "unavailable_reason": null,
+          "avwap": 8.67,
+          "pct_dist": 8.08,
+          "distance_from_price_pct": 8.08,
+          "dist_atr": 1.406,
+          "distance_from_price_atr": 1.406,
+          "role": "support",
+          "status": "Accepted above",
+          "reclaim": false,
+          "stretch_atr": 1.406,
+          "slope_20": 0.3435,
+          "slope_label": "rising",
+          "closes_above_20": 0.55
+        },
+        {
+          "anchor": "WTD",
+          "anchor_key": "wtd",
+          "family": "wtd",
+          "anchor_date": "2026-06-15",
+          "priority": "secondary",
+          "significance": "calendar",
+          "supported": true,
+          "unavailable_reason": null,
+          "avwap": 9.37,
+          "pct_dist": 0.67,
+          "distance_from_price_pct": 0.67,
+          "dist_atr": 0.116,
+          "distance_from_price_atr": 0.116,
+          "role": "testing",
+          "status": "Testing",
+          "reclaim": null,
+          "stretch_atr": 0.116,
+          "slope_20": 4.0056,
+          "slope_label": "rising",
+          "closes_above_20": null
+        },
+        {
+          "anchor": "Swing High",
+          "anchor_key": "swing_high",
+          "family": "swing_high",
+          "anchor_date": "2025-12-08",
+          "priority": "secondary",
+          "significance": "structural",
+          "supported": true,
+          "unavailable_reason": null,
+          "avwap": 9.72,
+          "pct_dist": -3.08,
+          "distance_from_price_pct": -3.08,
+          "dist_atr": -0.536,
+          "distance_from_price_atr": -0.536,
+          "role": "resistance",
+          "status": "Accepted below",
+          "reclaim": false,
+          "stretch_atr": 0.536,
+          "slope_20": -0.8299,
+          "slope_label": "falling",
+          "closes_above_20": 0.0
+        },
+        {
+          "anchor": "MTD",
+          "anchor_key": "mtd",
+          "family": "mtd",
+          "anchor_date": "2026-06-01",
+          "priority": "secondary",
+          "significance": "calendar",
+          "supported": true,
+          "unavailable_reason": null,
+          "avwap": 8.93,
+          "pct_dist": 5.34,
+          "distance_from_price_pct": 5.34,
+          "dist_atr": 0.929,
+          "distance_from_price_atr": 0.929,
+          "role": "support",
+          "status": "Accepted above",
+          "reclaim": false,
+          "stretch_atr": 0.929,
+          "slope_20": 0.8269,
+          "slope_label": "rising",
+          "closes_above_20": null
+        },
+        {
+          "anchor": "Breakout Day",
+          "anchor_key": "breakout_day",
+          "family": "breakout_day",
+          "anchor_date": "2025-07-23",
+          "priority": "secondary",
+          "significance": "lifecycle",
+          "supported": true,
+          "unavailable_reason": null,
+          "avwap": 10.37,
+          "pct_dist": -9.97,
+          "distance_from_price_pct": -9.97,
+          "dist_atr": -1.733,
+          "distance_from_price_atr": -1.733,
+          "role": "resistance",
+          "status": "Accepted below",
+          "reclaim": false,
+          "stretch_atr": 1.733,
+          "slope_20": -0.9439,
+          "slope_label": "falling",
+          "closes_above_20": 0.0
+        },
+        {
+          "anchor": "COVID High",
+          "anchor_key": "covid_high",
+          "family": "global_event",
+          "anchor_date": "2020-09-02",
+          "priority": "macro",
+          "significance": "secular",
+          "supported": true,
+          "unavailable_reason": null,
+          "avwap": 8.96,
+          "pct_dist": 4.93,
+          "distance_from_price_pct": 4.93,
+          "dist_atr": 0.858,
+          "distance_from_price_atr": 0.858,
+          "role": "support",
+          "status": "Accepted above",
+          "reclaim": true,
+          "stretch_atr": 0.858,
+          "slope_20": -0.027,
+          "slope_label": "flat",
+          "closes_above_20": 0.25
+        },
+        {
+          "anchor": "COVID Low",
+          "anchor_key": "covid_low",
+          "family": "global_event",
+          "anchor_date": "2020-03-23",
+          "priority": "macro",
+          "significance": "secular",
+          "supported": true,
+          "unavailable_reason": null,
+          "avwap": 8.9,
+          "pct_dist": 5.66,
+          "distance_from_price_pct": 5.66,
+          "dist_atr": 0.984,
+          "distance_from_price_atr": 0.984,
+          "role": "support",
+          "status": "Accepted above",
+          "reclaim": true,
+          "stretch_atr": 0.984,
+          "slope_20": -0.0093,
+          "slope_label": "flat",
+          "closes_above_20": 0.4
+        },
+        {
+          "anchor": "War Start",
+          "anchor_key": "war_start",
+          "family": "global_event",
+          "anchor_date": "2026-03-10",
+          "priority": "macro",
+          "significance": "event",
+          "supported": true,
+          "unavailable_reason": null,
+          "avwap": 8.87,
+          "pct_dist": 5.97,
+          "distance_from_price_pct": 5.97,
+          "dist_atr": 1.038,
+          "distance_from_price_atr": 1.038,
+          "role": "support",
+          "status": "Accepted above",
+          "reclaim": true,
+          "stretch_atr": 1.038,
+          "slope_20": -0.0283,
+          "slope_label": "flat",
+          "closes_above_20": 0.4
+        },
+        {
+          "anchor": "Ceasefire",
+          "anchor_key": "ceasefire",
+          "family": "global_event",
+          "anchor_date": "2026-03-18",
+          "priority": "macro",
+          "significance": "event",
+          "supported": true,
+          "unavailable_reason": null,
+          "avwap": 8.83,
+          "pct_dist": 6.35,
+          "distance_from_price_pct": 6.35,
+          "dist_atr": 1.105,
+          "distance_from_price_atr": 1.105,
+          "role": "support",
+          "status": "Accepted above",
+          "reclaim": true,
+          "stretch_atr": 1.105,
+          "slope_20": 0.1141,
+          "slope_label": "flat",
+          "closes_above_20": 0.45
+        },
+        {
+          "anchor": "Earnings Anchor",
+          "anchor_key": "earnings",
+          "family": "earnings",
+          "anchor_date": null,
+          "avwap": null,
+          "pct_dist": null,
+          "distance_from_price_pct": null,
+          "dist_atr": null,
+          "distance_from_price_atr": null,
+          "role": "unavailable",
+          "status": "Unavailable",
+          "priority": "event",
+          "significance": "earnings",
+          "supported": false,
+          "unavailable_reason": "earnings event data is not available in v1",
+          "reclaim": null,
+          "stretch_atr": null,
+          "slope_20": null,
+          "slope_label": null,
+          "closes_above_20": null
+        },
+        {
+          "anchor": "Per-Symbol Event",
+          "anchor_key": "per_symbol_event",
+          "family": "per_symbol_event",
+          "anchor_date": null,
+          "avwap": null,
+          "pct_dist": null,
+          "distance_from_price_pct": null,
+          "dist_atr": null,
+          "distance_from_price_atr": null,
+          "role": "unavailable",
+          "status": "Unavailable",
+          "priority": "event",
+          "significance": "symbol_event",
+          "supported": false,
+          "unavailable_reason": "no per-symbol event anchor configured for this symbol",
+          "reclaim": null,
+          "stretch_atr": null,
+          "slope_20": null,
+          "slope_label": null,
+          "closes_above_20": null
+        }
+      ],
+      "volume_block": {
+        "volume_dryup_pct": 208.0,
+        "atr_compression_pct": 77.6,
+        "range_compression": 1.364,
+        "vol_contraction_5_20": 0.766,
+        "vol_contraction_10_50": 0.9,
+        "dollar_volume_log": 7.761,
+        "breakout_thrust_atr": null,
+        "weekly_vol_dryup": 0.552,
+        "weekly_atr_compression": 15.4,
+        "down_close_ratio": 0.35,
+        "relative_vol_label": "Very Low",
+        "compression_label": "Elevated - 78th percentile"
+      },
+      "checklist": [
+        {
+          "item": "Higher timeframe trend",
+          "result": "pass",
+          "reason": "SPY above 200SMA"
+        },
+        {
+          "item": "Weekly trend constructive",
+          "result": "fail",
+          "reason": "Price 1.5% below 10-week WMA"
+        },
+        {
+          "item": "Daily structure",
+          "result": "pass",
+          "reason": "State=BASE, -1.77 ATR from pivot"
+        },
+        {
+          "item": "Pivot clarity",
+          "result": "fail",
+          "reason": "Only 1 touches; flatness=?"
+        },
+        {
+          "item": "Compression present",
+          "result": "fail",
+          "reason": "ATR at 78th percentile (not compressed)"
+        },
+        {
+          "item": "Volume dry-up",
+          "result": "pass",
+          "reason": "Volume dry-up score: 2.08"
+        },
+        {
+          "item": "Relative strength",
+          "result": "pass",
+          "reason": "RS-63: +0.2% vs SPY"
+        },
+        {
+          "item": "YTD AVWAP acceptance",
+          "result": "pass",
+          "reason": "Price 0.50 ATR above YTD AVWAP"
+        },
+        {
+          "item": "MA alignment (above SMA50)",
+          "result": "pass",
+          "reason": "Price 4.5% above SMA50"
+        },
+        {
+          "item": "Not overextended",
+          "result": "pass",
+          "reason": "-1.77 ATR from pivot (within 3 ATR)"
+        },
+        {
+          "item": "Failure risk acceptable",
+          "result": "neutral",
+          "reason": "Failure risk unavailable"
+        },
+        {
+          "item": "Market regime supportive",
+          "result": "pass",
+          "reason": "SPY trend score: 1.00 (positive)"
+        },
+        {
+          "item": "R/R acceptable",
+          "result": "neutral",
+          "reason": "R/R not computable (missing levels)"
+        },
+        {
+          "item": "Base freshness",
+          "result": "pass",
+          "reason": "1 days in BASE (max 60)"
+        },
+        {
+          "item": "Score quality",
+          "result": "neutral",
+          "reason": "Composite score unavailable"
+        },
+        {
+          "item": "Base quality",
+          "result": "neutral",
+          "reason": "Grade C: Loose closes (5.9% std) \u2014 wide base"
+        },
+        {
+          "item": "Continuation pattern",
+          "result": "neutral",
+          "reason": "No tight continuation pattern detected (NR7/3WT/tight5d)"
+        },
+        {
+          "item": "Clean air above pivot",
+          "result": "fail",
+          "reason": "Resistance close: only 0.5 ATR to Swing High"
+        }
+      ],
+      "confluence": {
+        "nearby_count": 2,
+        "nearby_levels": [
+          {
+            "name": "AVWAP YTD",
+            "value": 9.16,
+            "dist_atr": 0.498
+          },
+          {
+            "name": "AVWAP WTD",
+            "value": 9.37,
+            "dist_atr": 0.111
+          }
+        ],
+        "cluster_role": "support cluster"
+      },
+      "ma_context": "SMA10 rising (tailwind); SMA20 rising (tailwind); SMA50 rising (neutral)",
+      "avwap_context": "YTD: Accepted above (+0.5 ATR); Swing Low: Accepted above (+1.4 ATR); WTD: Testing (+0.1 ATR)"
+    },
+    "narrative": {
+      "setup": "Trend remains constructive while price works through a pullback",
+      "why": "Above SMA50 by 4.5%; Volume dry-up score 2.08 supports absorption; 1.4 ATR above swing-low AVWAP support",
+      "why_not_now": "Not in a clean breakout trigger zone today; ATR is elevated at the 78th percentile",
+      "entry": "Treat as a pullback setup, not a breakout chase. Preferred add zone is near $9.86; confirm support before entry.",
+      "risk": "Pullback can deepen if support does not hold on the first test.",
+      "targets": "$11.47 | $12.29 | $13.10",
+      "verdict": "Constructive pullback watch. Treat this as a pullback plan, not a breakout card. Treat as a pullback setup, not a breakout chase. Preferred add zone is near $9.86; confirm support before entry."
+    },
+    "coherence": {
+      "coherence_ok": true,
+      "coherence_issues": [],
+      "packet_complete_for_surface": true,
+      "packet_completeness_issues": []
+    },
+    "surfacing": {
+      "surfaced_in_top": true,
+      "surface_section": "pullback",
+      "not_surfaced_reason": null,
+      "selector_blockers": []
+    },
+    "intraday": {
+      "policy": "daily_only",
+      "available": false,
+      "used_in_qualification": false,
+      "note": "Intraday confirmation is not part of v1 qualification; surfaced setup truth is daily/weekly only."
+    },
+    "ai_note": "[OCUL \u2014 Rule-based note]\n\nSetup\nTrend remains constructive while price works through a pullback\n\nWhy It Matters Now\nAbove SMA50 by 4.5%; Volume dry-up score 2.08 supports absorption; 1.4 ATR above swing-low AVWAP support\n\nEntry Idea\nTreat as a pullback setup, not a breakout chase. Preferred add zone is near $9.86; confirm support before entry.\n\nRisk/Invalidation\nPullback can deepen if support does not hold on the first test.\n\nTargets\n$11.47 | $12.29 | $13.10\n\nVerdict\nConstructive pullback watch. Treat this as a pullback plan, not a breakout card. Treat as a pullback setup, not a breakout chase. Preferred add zone is near $9.86; confirm support before entry.",
+    "chart_paths": {
+      "daily": "charts/OCUL_daily.png",
+      "weekly": "charts/OCUL_weekly.png",
+      "intraday": null
+    },
+    "freshness_metadata": {
+      "is_fresh": true,
+      "is_extended": false,
+      "is_stale_confirmed": false,
+      "days_since_trigger": null,
+      "days_since_confirmation": null,
+      "last_actionable_check": "2026-06-19"
+    }
+  }
+]
