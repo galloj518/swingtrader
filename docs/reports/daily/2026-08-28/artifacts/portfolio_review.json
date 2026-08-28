@@ -1,0 +1,1122 @@
+[
+  {
+    "symbol": "QQQ",
+    "state": "CONFIRMED",
+    "bucket": "portfolio_hold",
+    "close": 721.11,
+    "pivot": 747.83,
+    "dist_to_pivot_atr": -2.5,
+    "days_in_state": 4357,
+    "action_label": "Portfolio hold",
+    "portfolio_guidance": "WATCH STOP \u2014 below pivot, stop discipline required",
+    "portfolio_health": "{'position_health': 'at_risk', 'recommended_action': 'WATCH STOP \u2014 below pivot, stop discipline required', 'key_level': 'Stop at $737.27 (2.5 ATR from pivot)', 'notes': ['Below pivot by 2.5 ATR']}",
+    "composite_score": null,
+    "failure_risk": null,
+    "is_non_equity": false,
+    "rejection_reasons": "invalid_state",
+    "trade_plan": {
+      "actionability_code": "WAIT_ZONE",
+      "actionable_now": false,
+      "entry_style": "hold",
+      "best_entry_style": "hold",
+      "entry_condition": "Manage the existing position rather than treating this as a new entry. Keep the key level at $737.27 in view.",
+      "entry_trigger": "$737.27",
+      "entry_range": "$747.83-$748.88",
+      "alternate_pullback_entry": "$747.83",
+      "stop": "$737.27",
+      "stop_basis": "Daily close below $737.27 invalidates the setup.",
+      "stop_risk_pct": "1.5%",
+      "target_1": "$768.94",
+      "target_2": "$784.77",
+      "target_3": "$800.61",
+      "risk_reward_t1": "1.9:1",
+      "time_stop": "Manage against the existing thesis and stop discipline.",
+      "key_risk": "Portfolio management is about protecting the open thesis, not forcing a new entry.",
+      "invalidation": "Daily close below $737.27 invalidates the idea.",
+      "why_now": [
+        "ATR compression is supportive at the 0th percentile",
+        "Volume dry-up score 0.73 supports absorption",
+        "Accepted above YTD AVWAP by 6.7 ATR",
+        "3.1 ATR above swing-low AVWAP support"
+      ],
+      "why_not_now": [
+        "Already a holding; separate from fresh-entry routing",
+        "RS-63 is weak at -4% vs SPY"
+      ],
+      "setup_improves_if": [
+        "Holds above pivot $747.83 or support $747.83",
+        "Extends toward T1 at $768.94 without violating support"
+      ],
+      "setup_weakens_if": [
+        "Closes below stop $737.27",
+        "Loses trend support and fails to recover promptly"
+      ],
+      "what_improves_tomorrow": [
+        "Holds above pivot $747.83 or support $747.83",
+        "Extends toward T1 at $768.94 without violating support"
+      ],
+      "what_weakens_tomorrow": [
+        "Closes below stop $737.27",
+        "Loses trend support and fails to recover promptly"
+      ]
+    }
+  },
+  {
+    "symbol": "VOO",
+    "state": "CONFIRMED",
+    "bucket": "portfolio_hold",
+    "close": 708.75,
+    "pivot": 716.39,
+    "dist_to_pivot_atr": -1.3,
+    "days_in_state": 3418,
+    "action_label": "Portfolio hold",
+    "portfolio_guidance": "WATCH STOP \u2014 below pivot, stop discipline required",
+    "portfolio_health": "{'position_health': 'at_risk', 'recommended_action': 'WATCH STOP \u2014 below pivot, stop discipline required', 'key_level': 'Stop at $710.68 (1.3 ATR from pivot)', 'notes': ['Below pivot by 1.3 ATR']}",
+    "composite_score": null,
+    "failure_risk": null,
+    "is_non_equity": false,
+    "rejection_reasons": "invalid_state",
+    "trade_plan": {
+      "actionability_code": "WAIT_ZONE",
+      "actionable_now": false,
+      "entry_style": "hold",
+      "best_entry_style": "hold",
+      "entry_condition": "Manage the existing position rather than treating this as a new entry. Keep the key level at $710.68 in view.",
+      "entry_trigger": "$710.68",
+      "entry_range": "$716.39-$716.96",
+      "alternate_pullback_entry": "$716.39",
+      "stop": "$710.68",
+      "stop_basis": "Daily close below $710.68 invalidates the setup.",
+      "stop_risk_pct": "0.8%",
+      "target_1": "$727.81",
+      "target_2": "$736.37",
+      "target_3": "$744.94",
+      "risk_reward_t1": "1.9:1",
+      "time_stop": "Manage against the existing thesis and stop discipline.",
+      "key_risk": "Portfolio management is about protecting the open thesis, not forcing a new entry.",
+      "invalidation": "Daily close below $710.68 invalidates the idea.",
+      "why_now": [
+        "Above SMA50 by 2.4%",
+        "ATR compression is supportive at the 2th percentile",
+        "Volume dry-up score 0.93 supports absorption",
+        "Accepted above YTD AVWAP by 10.4 ATR",
+        "6.3 ATR above swing-low AVWAP support"
+      ],
+      "why_not_now": [
+        "Already a holding; separate from fresh-entry routing"
+      ],
+      "setup_improves_if": [
+        "Holds above pivot $716.39 or support $716.39",
+        "Extends toward T1 at $727.81 without violating support"
+      ],
+      "setup_weakens_if": [
+        "Closes below stop $710.68",
+        "Loses trend support and fails to recover promptly"
+      ],
+      "what_improves_tomorrow": [
+        "Holds above pivot $716.39 or support $716.39",
+        "Extends toward T1 at $727.81 without violating support"
+      ],
+      "what_weakens_tomorrow": [
+        "Closes below stop $710.68",
+        "Loses trend support and fails to recover promptly"
+      ]
+    }
+  },
+  {
+    "symbol": "VXUS",
+    "state": "CONFIRMED",
+    "bucket": "portfolio_hold",
+    "close": 87.93,
+    "pivot": 88.62,
+    "dist_to_pivot_atr": -0.8,
+    "days_in_state": 1567,
+    "action_label": "Portfolio hold",
+    "portfolio_guidance": "HOLD \u2014 confirmed uptrend, maintain stop below pivot",
+    "portfolio_health": "{'position_health': 'healthy', 'recommended_action': 'HOLD \u2014 confirmed uptrend, maintain stop below pivot', 'key_level': 'Stop at $87.75 (0.8 ATR from pivot)', 'notes': ['Below pivot by 0.8 ATR']}",
+    "composite_score": null,
+    "failure_risk": null,
+    "is_non_equity": false,
+    "rejection_reasons": "invalid_state",
+    "trade_plan": {
+      "actionability_code": "WAIT_ZONE",
+      "actionable_now": false,
+      "entry_style": "hold",
+      "best_entry_style": "hold",
+      "entry_condition": "Manage the existing position rather than treating this as a new entry. Keep the key level at $87.75 in view.",
+      "entry_trigger": "$87.75",
+      "entry_range": "$88.62-$88.71",
+      "alternate_pullback_entry": "$88.62",
+      "stop": "$87.75",
+      "stop_basis": "Daily close below $87.75 invalidates the setup.",
+      "stop_risk_pct": "1.0%",
+      "target_1": "$90.37",
+      "target_2": "$91.68",
+      "target_3": "$92.99",
+      "risk_reward_t1": "1.9:1",
+      "time_stop": "Manage against the existing thesis and stop discipline.",
+      "key_risk": "Portfolio management is about protecting the open thesis, not forcing a new entry.",
+      "invalidation": "Daily close below $87.75 invalidates the idea.",
+      "why_now": [
+        "Above SMA50 by 2.8%",
+        "ATR compression is supportive at the 0th percentile",
+        "Volume dry-up score 0.85 supports absorption",
+        "Accepted above YTD AVWAP by 7.3 ATR",
+        "10.0 ATR above swing-low AVWAP support"
+      ],
+      "why_not_now": [
+        "Already a holding; separate from fresh-entry routing"
+      ],
+      "setup_improves_if": [
+        "Holds above pivot $88.62 or support $88.62",
+        "Extends toward T1 at $90.37 without violating support"
+      ],
+      "setup_weakens_if": [
+        "Closes below stop $87.75",
+        "Loses trend support and fails to recover promptly"
+      ],
+      "what_improves_tomorrow": [
+        "Holds above pivot $88.62 or support $88.62",
+        "Extends toward T1 at $90.37 without violating support"
+      ],
+      "what_weakens_tomorrow": [
+        "Closes below stop $87.75",
+        "Loses trend support and fails to recover promptly"
+      ]
+    }
+  },
+  {
+    "symbol": "GEV",
+    "state": "CONFIRMED",
+    "bucket": "portfolio_hold",
+    "close": 953.83,
+    "pivot": 1195.94,
+    "dist_to_pivot_atr": -5.1,
+    "days_in_state": 532,
+    "action_label": "Portfolio hold",
+    "portfolio_guidance": "WATCH STOP \u2014 below pivot, stop discipline required",
+    "portfolio_health": "{'position_health': 'at_risk', 'recommended_action': 'WATCH STOP \u2014 below pivot, stop discipline required', 'key_level': 'Stop at $1148.82 (5.1 ATR from pivot)', 'notes': ['Below pivot by 5.1 ATR']}",
+    "composite_score": null,
+    "failure_risk": null,
+    "is_non_equity": false,
+    "rejection_reasons": "invalid_state",
+    "trade_plan": {
+      "actionability_code": "WAIT_ZONE",
+      "actionable_now": false,
+      "entry_style": "hold",
+      "best_entry_style": "hold",
+      "entry_condition": "Manage the existing position rather than treating this as a new entry. Keep the key level at $1148.82 in view.",
+      "entry_trigger": "$1148.82",
+      "entry_range": "$1195.94-$1200.65",
+      "alternate_pullback_entry": "$1195.94",
+      "stop": "$1148.82",
+      "stop_basis": "Daily close below $1148.82 invalidates the setup.",
+      "stop_risk_pct": "4.1%",
+      "target_1": "$1290.18",
+      "target_2": "$1360.85",
+      "target_3": "$1431.53",
+      "risk_reward_t1": "1.9:1",
+      "time_stop": "Manage against the existing thesis and stop discipline.",
+      "key_risk": "Portfolio management is about protecting the open thesis, not forcing a new entry.",
+      "invalidation": "Daily close below $1148.82 invalidates the idea.",
+      "why_now": [
+        "ATR compression is supportive at the 2th percentile",
+        "Volume dry-up score 0.59 supports absorption",
+        "Accepted above YTD AVWAP by 0.7 ATR",
+        "1.6 ATR above swing-low AVWAP support"
+      ],
+      "why_not_now": [
+        "Already a holding; separate from fresh-entry routing",
+        "Below SMA50 by 7.8%",
+        "RS-63 is weak at -7% vs SPY"
+      ],
+      "setup_improves_if": [
+        "Holds above pivot $1195.94 or support $1195.94",
+        "Extends toward T1 at $1290.18 without violating support"
+      ],
+      "setup_weakens_if": [
+        "Closes below stop $1148.82",
+        "Loses trend support and fails to recover promptly"
+      ],
+      "what_improves_tomorrow": [
+        "Holds above pivot $1195.94 or support $1195.94",
+        "Extends toward T1 at $1290.18 without violating support"
+      ],
+      "what_weakens_tomorrow": [
+        "Closes below stop $1148.82",
+        "Loses trend support and fails to recover promptly"
+      ]
+    }
+  },
+  {
+    "symbol": "ETN",
+    "state": "CONFIRMED",
+    "bucket": "portfolio_hold",
+    "close": 416.04,
+    "pivot": 478.0,
+    "dist_to_pivot_atr": -4.1,
+    "days_in_state": 4368,
+    "action_label": "Portfolio hold",
+    "portfolio_guidance": "WATCH STOP \u2014 below pivot, stop discipline required",
+    "portfolio_health": "{'position_health': 'at_risk', 'recommended_action': 'WATCH STOP \u2014 below pivot, stop discipline required', 'key_level': 'Stop at $462.99 (4.1 ATR from pivot)', 'notes': ['Below pivot by 4.1 ATR']}",
+    "composite_score": null,
+    "failure_risk": null,
+    "is_non_equity": false,
+    "rejection_reasons": "invalid_state",
+    "trade_plan": {
+      "actionability_code": "WAIT_ZONE",
+      "actionable_now": false,
+      "entry_style": "hold",
+      "best_entry_style": "hold",
+      "entry_condition": "Manage the existing position rather than treating this as a new entry. Keep the key level at $462.99 in view.",
+      "entry_trigger": "$462.99",
+      "entry_range": "$478.00-$479.50",
+      "alternate_pullback_entry": "$478.00",
+      "stop": "$462.99",
+      "stop_basis": "Daily close below $462.99 invalidates the setup.",
+      "stop_risk_pct": "3.3%",
+      "target_1": "$508.01",
+      "target_2": "$530.52",
+      "target_3": "$553.03",
+      "risk_reward_t1": "1.9:1",
+      "time_stop": "Manage against the existing thesis and stop discipline.",
+      "key_risk": "Portfolio management is about protecting the open thesis, not forcing a new entry.",
+      "invalidation": "Daily close below $462.99 invalidates the idea.",
+      "why_now": [
+        "ATR compression is supportive at the 0th percentile",
+        "Volume dry-up score 0.72 supports absorption",
+        "Accepted above YTD AVWAP by 2.1 ATR",
+        "2.4 ATR above swing-low AVWAP support"
+      ],
+      "why_not_now": [
+        "Already a holding; separate from fresh-entry routing"
+      ],
+      "setup_improves_if": [
+        "Holds above pivot $478.00 or support $478.00",
+        "Extends toward T1 at $508.01 without violating support"
+      ],
+      "setup_weakens_if": [
+        "Closes below stop $462.99",
+        "Loses trend support and fails to recover promptly"
+      ],
+      "what_improves_tomorrow": [
+        "Holds above pivot $478.00 or support $478.00",
+        "Extends toward T1 at $508.01 without violating support"
+      ],
+      "what_weakens_tomorrow": [
+        "Closes below stop $462.99",
+        "Loses trend support and fails to recover promptly"
+      ]
+    }
+  },
+  {
+    "symbol": "PWR",
+    "state": "CONFIRMED",
+    "bucket": "portfolio_hold",
+    "close": 621.83,
+    "pivot": 724.8,
+    "dist_to_pivot_atr": -3.6,
+    "days_in_state": 2609,
+    "action_label": "Portfolio hold",
+    "portfolio_guidance": "WATCH STOP \u2014 below pivot, stop discipline required",
+    "portfolio_health": "{'position_health': 'at_risk', 'recommended_action': 'WATCH STOP \u2014 below pivot, stop discipline required', 'key_level': 'Stop at $696.41 (3.6 ATR from pivot)', 'notes': ['Below pivot by 3.6 ATR']}",
+    "composite_score": null,
+    "failure_risk": null,
+    "is_non_equity": false,
+    "rejection_reasons": "invalid_state",
+    "trade_plan": {
+      "actionability_code": "WAIT_ZONE",
+      "actionable_now": false,
+      "entry_style": "hold",
+      "best_entry_style": "hold",
+      "entry_condition": "Manage the existing position rather than treating this as a new entry. Keep the key level at $696.41 in view.",
+      "entry_trigger": "$696.41",
+      "entry_range": "$724.80-$727.64",
+      "alternate_pullback_entry": "$724.80",
+      "stop": "$696.41",
+      "stop_basis": "Daily close below $696.41 invalidates the setup.",
+      "stop_risk_pct": "4.1%",
+      "target_1": "$781.59",
+      "target_2": "$824.18",
+      "target_3": "$866.77",
+      "risk_reward_t1": "1.9:1",
+      "time_stop": "Manage against the existing thesis and stop discipline.",
+      "key_risk": "Portfolio management is about protecting the open thesis, not forcing a new entry.",
+      "invalidation": "Daily close below $696.41 invalidates the idea.",
+      "why_now": [
+        "ATR compression is supportive at the 31th percentile",
+        "Volume dry-up score 0.75 supports absorption",
+        "2.1 ATR above swing-low AVWAP support"
+      ],
+      "why_not_now": [
+        "Already a holding; separate from fresh-entry routing",
+        "Below SMA50 by 6.4%",
+        "RS-63 is weak at -18% vs SPY"
+      ],
+      "setup_improves_if": [
+        "Holds above pivot $724.80 or support $724.80",
+        "Extends toward T1 at $781.59 without violating support"
+      ],
+      "setup_weakens_if": [
+        "Closes below stop $696.41",
+        "Loses trend support and fails to recover promptly"
+      ],
+      "what_improves_tomorrow": [
+        "Holds above pivot $724.80 or support $724.80",
+        "Extends toward T1 at $781.59 without violating support"
+      ],
+      "what_weakens_tomorrow": [
+        "Closes below stop $696.41",
+        "Loses trend support and fails to recover promptly"
+      ]
+    }
+  },
+  {
+    "symbol": "VRT",
+    "state": "CONFIRMED",
+    "bucket": "portfolio_hold",
+    "close": 269.28,
+    "pivot": 300.3,
+    "dist_to_pivot_atr": -2.0,
+    "days_in_state": 817,
+    "action_label": "Portfolio hold",
+    "portfolio_guidance": "WATCH STOP \u2014 below pivot, stop discipline required",
+    "portfolio_health": "{'position_health': 'at_risk', 'recommended_action': 'WATCH STOP \u2014 below pivot, stop discipline required', 'key_level': 'Stop at $284.83 (2.0 ATR from pivot)', 'notes': ['Below pivot by 2.0 ATR']}",
+    "composite_score": null,
+    "failure_risk": null,
+    "is_non_equity": false,
+    "rejection_reasons": "invalid_state",
+    "trade_plan": {
+      "actionability_code": "WAIT_ZONE",
+      "actionable_now": false,
+      "entry_style": "hold",
+      "best_entry_style": "hold",
+      "entry_condition": "Manage the existing position rather than treating this as a new entry. Keep the key level at $284.83 in view.",
+      "entry_trigger": "$284.83",
+      "entry_range": "$300.30-$301.85",
+      "alternate_pullback_entry": "$300.30",
+      "stop": "$284.83",
+      "stop_basis": "Daily close below $284.83 invalidates the setup.",
+      "stop_risk_pct": "5.4%",
+      "target_1": "$331.25",
+      "target_2": "$354.46",
+      "target_3": "$377.67",
+      "risk_reward_t1": "1.9:1",
+      "time_stop": "Manage against the existing thesis and stop discipline.",
+      "key_risk": "Portfolio management is about protecting the open thesis, not forcing a new entry.",
+      "invalidation": "Daily close below $284.83 invalidates the idea.",
+      "why_now": [
+        "ATR compression is supportive at the 0th percentile",
+        "Volume dry-up score 0.76 supports absorption",
+        "2.3 ATR above swing-low AVWAP support"
+      ],
+      "why_not_now": [
+        "Already a holding; separate from fresh-entry routing",
+        "Below SMA50 by 7.3%",
+        "RS-63 is weak at -18% vs SPY"
+      ],
+      "setup_improves_if": [
+        "Holds above pivot $300.30 or support $300.30",
+        "Extends toward T1 at $331.25 without violating support"
+      ],
+      "setup_weakens_if": [
+        "Closes below stop $284.83",
+        "Loses trend support and fails to recover promptly"
+      ],
+      "what_improves_tomorrow": [
+        "Holds above pivot $300.30 or support $300.30",
+        "Extends toward T1 at $331.25 without violating support"
+      ],
+      "what_weakens_tomorrow": [
+        "Closes below stop $284.83",
+        "Loses trend support and fails to recover promptly"
+      ]
+    }
+  },
+  {
+    "symbol": "ASML",
+    "state": "CONFIRMED",
+    "bucket": "portfolio_hold",
+    "close": 1735.01,
+    "pivot": 1997.38,
+    "dist_to_pivot_atr": -4.5,
+    "days_in_state": 4302,
+    "action_label": "Portfolio hold",
+    "portfolio_guidance": "WATCH STOP \u2014 below pivot, stop discipline required",
+    "portfolio_health": "{'position_health': 'at_risk', 'recommended_action': 'WATCH STOP \u2014 below pivot, stop discipline required', 'key_level': 'Stop at $1939.04 (4.5 ATR from pivot)', 'notes': ['Below pivot by 4.5 ATR']}",
+    "composite_score": null,
+    "failure_risk": null,
+    "is_non_equity": false,
+    "rejection_reasons": "invalid_state",
+    "trade_plan": {
+      "actionability_code": "WAIT_ZONE",
+      "actionable_now": false,
+      "entry_style": "hold",
+      "best_entry_style": "hold",
+      "entry_condition": "Manage the existing position rather than treating this as a new entry. Keep the key level at $1939.04 in view.",
+      "entry_trigger": "$1939.04",
+      "entry_range": "$1997.38-$2003.21",
+      "alternate_pullback_entry": "$1997.38",
+      "stop": "$1939.04",
+      "stop_basis": "Daily close below $1939.04 invalidates the setup.",
+      "stop_risk_pct": "3.1%",
+      "target_1": "$2114.06",
+      "target_2": "$2201.57",
+      "target_3": "$2289.08",
+      "risk_reward_t1": "1.9:1",
+      "time_stop": "Manage against the existing thesis and stop discipline.",
+      "key_risk": "Portfolio management is about protecting the open thesis, not forcing a new entry.",
+      "invalidation": "Daily close below $1939.04 invalidates the idea.",
+      "why_now": [
+        "RS-63 is +5% vs SPY",
+        "ATR compression is supportive at the 0th percentile",
+        "Volume dry-up score 0.58 supports absorption",
+        "Accepted above YTD AVWAP by 3.3 ATR",
+        "6.1 ATR above swing-low AVWAP support"
+      ],
+      "why_not_now": [
+        "Already a holding; separate from fresh-entry routing"
+      ],
+      "setup_improves_if": [
+        "Holds above pivot $1997.38 or support $1997.38",
+        "Extends toward T1 at $2114.06 without violating support"
+      ],
+      "setup_weakens_if": [
+        "Closes below stop $1939.04",
+        "Loses trend support and fails to recover promptly"
+      ],
+      "what_improves_tomorrow": [
+        "Holds above pivot $1997.38 or support $1997.38",
+        "Extends toward T1 at $2114.06 without violating support"
+      ],
+      "what_weakens_tomorrow": [
+        "Closes below stop $1939.04",
+        "Loses trend support and fails to recover promptly"
+      ]
+    }
+  },
+  {
+    "symbol": "SOXX",
+    "state": "CONFIRMED",
+    "bucket": "portfolio_hold",
+    "close": 525.43,
+    "pivot": 608.11,
+    "dist_to_pivot_atr": -4.0,
+    "days_in_state": 4302,
+    "action_label": "Portfolio hold",
+    "portfolio_guidance": "WATCH STOP \u2014 below pivot, stop discipline required",
+    "portfolio_health": "{'position_health': 'at_risk', 'recommended_action': 'WATCH STOP \u2014 below pivot, stop discipline required', 'key_level': 'Stop at $587.43 (4.0 ATR from pivot)', 'notes': ['Below pivot by 4.0 ATR']}",
+    "composite_score": null,
+    "failure_risk": null,
+    "is_non_equity": false,
+    "rejection_reasons": "invalid_state",
+    "trade_plan": {
+      "actionability_code": "WAIT_ZONE",
+      "actionable_now": false,
+      "entry_style": "hold",
+      "best_entry_style": "hold",
+      "entry_condition": "Manage the existing position rather than treating this as a new entry. Keep the key level at $587.43 in view.",
+      "entry_trigger": "$587.43",
+      "entry_range": "$608.11-$610.18",
+      "alternate_pullback_entry": "$608.11",
+      "stop": "$587.43",
+      "stop_basis": "Daily close below $587.43 invalidates the setup.",
+      "stop_risk_pct": "3.6%",
+      "target_1": "$649.46",
+      "target_2": "$680.47",
+      "target_3": "$711.49",
+      "risk_reward_t1": "1.9:1",
+      "time_stop": "Manage against the existing thesis and stop discipline.",
+      "key_risk": "Portfolio management is about protecting the open thesis, not forcing a new entry.",
+      "invalidation": "Daily close below $587.43 invalidates the idea.",
+      "why_now": [
+        "ATR compression is supportive at the 0th percentile",
+        "Volume dry-up score 0.95 supports absorption",
+        "Accepted above YTD AVWAP by 2.9 ATR",
+        "5.6 ATR above swing-low AVWAP support"
+      ],
+      "why_not_now": [
+        "Already a holding; separate from fresh-entry routing",
+        "Below SMA50 by 4.8%",
+        "RS-63 is weak at -10% vs SPY"
+      ],
+      "setup_improves_if": [
+        "Holds above pivot $608.11 or support $608.11",
+        "Extends toward T1 at $649.46 without violating support"
+      ],
+      "setup_weakens_if": [
+        "Closes below stop $587.43",
+        "Loses trend support and fails to recover promptly"
+      ],
+      "what_improves_tomorrow": [
+        "Holds above pivot $608.11 or support $608.11",
+        "Extends toward T1 at $649.46 without violating support"
+      ],
+      "what_weakens_tomorrow": [
+        "Closes below stop $587.43",
+        "Loses trend support and fails to recover promptly"
+      ]
+    }
+  },
+  {
+    "symbol": "CEG",
+    "state": "CONFIRMED",
+    "bucket": "portfolio_hold",
+    "close": 282.41,
+    "pivot": 300.35,
+    "dist_to_pivot_atr": -2.0,
+    "days_in_state": 1101,
+    "action_label": "Portfolio hold",
+    "portfolio_guidance": "WATCH STOP \u2014 below pivot, stop discipline required",
+    "portfolio_health": "{'position_health': 'at_risk', 'recommended_action': 'WATCH STOP \u2014 below pivot, stop discipline required', 'key_level': 'Stop at $291.54 (2.0 ATR from pivot)', 'notes': ['Below pivot by 2.0 ATR']}",
+    "composite_score": null,
+    "failure_risk": null,
+    "is_non_equity": false,
+    "rejection_reasons": "invalid_state",
+    "trade_plan": {
+      "actionability_code": "WAIT_ZONE",
+      "actionable_now": false,
+      "entry_style": "hold",
+      "best_entry_style": "hold",
+      "entry_condition": "Manage the existing position rather than treating this as a new entry. Keep the key level at $291.54 in view.",
+      "entry_trigger": "$291.54",
+      "entry_range": "$300.35-$301.23",
+      "alternate_pullback_entry": "$300.35",
+      "stop": "$291.54",
+      "stop_basis": "Daily close below $291.54 invalidates the setup.",
+      "stop_risk_pct": "3.1%",
+      "target_1": "$317.97",
+      "target_2": "$331.19",
+      "target_3": "$344.41",
+      "risk_reward_t1": "1.9:1",
+      "time_stop": "Manage against the existing thesis and stop discipline.",
+      "key_risk": "Portfolio management is about protecting the open thesis, not forcing a new entry.",
+      "invalidation": "Daily close below $291.54 invalidates the idea.",
+      "why_now": [
+        "Above SMA50 by 6.8%",
+        "ATR compression is supportive at the 0th percentile",
+        "Volume dry-up score 0.58 supports absorption",
+        "2.3 ATR above swing-low AVWAP support"
+      ],
+      "why_not_now": [
+        "Already a holding; separate from fresh-entry routing",
+        "RS-63 is weak at -4% vs SPY"
+      ],
+      "setup_improves_if": [
+        "Holds above pivot $300.35 or support $300.35",
+        "Extends toward T1 at $317.97 without violating support"
+      ],
+      "setup_weakens_if": [
+        "Closes below stop $291.54",
+        "Loses trend support and fails to recover promptly"
+      ],
+      "what_improves_tomorrow": [
+        "Holds above pivot $300.35 or support $300.35",
+        "Extends toward T1 at $317.97 without violating support"
+      ],
+      "what_weakens_tomorrow": [
+        "Closes below stop $291.54",
+        "Loses trend support and fails to recover promptly"
+      ]
+    }
+  },
+  {
+    "symbol": "VST",
+    "state": "CONFIRMED",
+    "bucket": "portfolio_hold",
+    "close": 139.81,
+    "pivot": 172.52,
+    "dist_to_pivot_atr": -5.9,
+    "days_in_state": 779,
+    "action_label": "Portfolio hold",
+    "portfolio_guidance": "WATCH STOP \u2014 below pivot, stop discipline required",
+    "portfolio_health": "{'position_health': 'at_risk', 'recommended_action': 'WATCH STOP \u2014 below pivot, stop discipline required', 'key_level': 'Stop at $166.97 (5.9 ATR from pivot)', 'notes': ['Below pivot by 5.9 ATR']}",
+    "composite_score": null,
+    "failure_risk": null,
+    "is_non_equity": false,
+    "rejection_reasons": "invalid_state",
+    "trade_plan": {
+      "actionability_code": "WAIT_ZONE",
+      "actionable_now": false,
+      "entry_style": "hold",
+      "best_entry_style": "hold",
+      "entry_condition": "Manage the existing position rather than treating this as a new entry. Keep the key level at $166.97 in view.",
+      "entry_trigger": "$166.97",
+      "entry_range": "$172.52-$173.08",
+      "alternate_pullback_entry": "$172.52",
+      "stop": "$166.97",
+      "stop_basis": "Daily close below $166.97 invalidates the setup.",
+      "stop_risk_pct": "3.4%",
+      "target_1": "$183.64",
+      "target_2": "$191.97",
+      "target_3": "$200.30",
+      "risk_reward_t1": "1.9:1",
+      "time_stop": "Manage against the existing thesis and stop discipline.",
+      "key_risk": "Portfolio management is about protecting the open thesis, not forcing a new entry.",
+      "invalidation": "Daily close below $166.97 invalidates the idea.",
+      "why_now": [
+        "ATR compression is supportive at the 0th percentile",
+        "Volume dry-up score 0.67 supports absorption"
+      ],
+      "why_not_now": [
+        "Already a holding; separate from fresh-entry routing",
+        "Below SMA50 by 8.2%",
+        "RS-63 is weak at -16% vs SPY",
+        "Still 3.0 ATR below YTD AVWAP"
+      ],
+      "setup_improves_if": [
+        "Holds above pivot $172.52 or support $172.52",
+        "Extends toward T1 at $183.64 without violating support"
+      ],
+      "setup_weakens_if": [
+        "Closes below stop $166.97",
+        "Loses trend support and fails to recover promptly"
+      ],
+      "what_improves_tomorrow": [
+        "Holds above pivot $172.52 or support $172.52",
+        "Extends toward T1 at $183.64 without violating support"
+      ],
+      "what_weakens_tomorrow": [
+        "Closes below stop $166.97",
+        "Loses trend support and fails to recover promptly"
+      ]
+    }
+  },
+  {
+    "symbol": "CCJ",
+    "state": "CONFIRMED",
+    "bucket": "portfolio_hold",
+    "close": 106.33,
+    "pivot": 111.54,
+    "dist_to_pivot_atr": -1.3,
+    "days_in_state": 785,
+    "action_label": "Portfolio hold",
+    "portfolio_guidance": "WATCH STOP \u2014 below pivot, stop discipline required",
+    "portfolio_health": "{'position_health': 'at_risk', 'recommended_action': 'WATCH STOP \u2014 below pivot, stop discipline required', 'key_level': 'Stop at $107.49 (1.3 ATR from pivot)', 'notes': ['Below pivot by 1.3 ATR']}",
+    "composite_score": null,
+    "failure_risk": null,
+    "is_non_equity": false,
+    "rejection_reasons": "invalid_state",
+    "trade_plan": {
+      "actionability_code": "WAIT_ZONE",
+      "actionable_now": false,
+      "entry_style": "hold",
+      "best_entry_style": "hold",
+      "entry_condition": "Manage the existing position rather than treating this as a new entry. Keep the key level at $107.49 in view.",
+      "entry_trigger": "$107.49",
+      "entry_range": "$111.54-$111.94",
+      "alternate_pullback_entry": "$111.54",
+      "stop": "$107.49",
+      "stop_basis": "Daily close below $107.49 invalidates the setup.",
+      "stop_risk_pct": "3.8%",
+      "target_1": "$119.64",
+      "target_2": "$125.71",
+      "target_3": "$131.78",
+      "risk_reward_t1": "1.9:1",
+      "time_stop": "Manage against the existing thesis and stop discipline.",
+      "key_risk": "Portfolio management is about protecting the open thesis, not forcing a new entry.",
+      "invalidation": "Daily close below $107.49 invalidates the idea.",
+      "why_now": [
+        "Above SMA50 by 10.4%",
+        "ATR compression is supportive at the 22th percentile",
+        "Volume dry-up score 0.70 supports absorption",
+        "1.4 ATR above swing-low AVWAP support"
+      ],
+      "why_not_now": [
+        "Already a holding; separate from fresh-entry routing",
+        "RS-63 is weak at -6% vs SPY",
+        "Still 0.6 ATR below YTD AVWAP"
+      ],
+      "setup_improves_if": [
+        "Holds above pivot $111.54 or support $111.54",
+        "Extends toward T1 at $119.64 without violating support"
+      ],
+      "setup_weakens_if": [
+        "Closes below stop $107.49",
+        "Loses trend support and fails to recover promptly"
+      ],
+      "what_improves_tomorrow": [
+        "Holds above pivot $111.54 or support $111.54",
+        "Extends toward T1 at $119.64 without violating support"
+      ],
+      "what_weakens_tomorrow": [
+        "Closes below stop $107.49",
+        "Loses trend support and fails to recover promptly"
+      ]
+    }
+  },
+  {
+    "symbol": "LEU",
+    "state": "CONFIRMED",
+    "bucket": "portfolio_hold",
+    "close": 194.78,
+    "pivot": 208.57,
+    "dist_to_pivot_atr": -1.1,
+    "days_in_state": 1733,
+    "action_label": "Portfolio hold",
+    "portfolio_guidance": "WATCH STOP \u2014 below pivot, stop discipline required",
+    "portfolio_health": "{'position_health': 'at_risk', 'recommended_action': 'WATCH STOP \u2014 below pivot, stop discipline required', 'key_level': 'Stop at $195.73 (1.1 ATR from pivot)', 'notes': ['Below pivot by 1.1 ATR']}",
+    "composite_score": null,
+    "failure_risk": null,
+    "is_non_equity": false,
+    "rejection_reasons": "invalid_state",
+    "trade_plan": {
+      "actionability_code": "WAIT_ZONE",
+      "actionable_now": false,
+      "entry_style": "hold",
+      "best_entry_style": "hold",
+      "entry_condition": "Manage the existing position rather than treating this as a new entry. Keep the key level at $195.73 in view.",
+      "entry_trigger": "$195.73",
+      "entry_range": "$208.57-$209.85",
+      "alternate_pullback_entry": "$208.57",
+      "stop": "$195.73",
+      "stop_basis": "Daily close below $195.73 invalidates the setup.",
+      "stop_risk_pct": "6.4%",
+      "target_1": "$234.25",
+      "target_2": "$253.51",
+      "target_3": "$272.77",
+      "risk_reward_t1": "1.9:1",
+      "time_stop": "Manage against the existing thesis and stop discipline.",
+      "key_risk": "Portfolio management is about protecting the open thesis, not forcing a new entry.",
+      "invalidation": "Daily close below $195.73 invalidates the idea.",
+      "why_now": [
+        "Above SMA50 by 11.4%",
+        "Volume dry-up score 0.66 supports absorption",
+        "1.3 ATR above swing-low AVWAP support"
+      ],
+      "why_not_now": [
+        "Already a holding; separate from fresh-entry routing",
+        "ATR is elevated at the 65th percentile",
+        "Still 1.4 ATR below YTD AVWAP"
+      ],
+      "setup_improves_if": [
+        "Holds above pivot $208.57 or support $208.57",
+        "Extends toward T1 at $234.25 without violating support"
+      ],
+      "setup_weakens_if": [
+        "Closes below stop $195.73",
+        "Loses trend support and fails to recover promptly"
+      ],
+      "what_improves_tomorrow": [
+        "Holds above pivot $208.57 or support $208.57",
+        "Extends toward T1 at $234.25 without violating support"
+      ],
+      "what_weakens_tomorrow": [
+        "Closes below stop $195.73",
+        "Loses trend support and fails to recover promptly"
+      ]
+    }
+  },
+  {
+    "symbol": "RTX",
+    "state": "CONFIRMED",
+    "bucket": "portfolio_hold",
+    "close": 212.08,
+    "pivot": 226.41,
+    "dist_to_pivot_atr": -3.2,
+    "days_in_state": 4338,
+    "action_label": "Portfolio hold",
+    "portfolio_guidance": "WATCH STOP \u2014 below pivot, stop discipline required",
+    "portfolio_health": "{'position_health': 'at_risk', 'recommended_action': 'WATCH STOP \u2014 below pivot, stop discipline required', 'key_level': 'Stop at $221.94 (3.2 ATR from pivot)', 'notes': ['Below pivot by 3.2 ATR']}",
+    "composite_score": null,
+    "failure_risk": null,
+    "is_non_equity": false,
+    "rejection_reasons": "invalid_state",
+    "trade_plan": {
+      "actionability_code": "WAIT_ZONE",
+      "actionable_now": false,
+      "entry_style": "hold",
+      "best_entry_style": "hold",
+      "entry_condition": "Manage the existing position rather than treating this as a new entry. Keep the key level at $221.94 in view.",
+      "entry_trigger": "$221.94",
+      "entry_range": "$226.41-$226.86",
+      "alternate_pullback_entry": "$226.41",
+      "stop": "$221.94",
+      "stop_basis": "Daily close below $221.94 invalidates the setup.",
+      "stop_risk_pct": "2.1%",
+      "target_1": "$235.36",
+      "target_2": "$242.07",
+      "target_3": "$248.77",
+      "risk_reward_t1": "1.9:1",
+      "time_stop": "Manage against the existing thesis and stop discipline.",
+      "key_risk": "Portfolio management is about protecting the open thesis, not forcing a new entry.",
+      "invalidation": "Daily close below $221.94 invalidates the idea.",
+      "why_now": [
+        "Above SMA50 by 3.5%",
+        "RS-63 is +15% vs SPY",
+        "ATR compression is supportive at the 14th percentile",
+        "Volume dry-up score 0.78 supports absorption",
+        "Accepted above YTD AVWAP by 4.0 ATR",
+        "5.7 ATR above swing-low AVWAP support"
+      ],
+      "why_not_now": [
+        "Already a holding; separate from fresh-entry routing"
+      ],
+      "setup_improves_if": [
+        "Holds above pivot $226.41 or support $226.41",
+        "Extends toward T1 at $235.36 without violating support"
+      ],
+      "setup_weakens_if": [
+        "Closes below stop $221.94",
+        "Loses trend support and fails to recover promptly"
+      ],
+      "what_improves_tomorrow": [
+        "Holds above pivot $226.41 or support $226.41",
+        "Extends toward T1 at $235.36 without violating support"
+      ],
+      "what_weakens_tomorrow": [
+        "Closes below stop $221.94",
+        "Loses trend support and fails to recover promptly"
+      ]
+    }
+  },
+  {
+    "symbol": "CRS",
+    "state": "CONFIRMED",
+    "bucket": "portfolio_hold",
+    "close": 490.58,
+    "pivot": 625.73,
+    "dist_to_pivot_atr": -6.0,
+    "days_in_state": 4363,
+    "action_label": "Portfolio hold",
+    "portfolio_guidance": "WATCH STOP \u2014 below pivot, stop discipline required",
+    "portfolio_health": "{'position_health': 'at_risk', 'recommended_action': 'WATCH STOP \u2014 below pivot, stop discipline required', 'key_level': 'Stop at $603.29 (6.0 ATR from pivot)', 'notes': ['Below pivot by 6.0 ATR']}",
+    "composite_score": null,
+    "failure_risk": null,
+    "is_non_equity": false,
+    "rejection_reasons": "invalid_state",
+    "trade_plan": {
+      "actionability_code": "WAIT_ZONE",
+      "actionable_now": false,
+      "entry_style": "hold",
+      "best_entry_style": "hold",
+      "entry_condition": "Manage the existing position rather than treating this as a new entry. Keep the key level at $603.29 in view.",
+      "entry_trigger": "$603.29",
+      "entry_range": "$625.73-$627.97",
+      "alternate_pullback_entry": "$625.73",
+      "stop": "$603.29",
+      "stop_basis": "Daily close below $603.29 invalidates the setup.",
+      "stop_risk_pct": "3.8%",
+      "target_1": "$670.61",
+      "target_2": "$704.27",
+      "target_3": "$737.93",
+      "risk_reward_t1": "1.9:1",
+      "time_stop": "Manage against the existing thesis and stop discipline.",
+      "key_risk": "Portfolio management is about protecting the open thesis, not forcing a new entry.",
+      "invalidation": "Daily close below $603.29 invalidates the idea.",
+      "why_now": [
+        "RS-63 is +4% vs SPY",
+        "ATR compression is supportive at the 31th percentile",
+        "Volume dry-up score 0.74 supports absorption",
+        "Accepted above YTD AVWAP by 2.0 ATR",
+        "4.1 ATR above swing-low AVWAP support"
+      ],
+      "why_not_now": [
+        "Already a holding; separate from fresh-entry routing",
+        "Below SMA50 by 12.3%"
+      ],
+      "setup_improves_if": [
+        "Holds above pivot $625.73 or support $625.73",
+        "Extends toward T1 at $670.61 without violating support"
+      ],
+      "setup_weakens_if": [
+        "Closes below stop $603.29",
+        "Loses trend support and fails to recover promptly"
+      ],
+      "what_improves_tomorrow": [
+        "Holds above pivot $625.73 or support $625.73",
+        "Extends toward T1 at $670.61 without violating support"
+      ],
+      "what_weakens_tomorrow": [
+        "Closes below stop $603.29",
+        "Loses trend support and fails to recover promptly"
+      ]
+    }
+  },
+  {
+    "symbol": "MP",
+    "state": "CONFIRMED",
+    "bucket": "portfolio_hold",
+    "close": 59.03,
+    "pivot": 62.47,
+    "dist_to_pivot_atr": -1.0,
+    "days_in_state": 1535,
+    "action_label": "Portfolio hold",
+    "portfolio_guidance": "HOLD \u2014 confirmed uptrend, maintain stop below pivot",
+    "portfolio_health": "{'position_health': 'healthy', 'recommended_action': 'HOLD \u2014 confirmed uptrend, maintain stop below pivot', 'key_level': 'Stop at $58.96 (1.0 ATR from pivot)', 'notes': ['Below pivot by 1.0 ATR']}",
+    "composite_score": null,
+    "failure_risk": null,
+    "is_non_equity": false,
+    "rejection_reasons": "invalid_state",
+    "trade_plan": {
+      "actionability_code": "WAIT_ZONE",
+      "actionable_now": false,
+      "entry_style": "hold",
+      "best_entry_style": "hold",
+      "entry_condition": "Manage the existing position rather than treating this as a new entry. Keep the key level at $58.96 in view.",
+      "entry_trigger": "$58.96",
+      "entry_range": "$62.47-$62.82",
+      "alternate_pullback_entry": "$62.47",
+      "stop": "$58.96",
+      "stop_basis": "Daily close below $58.96 invalidates the setup.",
+      "stop_risk_pct": "5.9%",
+      "target_1": "$69.49",
+      "target_2": "$74.75",
+      "target_3": "$80.01",
+      "risk_reward_t1": "1.9:1",
+      "time_stop": "Manage against the existing thesis and stop discipline.",
+      "key_risk": "Portfolio management is about protecting the open thesis, not forcing a new entry.",
+      "invalidation": "Daily close below $58.96 invalidates the idea.",
+      "why_now": [
+        "Above SMA50 by 13.8%",
+        "Volume dry-up score 0.72 supports absorption",
+        "2.0 ATR above swing-low AVWAP support"
+      ],
+      "why_not_now": [
+        "Already a holding; separate from fresh-entry routing",
+        "RS-63 is weak at -15% vs SPY",
+        "ATR is elevated at the 69th percentile"
+      ],
+      "setup_improves_if": [
+        "Holds above pivot $62.47 or support $62.47",
+        "Extends toward T1 at $69.49 without violating support"
+      ],
+      "setup_weakens_if": [
+        "Closes below stop $58.96",
+        "Loses trend support and fails to recover promptly"
+      ],
+      "what_improves_tomorrow": [
+        "Holds above pivot $62.47 or support $62.47",
+        "Extends toward T1 at $69.49 without violating support"
+      ],
+      "what_weakens_tomorrow": [
+        "Closes below stop $58.96",
+        "Loses trend support and fails to recover promptly"
+      ]
+    }
+  },
+  {
+    "symbol": "NVDA",
+    "state": "CONFIRMED",
+    "bucket": "portfolio_hold",
+    "close": 227.98,
+    "pivot": 236.26,
+    "dist_to_pivot_atr": -1.1,
+    "days_in_state": 4383,
+    "action_label": "Portfolio hold",
+    "portfolio_guidance": "WATCH STOP \u2014 below pivot, stop discipline required",
+    "portfolio_health": "{'position_health': 'at_risk', 'recommended_action': 'WATCH STOP \u2014 below pivot, stop discipline required', 'key_level': 'Stop at $228.97 (1.1 ATR from pivot)', 'notes': ['Below pivot by 1.1 ATR']}",
+    "composite_score": null,
+    "failure_risk": null,
+    "is_non_equity": false,
+    "rejection_reasons": "invalid_state",
+    "trade_plan": {
+      "actionability_code": "WAIT_ZONE",
+      "actionable_now": false,
+      "entry_style": "hold",
+      "best_entry_style": "hold",
+      "entry_condition": "Manage the existing position rather than treating this as a new entry. Keep the key level at $228.97 in view.",
+      "entry_trigger": "$228.97",
+      "entry_range": "$236.26-$236.99",
+      "alternate_pullback_entry": "$236.26",
+      "stop": "$228.97",
+      "stop_basis": "Daily close below $228.97 invalidates the setup.",
+      "stop_risk_pct": "3.2%",
+      "target_1": "$250.85",
+      "target_2": "$261.80",
+      "target_3": "$272.74",
+      "risk_reward_t1": "1.9:1",
+      "time_stop": "Manage against the existing thesis and stop discipline.",
+      "key_risk": "Portfolio management is about protecting the open thesis, not forcing a new entry.",
+      "invalidation": "Daily close below $228.97 invalidates the idea.",
+      "why_now": [
+        "Above SMA50 by 9.5%",
+        "RS-63 is +4% vs SPY",
+        "Volume dry-up score 2.24 supports absorption",
+        "Accepted above YTD AVWAP by 4.2 ATR",
+        "4.9 ATR above swing-low AVWAP support"
+      ],
+      "why_not_now": [
+        "Already a holding; separate from fresh-entry routing"
+      ],
+      "setup_improves_if": [
+        "Holds above pivot $236.26 or support $236.26",
+        "Extends toward T1 at $250.85 without violating support"
+      ],
+      "setup_weakens_if": [
+        "Closes below stop $228.97",
+        "Loses trend support and fails to recover promptly"
+      ],
+      "what_improves_tomorrow": [
+        "Holds above pivot $236.26 or support $236.26",
+        "Extends toward T1 at $250.85 without violating support"
+      ],
+      "what_weakens_tomorrow": [
+        "Closes below stop $228.97",
+        "Loses trend support and fails to recover promptly"
+      ]
+    }
+  },
+  {
+    "symbol": "GOOGL",
+    "state": "CONFIRMED",
+    "bucket": "portfolio_hold",
+    "close": 340.65,
+    "pivot": 408.37,
+    "dist_to_pivot_atr": -8.0,
+    "days_in_state": 4353,
+    "action_label": "Portfolio hold",
+    "portfolio_guidance": "WATCH STOP \u2014 below pivot, stop discipline required",
+    "portfolio_health": "{'position_health': 'at_risk', 'recommended_action': 'WATCH STOP \u2014 below pivot, stop discipline required', 'key_level': 'Stop at $399.92 (8.0 ATR from pivot)', 'notes': ['Below pivot by 8.0 ATR']}",
+    "composite_score": null,
+    "failure_risk": null,
+    "is_non_equity": false,
+    "rejection_reasons": "invalid_state",
+    "trade_plan": {
+      "actionability_code": "WAIT_ZONE",
+      "actionable_now": false,
+      "entry_style": "hold",
+      "best_entry_style": "hold",
+      "entry_condition": "Manage the existing position rather than treating this as a new entry. Keep the key level at $399.92 in view.",
+      "entry_trigger": "$399.92",
+      "entry_range": "$408.37-$409.21",
+      "alternate_pullback_entry": "$408.37",
+      "stop": "$399.92",
+      "stop_basis": "Daily close below $399.92 invalidates the setup.",
+      "stop_risk_pct": "2.2%",
+      "target_1": "$425.26",
+      "target_2": "$437.93",
+      "target_3": "$450.60",
+      "risk_reward_t1": "1.9:1",
+      "time_stop": "Manage against the existing thesis and stop discipline.",
+      "key_risk": "Portfolio management is about protecting the open thesis, not forcing a new entry.",
+      "invalidation": "Daily close below $399.92 invalidates the idea.",
+      "why_now": [
+        "ATR compression is supportive at the 0th percentile",
+        "Volume dry-up score 0.76 supports absorption",
+        "3.2 ATR above swing-low AVWAP support"
+      ],
+      "why_not_now": [
+        "Already a holding; separate from fresh-entry routing",
+        "Below SMA50 by 2.7%",
+        "RS-63 is weak at -16% vs SPY"
+      ],
+      "setup_improves_if": [
+        "Holds above pivot $408.37 or support $408.37",
+        "Extends toward T1 at $425.26 without violating support"
+      ],
+      "setup_weakens_if": [
+        "Closes below stop $399.92",
+        "Loses trend support and fails to recover promptly"
+      ],
+      "what_improves_tomorrow": [
+        "Holds above pivot $408.37 or support $408.37",
+        "Extends toward T1 at $425.26 without violating support"
+      ],
+      "what_weakens_tomorrow": [
+        "Closes below stop $399.92",
+        "Loses trend support and fails to recover promptly"
+      ]
+    }
+  }
+]
